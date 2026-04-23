@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:controller="com.teach.javafx.controller.PostDetailController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+   <top>
+      <VBox spacing="10.0" BorderPane.alignment="CENTER">
+         <padding>
+            <Insets bottom="10.0" left="20.0" right="20.0" top="20.0" />
+         </padding>
+         <children>
+            <Label fx:id="titleLabel" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="帖子标题" />
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+               <children>
+                  <ImageView fx:id="authorImageView" fitHeight="40.0" fitWidth="40.0" preserveRatio="true" />
+                  <Label fx:id="authorLabel" text="作者：测试学生" />
+                  <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" />
+                  <Label fx:id="statusLabel" text="置顶 加精" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </top>
+   <center>
+      <ScrollPane fx:id="mainScrollPane" fitToWidth="true" BorderPane.alignment="CENTER">
+         <content>
+            <VBox fx:id="contentVBox" spacing="10.0">
+               <padding>
+                  <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
+               </padding>
+               <children>
+                  <TextArea fx:id="contentTextArea" editable="false" prefHeight="200.0" prefWidth="600.0" text="帖子内容" wrapText="true" />
+                  <Separator />
+                  <Label style="-fx-font-size: 14px; -fx-font-weight: bold;" text="评论区" />
+                  <VBox fx:id="commentVBox" spacing="10.0" />
+               </children>
+            </VBox>
+         </content>
+      </ScrollPane>
+   </center>
+   <bottom>
+      <VBox spacing="10.0" BorderPane.alignment="CENTER" minHeight="100.0" prefHeight="120.0">
+         <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
+         </padding>
+         <children>
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+               <children>
+                  <TextArea fx:id="commentTextArea" prefRowCount="2" prefWidth="400.0" promptText="发表评论..." />
+                  <Button fx:id="submitCommentButton" mnemonicParsing="false" text="发表评论" />
+                  <Button fx:id="likeButton" mnemonicParsing="false" text="点赞" />
+                  <Button fx:id="editButton" mnemonicParsing="false" text="编辑" />
+                  <Button fx:id="deleteButton" mnemonicParsing="false" text="删除" />
+                  <Button fx:id="topButton" mnemonicParsing="false" text="置顶" />
+                  <Button fx:id="featureButton" mnemonicParsing="false" text="加精" />
+                  <Button fx:id="reportButton" mnemonicParsing="false" text="举报" />
+               </children>
+            </HBox>
+         </children>
+      </VBox>
+   </bottom>
+</BorderPane>

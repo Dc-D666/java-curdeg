@@ -1,0 +1,10 @@
+- [x] Checkpoint 1: 评论列表每个评论都显示举报按钮
+- [x] Checkpoint 2: 举报按钮样式与回复按钮一致
+- [x] Checkpoint 3: 未登录用户看不到举报按钮
+- [x] Checkpoint 4: 禁言用户看不到举报按钮
+- [x] Checkpoint 5: 评论作者看不到自己评论的举报按钮
+- [x] Checkpoint 6: 点击举报按钮打开对话框
+- [x] Checkpoint 7: 对话框标题包含评论内容预览
+- [x] Checkpoint 8: 空原因验证正常
+- [x] Checkpoint 9: 提交举报成功显示提示
+- [x] Checkpoint 10: 提交举报失败显示错误提示

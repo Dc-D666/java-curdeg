@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+
+<VBox fx:controller="com.teach.javafx.controller.PostEditController" spacing="15.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+   <padding>
+      <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+   </padding>
+   <children>
+      <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="编辑帖子" />
+      <VBox spacing="5.0">
+         <children>
+            <Label text="标题：" />
+            <TextField fx:id="titleTextField" prefWidth="500.0" />
+         </children>
+      </VBox>
+      <VBox spacing="5.0">
+         <children>
+            <Label text="内容：" />
+            <TextArea fx:id="contentTextArea" prefHeight="300.0" prefWidth="500.0" wrapText="true" />
+         </children>
+      </VBox>
+      <VBox spacing="5.0">
+         <children>
+            <Label text="图片URL（可选，多个URL用逗号分隔）：" />
+            <TextField fx:id="imageUrlsTextField" prefWidth="500.0" />
+         </children>
+      </VBox>
+      <HBox spacing="10.0" alignment="CENTER_RIGHT">
+         <children>
+            <Button fx:id="cancelButton" mnemonicParsing="false" text="取消" />
+            <Button fx:id="saveButton" mnemonicParsing="false" text="保存" />
+         </children>
+      </HBox>
+   </children>
+</VBox>

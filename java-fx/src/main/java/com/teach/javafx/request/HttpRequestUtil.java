@@ -1,0 +1,993 @@
+package com.teach.javafx.request;
+
+import com.teach.javafx.AppStore;
+import com.teach.javafx.models.Board;
+import com.teach.javafx.models.Comment;
+import com.teach.javafx.models.PageResult;
+import com.teach.javafx.models.Post;
+import com.teach.javafx.models.User;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.URI;
+import java.net.http.HttpResponse;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.nio.file.Path;
+import java.util.Map;
+
+/**
+ * HttpRequestUtil 后台请求实例程序，主要实践向后台发送请求的方法
+ *  static boolean isLocal 业务处理程序实现方式 false java-server实现 前端程序通过下面的方法把数据发送后台程序，后台返回前端需要的数据，true 本地方式 业务处理 在SQLiteJDBC 实现
+ *  String serverUrl = "http://localhost:9090" 后台服务的机器地址和端口号
+ */
+public class HttpRequestUtil {
+    private static final Gson gson = new GsonBuilder()
+            .setDateFormat("yyyy-MM-dd HH:mm:ss")
+            .create();
+    private static final HttpClient client = HttpClient.newHttpClient();
+    public static String serverUrl = "http://localhost:22223";
+//    public static String serverUrl = "http://202.194.7.29:22222";
+
+    /**
+     *  应用关闭是需要做关闭处理
+     */
+    public static void close(){
+    }
+
+    /**
+     * String login(LoginRequest request)  用户登录请求实现
+     * @param request  username 登录账号 password 登录密码
+     * @return  返回null 登录成功 AppStore注册登录账号信息 非空，登录错误信息
+     */
+
+    public static String login(LoginRequest request){
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl + "/api/auth/login"))
+                    .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                    .headers("Content-Type", "application/json")
+                    .build();
+            try {
+                HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+                System.out.println("response.statusCode===="+response.statusCode());
+                if (response.statusCode() == 200) {
+                    JwtResponse jwt = gson.fromJson(response.body(), JwtResponse.class);
+                    AppStore.setJwt(jwt);
+                    return null;
+                } else if (response.statusCode() == 401) {
+                    return "用户名或密码不存在！";
+                }
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        return "登录失败";
+    }
+
+    /**
+     * DataResponse request(String url,DataRequest request) 一般数据请求业务的实现
+     * @param url  Web请求的Url 对用后的 RequestMapping
+     * @param request 请求参数对象
+     * @return DataResponse 返回后台返回数据
+     */
+    public static DataResponse<Object> request(String url, DataRequest request){
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl + url))
+                    .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                    .headers("Content-Type", "application/json")
+                    .headers("Authorization", "Bearer " + AppStore.getJwt().getToken())
+                    .build();
+            request.add("username",AppStore.getJwt().getUsername());
+            HttpClient client = HttpClient.newHttpClient();
+            try {
+                HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+                System.out.println("url=" + url +"    response.statusCode="+response.statusCode());
+                if (response.statusCode() == 200) {
+                    //                System.out.println(response.body());
+                    Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                    return gson.fromJson(response.body(), responseType);
+                }
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
+        return null;
+    }
+
+    /**
+     *  MyTreeNode requestTreeNode(String url, DataRequest request) 获取树节点对象
+     * @param url  Web请求的Url 对用后的 RequestMapping
+     * @param request 请求参数对象
+     * @return MyTreeNode 返回后台返回数据
+     */
+    public static MyTreeNode requestTreeNode(String url, DataRequest request){
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .headers("Content-Type", "application/json")
+                .headers("Authorization", "Bearer "+AppStore.getJwt().getToken())
+                .build();
+        HttpClient client = HttpClient.newHttpClient();
+        try {
+            HttpResponse<String>  response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 200) {
+                return gson.fromJson(response.body(), MyTreeNode.class);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<MyTreeNode> requestTreeNodeList(String url, DataRequest request){
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .headers("Content-Type", "application/json")
+                .headers("Authorization", "Bearer "+AppStore.getJwt().getToken())
+                .build();
+        HttpClient client = HttpClient.newHttpClient();
+        try {
+            HttpResponse<String>  response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 200) {
+                List<Map<String,Object>> list = gson.fromJson(response.body(),List.class);
+                List<MyTreeNode> rList = new ArrayList<>();
+                for (Map<String, Object> stringObjectMap : list) {
+                    rList.add(new MyTreeNode(stringObjectMap));
+                }
+                return rList;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     *  List<OptionItem> requestOptionItemList(String url, DataRequest request) 获取OptionItemList对象
+     * @param url  Web请求的Url 对用后的 RequestMapping
+     * @param request 请求参数对象
+     * @return List<OptionItem> 返回后台返回数据
+     */
+    public static List<OptionItem> requestOptionItemList(String url, DataRequest request){
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .headers("Content-Type", "application/json")
+                .headers("Authorization", "Bearer "+AppStore.getJwt().getToken())
+                .build();
+        HttpClient client = HttpClient.newHttpClient();
+        try {
+            HttpResponse<String>  response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 200) {
+                OptionItemList o = gson.fromJson(response.body(), OptionItemList.class);
+                return o.getItemList();
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     *   List<OptionItem> getDictionaryOptionItemList(String code) 获取数据字典OptionItemList对象
+     * @param code  数据字典类型吗
+     * @param
+     * @return List<OptionItem> 返回后台返回数据
+     */
+    public static  List<OptionItem> getDictionaryOptionItemList(String code) {
+        DataRequest req = new DataRequest();
+        req.add("code", code);
+        return requestOptionItemList("/api/base/getDictionaryOptionItemList",req);
+    }
+
+    /**
+     *  byte[] requestByteData(String url, DataRequest request) 获取byte[] 对象 下载数据文件等
+     * @param url  Web请求的Url 对用后的 RequestMapping
+     * @param request 请求参数对象
+     * @return List<OptionItem> 返回后台返回数据
+     */
+    public static byte[] requestByteData(String url, DataRequest request){
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(request)))
+                .headers("Content-Type", "application/json")
+                .headers("Authorization", "Bearer "+AppStore.getJwt().getToken())
+                .build();
+        HttpClient client = HttpClient.newHttpClient();
+        try {
+            HttpResponse<byte[]>  response = client.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+            if(response.statusCode() == 200) {
+                return response.body();
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * DataResponse uploadFile(String fileName,String remoteFile) 上传数据文件
+     * @param fileName  本地文件名
+     * @param remoteFile 远程文件路径
+     * @return 上传操作信息
+     */
+    public static DataResponse uploadFile(String uri,String fileName,String remoteFile)  {
+        try {
+            Path file = Path.of(fileName);
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl+uri+"?uploader=HttpTestApp&remoteFile="+remoteFile + "&fileName="
+                            + file.getFileName()))
+                    .POST(HttpRequest.BodyPublishers.ofFile(file))
+                    .headers("Authorization", "Bearer " + AppStore.getJwt().getToken())
+                    .build();
+            HttpResponse<String>  response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 200) {
+                return gson.fromJson(response.body(), DataResponse.class);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * DataResponse importData(String url, String fileName, String paras) 导入数据文件
+     * @param url  Web请求的Url 对用后的 RequestMapping
+     * @param fileName 本地文件名
+     * @param paras  上传参数
+     * @return 导入结果信息
+     */
+    public static DataResponse importData(String url, String fileName, String paras)  {
+        try {
+            Path file = Path.of(fileName);
+            String urlStr = serverUrl+url+"?uploader=HttpTestApp&fileName=" + file.getFileName() ;
+            if(paras != null && !paras.isEmpty())
+                urlStr += "&"+paras;
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(urlStr))
+                    .POST(HttpRequest.BodyPublishers.ofFile(file))
+                    .headers("Authorization", "Bearer " + AppStore.getJwt().getToken())
+                    .build();
+            HttpResponse<String>  response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 200) {
+                return gson.fromJson(response.body(), DataResponse.class);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<Board> getBoardList() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/board/list"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getBoardList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<Board>>>(){}.getType();
+                DataResponse<List<Board>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static PageResult<Post> getPostList(Long boardId, String keyword, int pageNum, int pageSize) {
+        java.util.List<String> params = new java.util.ArrayList<>();
+        
+        if (boardId != null) {
+            params.add("boardId=" + boardId);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            try {
+                params.add("keyword=" + java.net.URLEncoder.encode(keyword, "UTF-8"));
+            } catch (Exception e) {
+                params.add("keyword=" + keyword);
+            }
+        }
+        params.add("pageNum=" + pageNum);
+        params.add("pageSize=" + pageSize);
+        
+        String url = serverUrl + "/api/bbs/post/list?" + String.join("&", params);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            System.out.println("getPostList request: " + url);
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getPostList response: " + response.body());
+            if (response.statusCode() == 200) {
+                try {
+                    Type responseType = new TypeToken<DataResponse<PageResult<Post>>>(){}.getType();
+                    DataResponse<PageResult<Post>> dataResponse = gson.fromJson(response.body(), responseType);
+                    System.out.println("Parsed dataResponse: code=" + dataResponse.getCode());
+                    if (dataResponse.getCode() == 0) {
+                        PageResult<Post> result = dataResponse.getData();
+                        System.out.println("PageResult: total=" + result.getTotal() + ", list size=" + (result.getList() != null ? result.getList().size() : "null"));
+                        return result;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error parsing response:");
+                    e.printStackTrace();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static User getCurrentUser() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/user/me"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getCurrentUser response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<User>>(){}.getType();
+                DataResponse<User> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Post getPostDetail(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getPostDetail response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Post>>(){}.getType();
+                DataResponse<Post> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<Comment> getCommentList(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/comment/post/" + postId))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getCommentList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<Comment>>>(){}.getType();
+                DataResponse<List<Comment>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Comment getCommentDetail(Long commentId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/comment/detail/" + commentId))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getCommentDetail response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Comment>>(){}.getType();
+                DataResponse<Comment> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Post publishPost(Post post) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("title", post.getTitle());
+        dataRequest.add("content", post.getContent());
+        dataRequest.add("boardId", post.getBoardId());
+        if (post.getImages() != null && !post.getImages().isEmpty()) {
+            dataRequest.add("imageUrls", post.getImages());
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("publishPost response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Post>>(){}.getType();
+                DataResponse<Post> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public static Comment publishComment(Long postId, String content) {
+        return publishComment(postId, content, null);
+    }
+
+    public static Comment publishComment(Long postId, String content, Long parentId) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("content", content);
+        if (parentId != null) {
+            dataRequest.add("parentId", parentId);
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/comment/post/" + postId))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("publishComment response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Comment>>(){}.getType();
+                DataResponse<Comment> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public static Post updatePost(Long postId, String title, String content, String imageUrls) {
+        DataRequest dataRequest = new DataRequest();
+        if (title != null) {
+            dataRequest.add("title", title);
+        }
+        if (content != null) {
+            dataRequest.add("content", content);
+        }
+        if (imageUrls != null) {
+            dataRequest.add("imageUrls", imageUrls);
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId))
+                .PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("updatePost response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Post>>(){}.getType();
+                DataResponse<Post> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public static boolean deletePost(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId))
+                .DELETE()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("deletePost response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                return dataResponse.getCode() == 0;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    
+    public static Post toggleTop(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/top"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleTop response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Post>>(){}.getType();
+                DataResponse<Post> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public static Post toggleFeature(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/feature"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleFeature response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Post>>(){}.getType();
+                DataResponse<Post> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> toggleLike(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/like"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleLike response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getLikeStatus(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/like/status"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getLikeStatus response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static com.teach.javafx.models.Report submitReport(Integer targetType, Long targetId, String reason) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("targetType", targetType);
+        dataRequest.add("targetId", targetId);
+        dataRequest.add("reason", reason);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/report"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("submitReport response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<com.teach.javafx.models.Report>>(){}.getType();
+                DataResponse<com.teach.javafx.models.Report> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static PageResult<com.teach.javafx.models.Report> getMyReportList(int pageNum, int pageSize) {
+        String url = serverUrl + "/api/bbs/report/my-list?pageNum=" + pageNum + "&pageSize=" + pageSize;
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyReportList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<PageResult<com.teach.javafx.models.Report>>>(){}.getType();
+                DataResponse<PageResult<com.teach.javafx.models.Report>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static PageResult<com.teach.javafx.models.Report> getAdminReportList(int pageNum, int pageSize, Integer status) {
+        java.util.List<String> params = new java.util.ArrayList<>();
+        params.add("pageNum=" + pageNum);
+        params.add("pageSize=" + pageSize);
+        if (status != null) {
+            params.add("status=" + status);
+        }
+        
+        String url = serverUrl + "/api/bbs/report/admin-list?" + String.join("&", params);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getAdminReportList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<PageResult<com.teach.javafx.models.Report>>>(){}.getType();
+                DataResponse<PageResult<com.teach.javafx.models.Report>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static boolean handleReport(Long id, int handleType, String handleRemark) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("handleType", handleType);
+        if (handleRemark != null) {
+            dataRequest.add("handleRemark", handleRemark);
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/report/" + id + "/handle"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("handleReport response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                return dataResponse.getCode() == 0;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static Long getUnreadNotificationCount() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/notification/unread-count"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUnreadNotificationCount response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Long>>(){}.getType();
+                DataResponse<Long> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return 0L;
+    }
+
+    public static java.util.List<com.teach.javafx.models.Notification> getMyNotificationList(Integer isRead) {
+        String url = serverUrl + "/api/bbs/notification/my-list";
+        if (isRead != null) {
+            url += "?isRead=" + isRead;
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyNotificationList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<java.util.List<com.teach.javafx.models.Notification>>>(){}.getType();
+                DataResponse<java.util.List<com.teach.javafx.models.Notification>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static boolean readNotification(Long id) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/notification/" + id + "/read"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("readNotification response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                return dataResponse.getCode() == 0;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static java.util.List<java.util.Map<String, Object>> getDailyPostStatistics() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/statistics/daily-post"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getDailyPostStatistics response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<java.util.List<java.util.Map<String, Object>>>>(){}.getType();
+                DataResponse<java.util.List<java.util.Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static java.util.List<com.teach.javafx.models.Post> getHotPostStatistics() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/statistics/hot-post"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getHotPostStatistics response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<java.util.List<com.teach.javafx.models.Post>>>(){}.getType();
+                DataResponse<java.util.List<com.teach.javafx.models.Post>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static java.util.List<com.teach.javafx.models.User> getActiveUserStatistics() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/statistics/active-user"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getActiveUserStatistics response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<java.util.List<com.teach.javafx.models.User>>>(){}.getType();
+                DataResponse<java.util.List<com.teach.javafx.models.User>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+}
