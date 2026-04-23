@@ -19,6 +19,13 @@ public class BbsNotification {
     @Column(name = "receiver_id", nullable = false)
     private Long receiverId;
 
+    @Column(name = "type", nullable = false)
+    private Integer type = 1;
+
+    @Size(max = 100)
+    @Column(name = "title", length = 100)
+    private String title;
+
     @NotBlank
     @Size(max = 500)
     @Column(nullable = false, length = 500)

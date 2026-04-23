@@ -1,9 +1,12 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.Notification;
 import com.teach.javafx.request.HttpRequestUtil;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -28,8 +31,13 @@ public class MyNotificationController extends ToolController {
     private TableColumn<Notification, String> createTimeColumn;
     @FXML
     private Label unreadCountLabel;
+    @FXML
+    private Button markAllReadButton;
+    @FXML
+    private ComboBox<String> typeComboBox;
 
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+    private Integer currentType = null;
 
     @FXML
     public void initialize() {
@@ -44,14 +52,80 @@ public class MyNotificationController extends ToolController {
                     case 2:
                         typeText = "举报处理通知";
                         break;
+                    case 3:
+                        typeText = "帖子审核通知";
+                        break;
+                    case 4:
+                        typeText = "评论回复通知";
+                        break;
+                    case 5:
+                        typeText = "新增粉丝通知";
+                        break;
+                    case 6:
+                        typeText = "关注用户发帖通知";
+                        break;
                     default:
                         typeText = "未知";
                 }
             }
             return new javafx.beans.property.SimpleStringProperty(typeText);
         });
+        typeColumn.setCellFactory(param -> new TableCell<Notification, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (getTableRow().isSelected()) {
+                        setStyle("-fx-text-fill: red;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
+        
         titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
+        titleColumn.setCellFactory(param -> new TableCell<Notification, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (getTableRow().isSelected()) {
+                        setStyle("-fx-text-fill: red;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
+        
         contentColumn.setCellValueFactory(new PropertyValueFactory<>("content"));
+        contentColumn.setCellFactory(param -> new TableCell<Notification, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (getTableRow().isSelected()) {
+                        setStyle("-fx-text-fill: red;");
+                    } else {
+                        setStyle("");
+                    }
+                }
+            }
+        });
+        
         isReadColumn.setCellValueFactory(cellData -> {
             Integer isRead = cellData.getValue().getIsRead();
             String readText = (isRead != null && isRead == 1) ? "已读" : "未读";
@@ -68,21 +142,84 @@ public class MyNotificationController extends ToolController {
                     setText(item);
                     Notification notification = getTableView().getItems().get(getIndex());
                     Integer isRead = notification.getIsRead();
+                    boolean isSelected = getTableRow().isSelected();
+                    
+                    StringBuilder style = new StringBuilder();
                     if (isRead == null || isRead == 0) {
-                        setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                        style.append("-fx-font-weight: bold; ");
+                    }
+                    if (isSelected) {
+                        style.append("-fx-text-fill: red;");
+                    }
+                    setStyle(style.toString());
+                }
+            }
+        });
+        
+        createTimeColumn.setCellValueFactory(cellData -> {
+            return new javafx.beans.property.SimpleStringProperty(cellData.getValue().getCreateTime() != null ? cellData.getValue().getCreateTime().substring(0, 16) : "");
+        });
+        createTimeColumn.setCellFactory(param -> new TableCell<Notification, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(item);
+                    if (getTableRow().isSelected()) {
+                        setStyle("-fx-text-fill: red;");
                     } else {
                         setStyle("");
                     }
                 }
             }
         });
-        createTimeColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getCreateTime() != null) {
-                return new javafx.beans.property.SimpleStringProperty(dateFormat.format(cellData.getValue().getCreateTime()));
-            }
-            return new javafx.beans.property.SimpleStringProperty("");
+        
+        notificationTableView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            notificationTableView.refresh();
         });
+        
+        setupRowFactory();
+        loadUnreadCount();
+        loadNotificationList();
+        
+        markAllReadButton.setOnAction(event -> markAllAsRead());
+        
+        typeComboBox.getItems().addAll("全部类型", "系统通知", "回复我的", "举报处理", "帖子审核", "新增粉丝通知", "关注用户发帖通知");
+        typeComboBox.getSelectionModel().selectFirst();
+        typeComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                switch (newVal) {
+                    case "全部类型":
+                        currentType = null;
+                        break;
+                    case "系统通知":
+                        currentType = 1;
+                        break;
+                    case "回复我的":
+                        currentType = 4;
+                        break;
+                    case "举报处理":
+                        currentType = 2;
+                        break;
+                    case "帖子审核":
+                        currentType = 3;
+                        break;
+                    case "新增粉丝通知":
+                        currentType = 5;
+                        break;
+                    case "关注用户发帖通知":
+                        currentType = 6;
+                        break;
+                }
+                loadNotificationList();
+            }
+        });
+    }
 
+    private void setupRowFactory() {
         notificationTableView.setRowFactory(tv -> {
             TableRow<Notification> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
@@ -95,9 +232,6 @@ public class MyNotificationController extends ToolController {
             });
             return row;
         });
-
-        loadUnreadCount();
-        loadNotificationList();
     }
 
     private void loadUnreadCount() {
@@ -122,7 +256,7 @@ public class MyNotificationController extends ToolController {
         Task<List<Notification>> task = new Task<List<Notification>>() {
             @Override
             protected List<Notification> call() {
-                return HttpRequestUtil.getMyNotificationList(null);
+                return HttpRequestUtil.getMyNotificationList(null, currentType);
             }
         };
 
@@ -132,6 +266,10 @@ public class MyNotificationController extends ToolController {
                 if (notifications != null) {
                     notificationTableView.getItems().clear();
                     notificationTableView.getItems().addAll(notifications);
+                    
+                    if (notifications.isEmpty() && currentType != null) {
+                        showInfo("未找到该类型的通知");
+                    }
                 }
             });
         });
@@ -158,6 +296,9 @@ public class MyNotificationController extends ToolController {
                     notification.setIsRead(1);
                     notificationTableView.refresh();
                     loadUnreadCount();
+                    if (AppStore.getMainFrameController() != null) {
+                        AppStore.getMainFrameController().loadUnreadNotificationCount();
+                    }
                 }
             });
         });
@@ -168,6 +309,55 @@ public class MyNotificationController extends ToolController {
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle("错误");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showSuccess(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("成功");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void markAllAsRead() {
+        Task<Boolean> task = new Task<Boolean>() {
+            @Override
+            protected Boolean call() {
+                return HttpRequestUtil.markAllNotificationsAsRead();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Boolean result = task.getValue();
+                if (Boolean.TRUE.equals(result)) {
+                    showSuccess("已将所有通知标记为已读");
+                    loadNotificationList();
+                    loadUnreadCount();
+                    if (AppStore.getMainFrameController() != null) {
+                        AppStore.getMainFrameController().loadUnreadNotificationCount();
+                    }
+                } else {
+                    showError("标记全部已读失败");
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("标记全部已读失败");
+            });
+        });
+
+        new Thread(task).start();
+    }
+    
+    private void showInfo(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("提示");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

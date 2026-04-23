@@ -40,4 +40,33 @@ public class BbsUserController {
     public DataResponse getUserList(@Valid DataRequest dataRequest) {
         return bbsUserService.getUserList(dataRequest);
     }
+
+    @GetMapping("/me/statistics")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse getUserStatistics() {
+        return bbsUserService.getUserStatistics();
+    }
+
+    @GetMapping("/me/posts")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse getMyPosts(@Valid DataRequest dataRequest) {
+        return bbsUserService.getMyPosts(dataRequest);
+    }
+
+    @GetMapping("/me/favorites")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse getMyFavorites(@Valid DataRequest dataRequest) {
+        return bbsUserService.getMyFavorites(dataRequest);
+    }
+
+    @PostMapping("/me/password")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse changePassword(@Valid @RequestBody DataRequest dataRequest) {
+        return bbsUserService.changePassword(dataRequest);
+    }
+
+    @GetMapping("/{userId}")
+    public DataResponse getUserProfile(@PathVariable Integer userId) {
+        return bbsUserService.getUserProfile(userId);
+    }
 }

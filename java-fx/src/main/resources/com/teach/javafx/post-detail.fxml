@@ -23,6 +23,7 @@
                <children>
                   <ImageView fx:id="authorImageView" fitHeight="40.0" fitWidth="40.0" preserveRatio="true" />
                   <Label fx:id="authorLabel" text="作者：测试学生" />
+                  <Button fx:id="followButton" mnemonicParsing="false" text="关注" />
                   <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" />
                   <Label fx:id="statusLabel" text="置顶 加精" />
                </children>
@@ -39,6 +40,7 @@
                </padding>
                <children>
                   <TextArea fx:id="contentTextArea" editable="false" prefHeight="200.0" prefWidth="600.0" text="帖子内容" wrapText="true" />
+                  <VBox fx:id="postImagesVBox" spacing="10.0" />
                   <Separator />
                   <Label style="-fx-font-size: 14px; -fx-font-weight: bold;" text="评论区" />
                   <VBox fx:id="commentVBox" spacing="10.0" />
@@ -58,6 +60,7 @@
                   <TextArea fx:id="commentTextArea" prefRowCount="2" prefWidth="400.0" promptText="发表评论..." />
                   <Button fx:id="submitCommentButton" mnemonicParsing="false" text="发表评论" />
                   <Button fx:id="likeButton" mnemonicParsing="false" text="点赞" />
+                  <Button fx:id="favoriteButton" mnemonicParsing="false" text="收藏" />
                   <Button fx:id="editButton" mnemonicParsing="false" text="编辑" />
                   <Button fx:id="deleteButton" mnemonicParsing="false" text="删除" />
                   <Button fx:id="topButton" mnemonicParsing="false" text="置顶" />

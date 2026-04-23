@@ -8,10 +8,12 @@ import com.teach.javafx.models.PageResult;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.FollowStateManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.collections.FXCollections;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -19,7 +21,10 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 
 import java.text.SimpleDateFormat;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
 
 public class PostListController extends ToolController {
     @FXML
@@ -47,16 +52,19 @@ public class PostListController extends ToolController {
     @FXML
     private Label pageInfoLabel;
     @FXML
+    private ComboBox<Integer> pageSizeComboBox;
+    @FXML
     private Button prevButton;
     @FXML
     private Button nextButton;
 
     private int currentPageNum = 1;
-    private int currentPageSize = 10;
+    private int currentPageSize = 20;
     private Long currentBoardId = null;
     private String currentKeyword = null;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private User currentUser;
+    private Set<Integer> followingUserIds = new HashSet<>();
 
     @FXML
     public void initialize() {
@@ -65,6 +73,8 @@ public class PostListController extends ToolController {
             private final ImageView imageView = new ImageView();
             private final Label label = new Label();
             private final HBox hbox = new HBox(5, imageView, label);
+            private Consumer<Boolean> listener = null;
+            private Long currentUserId = null;
             
             {
                 imageView.setFitWidth(32);
@@ -76,6 +86,11 @@ public class PostListController extends ToolController {
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || getTableRow() == null) {
+                    if (listener != null && currentUserId != null) {
+                        FollowStateManager.getInstance().unregisterListener(currentUserId, listener);
+                        listener = null;
+                        currentUserId = null;
+                    }
                     setGraphic(null);
                 } else {
                     Post post = getTableView().getItems().get(getIndex());
@@ -93,7 +108,49 @@ public class PostListController extends ToolController {
                         imageView.setImage(null);
                     }
                     
-                    label.setText(nickname != null ? nickname : "");
+                    StringBuilder displayText = new StringBuilder();
+                    if (nickname != null) {
+                        displayText.append(nickname);
+                    }
+                    
+                    Long userId = post.getUserId();
+                    if (userId != null) {
+                        if (listener != null && !userId.equals(currentUserId)) {
+                            FollowStateManager.getInstance().unregisterListener(currentUserId, listener);
+                            listener = null;
+                        }
+                        
+                        Boolean isFollowed = FollowStateManager.getInstance().getFollowState(userId);
+                        if (isFollowed != null && isFollowed) {
+                            displayText.append(" (已关注)");
+                        } else if (followingUserIds.contains(userId.intValue())) {
+                            displayText.append(" (已关注)");
+                        }
+                        
+                        if (listener == null || !userId.equals(currentUserId)) {
+                            currentUserId = userId;
+                            final Long finalUserId = userId;
+                            listener = (followed) -> {
+                                Platform.runLater(() -> {
+                                    Post currentPost = getTableView().getItems().get(getIndex());
+                                    if (currentPost != null && finalUserId.equals(currentPost.getUserId())) {
+                                        StringBuilder newDisplayText = new StringBuilder();
+                                        String newNickname = currentPost.getAuthorNickname();
+                                        if (newNickname != null) {
+                                            newDisplayText.append(newNickname);
+                                        }
+                                        if (followed) {
+                                            newDisplayText.append(" (已关注)");
+                                        }
+                                        label.setText(newDisplayText.toString());
+                                    }
+                                });
+                            };
+                            FollowStateManager.getInstance().registerListener(userId, listener);
+                        }
+                    }
+                    
+                    label.setText(displayText.toString());
                     setGraphic(hbox);
                 }
             }
@@ -141,6 +198,13 @@ public class PostListController extends ToolController {
             currentPageNum = 1;
             loadPostList();
         });
+        
+        keywordTextField.setOnAction(event -> {
+            currentKeyword = keywordTextField.getText();
+            System.out.println("Enter pressed, keyword=" + currentKeyword);
+            currentPageNum = 1;
+            loadPostList();
+        });
 
         publishButton.setOnAction(event -> openPublishPost());
 
@@ -154,6 +218,16 @@ public class PostListController extends ToolController {
         nextButton.setOnAction(event -> {
             currentPageNum++;
             loadPostList();
+        });
+
+        pageSizeComboBox.setItems(FXCollections.observableArrayList(10, 20, 50));
+        pageSizeComboBox.setValue(currentPageSize);
+        pageSizeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                currentPageSize = newValue;
+                currentPageNum = 1;
+                loadPostList();
+            }
         });
 
         publishButton.setVisible(false);
@@ -175,6 +249,7 @@ public class PostListController extends ToolController {
             Platform.runLater(() -> {
                 currentUser = task.getValue();
                 updatePublishButtonVisibility();
+                loadFollowingList();
             });
         });
         
@@ -184,6 +259,33 @@ public class PostListController extends ToolController {
             });
         });
         
+        new Thread(task).start();
+    }
+
+    private void loadFollowingList() {
+        Task<List<User>> task = new Task<List<User>>() {
+            @Override
+            protected List<User> call() {
+                return HttpRequestUtil.getMyFollowingList();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                List<User> followingList = task.getValue();
+                followingUserIds.clear();
+                if (followingList != null) {
+                    for (User user : followingList) {
+                        if (user.getPersonId() != null) {
+                            followingUserIds.add(user.getPersonId().intValue());
+                            FollowStateManager.getInstance().setFollowState(user.getPersonId().longValue(), true);
+                        }
+                    }
+                }
+                postTableView.refresh();
+            });
+        });
+
         new Thread(task).start();
     }
     

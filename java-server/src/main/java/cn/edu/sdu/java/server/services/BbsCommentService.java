@@ -1,11 +1,13 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.BbsComment;
+import cn.edu.sdu.java.server.models.BbsNotification;
 import cn.edu.sdu.java.server.models.BbsPost;
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
+import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
@@ -24,14 +26,27 @@ public class BbsCommentService {
     private final BbsCommentRepository bbsCommentRepository;
     private final BbsPostRepository bbsPostRepository;
     private final UserRepository userRepository;
+    private final BbsNotificationRepository bbsNotificationRepository;
     private final SensitiveWordFilter sensitiveWordFilter;
 
     public BbsCommentService(BbsCommentRepository bbsCommentRepository, BbsPostRepository bbsPostRepository,
-                           UserRepository userRepository, SensitiveWordFilter sensitiveWordFilter) {
+                           UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository,
+                           SensitiveWordFilter sensitiveWordFilter) {
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
+        this.bbsNotificationRepository = bbsNotificationRepository;
         this.sensitiveWordFilter = sensitiveWordFilter;
+    }
+    
+    private void createNotification(Long receiverId, Integer type, String title, String content) {
+        BbsNotification notification = new BbsNotification();
+        notification.setReceiverId(receiverId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setContent(content);
+        notification.setIsRead(0);
+        bbsNotificationRepository.saveAndFlush(notification);
     }
 
     private void fillCommentAuthorInfo(BbsComment comment) {
@@ -88,6 +103,7 @@ public class BbsCommentService {
     @Transactional
     public DataResponse createComment(Long postId, DataRequest dataRequest) {
         String content = dataRequest.getString("content");
+        String imageUrls = dataRequest.getString("imageUrls");
         Long parentId = dataRequest.getLong("parentId");
 
         if (content == null || content.isBlank()) {
@@ -163,6 +179,7 @@ public class BbsCommentService {
         comment.setReplyToUserId(replyToUserId);
         comment.setReplyToUserNickname(replyToUserNickname);
         comment.setContent(filteredContent);
+        comment.setImageUrls(imageUrls);
         comment.setLikeCount(0);
         comment.setStatus(hasSevereWord ? 0 : 1);
 
@@ -174,6 +191,20 @@ public class BbsCommentService {
 
             post.setCommentCount(post.getCommentCount() + 1);
             bbsPostRepository.saveAndFlush(post);
+            
+            // 发送评论/回复通知
+            String currentUserNickname = user.getNickname();
+            String postTitle = post.getTitle() != null ? post.getTitle() : "评论回复通知";
+            
+            if (parentId != null && replyToUserId != null && !replyToUserId.equals(currentUserId.longValue())) {
+                // 回复评论：通知被回复的用户
+                createNotification(replyToUserId, 4, postTitle, 
+                    "用户「" + currentUserNickname + "」回复了您的评论，帖子ID：" + postId);
+            } else if (post.getAuthorId() != null && !post.getAuthorId().equals(currentUserId.longValue())) {
+                // 评论帖子：通知帖子作者
+                createNotification(post.getAuthorId(), 4, postTitle, 
+                    "用户「" + currentUserNickname + "」评论了您的帖子，帖子ID：" + postId);
+            }
         }
 
         fillCommentAuthorInfo(comment);

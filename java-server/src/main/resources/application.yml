@@ -43,7 +43,7 @@ spring:
   jmx:
     enabled:false
 attach:
-  folder: /teach-2025/
+  folder: ./uploads/
 logging:
   config: classpath:loggback.xml
 #logging:

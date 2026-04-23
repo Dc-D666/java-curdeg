@@ -96,8 +96,66 @@ public class User {
     @Column(name = "is_banned", nullable = false)
     private Boolean isBanned = false;
 
+    @Column(name = "follower_count")
+    private Integer followerCount = 0;
+
+    @Column(name = "following_count")
+    private Integer followingCount = 0;
+
     // ==================== 临时字段（不映射到数据库） ====================
 
     @Transient
     private String authority;
+
+    // ==================== Person 表相关字段（临时字段） ====================
+
+    @Transient
+    private String personName;
+
+    @Transient
+    private String personDept;
+
+    @Transient
+    private String personGender;
+
+    @Transient
+    private String personBirthday;
+
+    @Transient
+    private String personEmail;
+
+    @Transient
+    private String personPhone;
+
+    @Transient
+    private String personAddress;
+
+    @Transient
+    private String personIntroduce;
+
+    // ==================== 隐私设置字段（临时字段） ====================
+
+    @Transient
+    private String namePrivacy;
+
+    @Transient
+    private String deptPrivacy;
+
+    @Transient
+    private String genderPrivacy;
+
+    @Transient
+    private String birthdayPrivacy;
+
+    @Transient
+    private String emailPrivacy;
+
+    @Transient
+    private String phonePrivacy;
+
+    @Transient
+    private String addressPrivacy;
+
+    @Transient
+    private String introducePrivacy;
 }

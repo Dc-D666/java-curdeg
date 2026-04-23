@@ -1,15 +1,18 @@
 package com.teach.javafx.models;
 
-import java.util.Date;
+import com.google.gson.annotations.SerializedName;
 
 public class Notification {
     private Long id;
+    @SerializedName(value = "receiverId", alternate = "receiver_id")
     private Long receiverId;
     private Integer type;
     private String title;
     private String content;
+    @SerializedName(value = "isRead", alternate = "is_read")
     private Integer isRead;
-    private Date createTime;
+    @SerializedName(value = "createTime", alternate = "create_time")
+    private String createTime;
 
     public Notification() {
     }
@@ -62,11 +65,11 @@ public class Notification {
         this.isRead = isRead;
     }
 
-    public Date getCreateTime() {
+    public String getCreateTime() {
         return createTime;
     }
 
-    public void setCreateTime(Date createTime) {
+    public void setCreateTime(String createTime) {
         this.createTime = createTime;
     }
 }

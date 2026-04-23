@@ -6,11 +6,13 @@ import com.teach.javafx.request.*;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
+import java.util.prefs.Preferences;
 import java.io.IOException;
 
 /**
@@ -19,10 +21,17 @@ import java.io.IOException;
  *  @FXML 方法 对应于fxml文件中的 on***Click的属性  如onLoginButtonClick() 对应onAction="#onLoginButtonClick"
  */
 public class LoginController {
+    private static final String PREFS_NODE = "com.teach.javafx.login";
+    private static final String KEY_USERNAME = "username";
+    private static final String KEY_PASSWORD = "password";
+    private static final String KEY_REMEMBER = "rememberPassword";
+    
     @FXML
     private TextField usernameField;
     @FXML
     private PasswordField passwordField;
+    @FXML
+    private CheckBox rememberPasswordCheckBox;
     @FXML
     private VBox vbox;
     /**
@@ -30,6 +39,8 @@ public class LoginController {
      */
     @FXML
     public void initialize() {
+        loadSavedCredentials();
+        
 //        vbox.setId("min");  // id选择器 #
 //        vbox.getStyleClass().add("min");  类选择器 .
         vbox.setStyle("-fx-background-image: url('shanda1.jpg'); -fx-background-repeat: no-repeat; -fx-background-size: cover;");  //inline选择器
@@ -69,6 +80,7 @@ public class LoginController {
             MessageDialog.showDialog( msg);
             return;
         }
+        saveCredentials();
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/main-frame.fxml"));
         try {
             Scene scene = new Scene(fxmlLoader.load(), -1, -1);
@@ -81,6 +93,39 @@ public class LoginController {
     
     @FXML
     protected void onRegisterButtonClick() {
-        MessageDialog.showDialog("注册功能开发中...");
+        FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/register-view.fxml"));
+        try {
+            Scene scene = new Scene(fxmlLoader.load(), -1, -1);
+            MainApplication.resetStage("学生交流社区 - 注册", scene, false);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void loadSavedCredentials() {
+        Preferences prefs = Preferences.userRoot().node(PREFS_NODE);
+        boolean remember = prefs.getBoolean(KEY_REMEMBER, false);
+        rememberPasswordCheckBox.setSelected(remember);
+        
+        if (remember) {
+            String username = prefs.get(KEY_USERNAME, "");
+            String password = prefs.get(KEY_PASSWORD, "");
+            usernameField.setText(username);
+            passwordField.setText(password);
+        }
+    }
+    
+    private void saveCredentials() {
+        Preferences prefs = Preferences.userRoot().node(PREFS_NODE);
+        boolean remember = rememberPasswordCheckBox.isSelected();
+        
+        if (remember) {
+            prefs.put(KEY_USERNAME, usernameField.getText());
+            prefs.put(KEY_PASSWORD, passwordField.getText());
+            prefs.putBoolean(KEY_REMEMBER, true);
+        } else {
+            prefs.put(KEY_PASSWORD, "");
+            prefs.putBoolean(KEY_REMEMBER, false);
+        }
     }
 }

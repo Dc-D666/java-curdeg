@@ -18,6 +18,10 @@ public class Comment {
     private String authorNickname;
     private String authorAvatarUrl;
     
+    private String imageUrls;
+    private Integer likeCount;
+    private Integer status;
+    
     private List<Comment> replyList;
 
     public Comment() {
@@ -117,6 +121,30 @@ public class Comment {
 
     public void setAuthorAvatarUrl(String authorAvatarUrl) {
         this.authorAvatarUrl = authorAvatarUrl;
+    }
+
+    public String getImageUrls() {
+        return imageUrls;
+    }
+
+    public void setImageUrls(String imageUrls) {
+        this.imageUrls = imageUrls;
+    }
+
+    public Integer getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(Integer likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
     }
 
     public List<Comment> getReplyList() {

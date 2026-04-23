@@ -1,14 +1,9 @@
 package cn.edu.sdu.java.server.services;
 
-import cn.edu.sdu.java.server.models.EUserType;
-import cn.edu.sdu.java.server.models.Person;
-import cn.edu.sdu.java.server.models.User;
-import cn.edu.sdu.java.server.models.UserType;
+import cn.edu.sdu.java.server.models.*;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
-import cn.edu.sdu.java.server.repositorys.PersonRepository;
-import cn.edu.sdu.java.server.repositorys.UserRepository;
-import cn.edu.sdu.java.server.repositorys.UserTypeRepository;
+import cn.edu.sdu.java.server.repositorys.*;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import cn.edu.sdu.java.server.util.DateTimeTool;
 import jakarta.transaction.Transactional;
@@ -19,8 +14,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @Service
@@ -30,18 +24,34 @@ public class BbsUserService {
     private final PersonRepository personRepository;
     private final UserTypeRepository userTypeRepository;
     private final PasswordEncoder passwordEncoder;
+    private final BbsPostRepository bbsPostRepository;
+    private final BbsFavoriteRepository bbsFavoriteRepository;
+    private final BbsLikeRepository bbsLikeRepository;
+    private final BbsCommentRepository bbsCommentRepository;
+    private final BbsFollowRepository bbsFollowRepository;
+    private final BbsBoardRepository bbsBoardRepository;
 
     public BbsUserService(UserRepository userRepository, PersonRepository personRepository,
-                          UserTypeRepository userTypeRepository, PasswordEncoder passwordEncoder) {
+                          UserTypeRepository userTypeRepository, PasswordEncoder passwordEncoder,
+                          BbsPostRepository bbsPostRepository, BbsFavoriteRepository bbsFavoriteRepository,
+                          BbsLikeRepository bbsLikeRepository, BbsCommentRepository bbsCommentRepository,
+                          BbsFollowRepository bbsFollowRepository, BbsBoardRepository bbsBoardRepository) {
         this.userRepository = userRepository;
         this.personRepository = personRepository;
         this.userTypeRepository = userTypeRepository;
         this.passwordEncoder = passwordEncoder;
+        this.bbsPostRepository = bbsPostRepository;
+        this.bbsFavoriteRepository = bbsFavoriteRepository;
+        this.bbsLikeRepository = bbsLikeRepository;
+        this.bbsCommentRepository = bbsCommentRepository;
+        this.bbsFollowRepository = bbsFollowRepository;
+        this.bbsBoardRepository = bbsBoardRepository;
     }
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]{6,20}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-zA-Z])(?=.*\\d).{8,20}$");
     private static final Pattern STUDENT_ID_PATTERN = Pattern.compile("^\\d{10,20}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
     @Transactional
     public DataResponse register(DataRequest dataRequest) {
@@ -129,6 +139,29 @@ public class BbsUserService {
 
         User user = userOptional.get();
 
+        // 获取 Person 数据并填充到临时字段
+        if (user.getPerson() != null) {
+            Person person = user.getPerson();
+            user.setPersonName(person.getName());
+            user.setPersonDept(person.getDept());
+            user.setPersonGender(person.getGender());
+            user.setPersonBirthday(person.getBirthday());
+            user.setPersonEmail(person.getEmail());
+            user.setPersonPhone(person.getPhone());
+            user.setPersonAddress(person.getAddress());
+            user.setPersonIntroduce(person.getIntroduce());
+            
+            // 获取并填充隐私设置
+            user.setNamePrivacy(person.getNamePrivacy());
+            user.setDeptPrivacy(person.getDeptPrivacy());
+            user.setGenderPrivacy(person.getGenderPrivacy());
+            user.setBirthdayPrivacy(person.getBirthdayPrivacy());
+            user.setEmailPrivacy(person.getEmailPrivacy());
+            user.setPhonePrivacy(person.getPhonePrivacy());
+            user.setAddressPrivacy(person.getAddressPrivacy());
+            user.setIntroducePrivacy(person.getIntroducePrivacy());
+        }
+
         if (user.getUserType() != null) {
             user.setAuthority(user.getUserType().getName());
         }
@@ -174,6 +207,164 @@ public class BbsUserService {
             user.setSignature(signature);
         }
 
+        // 更新 Person 字段
+        Person person = user.getPerson();
+        if (person != null) {
+            String personName = dataRequest.getString("personName");
+            if (personName != null) {
+                if (personName.length() > 50) {
+                    return CommonMethod.getReturnMessageError("参数错误：姓名长度不能超过50");
+                }
+                person.setName(personName);
+            }
+
+            String personDept = dataRequest.getString("personDept");
+            if (personDept != null) {
+                if (personDept.length() > 50) {
+                    return CommonMethod.getReturnMessageError("参数错误：学院长度不能超过50");
+                }
+                person.setDept(personDept);
+            }
+
+            String personGender = dataRequest.getString("personGender");
+            if (personGender != null) {
+                if (personGender.length() > 2) {
+                    return CommonMethod.getReturnMessageError("参数错误：性别长度不能超过2");
+                }
+                person.setGender(personGender);
+            }
+
+            String personBirthday = dataRequest.getString("personBirthday");
+            if (personBirthday != null) {
+                if (personBirthday.length() > 10) {
+                    return CommonMethod.getReturnMessageError("参数错误：生日长度不能超过10");
+                }
+                person.setBirthday(personBirthday);
+            }
+
+            String personEmail = dataRequest.getString("personEmail");
+            if (personEmail != null) {
+                if (personEmail.length() > 60) {
+                    return CommonMethod.getReturnMessageError("参数错误：邮箱长度不能超过60");
+                }
+                if (!personEmail.isBlank() && !EMAIL_PATTERN.matcher(personEmail).matches()) {
+                    return CommonMethod.getReturnMessageError("参数错误：邮箱格式不正确");
+                }
+                person.setEmail(personEmail);
+            }
+
+            String personPhone = dataRequest.getString("personPhone");
+            if (personPhone != null) {
+                if (personPhone.length() > 20) {
+                    return CommonMethod.getReturnMessageError("参数错误：电话长度不能超过20");
+                }
+                person.setPhone(personPhone);
+            }
+
+            String personAddress = dataRequest.getString("personAddress");
+            if (personAddress != null) {
+                if (personAddress.length() > 20) {
+                    return CommonMethod.getReturnMessageError("参数错误：地址长度不能超过20");
+                }
+                person.setAddress(personAddress);
+            }
+
+            String personIntroduce = dataRequest.getString("personIntroduce");
+            if (personIntroduce != null) {
+                if (personIntroduce.length() > 1000) {
+                    return CommonMethod.getReturnMessageError("参数错误：个人简介长度不能超过1000");
+                }
+                person.setIntroduce(personIntroduce);
+            }
+
+            // 更新隐私设置
+            String namePrivacy = dataRequest.getString("namePrivacy");
+            if (namePrivacy != null) {
+                if (!namePrivacy.isBlank() && !namePrivacy.equals("PUBLIC") && !namePrivacy.equals("FOLLOWING") && !namePrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setNamePrivacy(namePrivacy.isBlank() ? "PUBLIC" : namePrivacy);
+            }
+
+            String deptPrivacy = dataRequest.getString("deptPrivacy");
+            if (deptPrivacy != null) {
+                if (!deptPrivacy.isBlank() && !deptPrivacy.equals("PUBLIC") && !deptPrivacy.equals("FOLLOWING") && !deptPrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setDeptPrivacy(deptPrivacy.isBlank() ? "PUBLIC" : deptPrivacy);
+            }
+
+            String genderPrivacy = dataRequest.getString("genderPrivacy");
+            if (genderPrivacy != null) {
+                if (!genderPrivacy.isBlank() && !genderPrivacy.equals("PUBLIC") && !genderPrivacy.equals("FOLLOWING") && !genderPrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setGenderPrivacy(genderPrivacy.isBlank() ? "PUBLIC" : genderPrivacy);
+            }
+
+            String birthdayPrivacy = dataRequest.getString("birthdayPrivacy");
+            if (birthdayPrivacy != null) {
+                if (!birthdayPrivacy.isBlank() && !birthdayPrivacy.equals("PUBLIC") && !birthdayPrivacy.equals("FOLLOWING") && !birthdayPrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setBirthdayPrivacy(birthdayPrivacy.isBlank() ? "PUBLIC" : birthdayPrivacy);
+            }
+
+            String emailPrivacy = dataRequest.getString("emailPrivacy");
+            if (emailPrivacy != null) {
+                if (!emailPrivacy.isBlank() && !emailPrivacy.equals("PUBLIC") && !emailPrivacy.equals("FOLLOWING") && !emailPrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setEmailPrivacy(emailPrivacy.isBlank() ? "PUBLIC" : emailPrivacy);
+            }
+
+            String phonePrivacy = dataRequest.getString("phonePrivacy");
+            if (phonePrivacy != null) {
+                if (!phonePrivacy.isBlank() && !phonePrivacy.equals("PUBLIC") && !phonePrivacy.equals("FOLLOWING") && !phonePrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setPhonePrivacy(phonePrivacy.isBlank() ? "PUBLIC" : phonePrivacy);
+            }
+
+            String addressPrivacy = dataRequest.getString("addressPrivacy");
+            if (addressPrivacy != null) {
+                if (!addressPrivacy.isBlank() && !addressPrivacy.equals("PUBLIC") && !addressPrivacy.equals("FOLLOWING") && !addressPrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setAddressPrivacy(addressPrivacy.isBlank() ? "PUBLIC" : addressPrivacy);
+            }
+
+            String introducePrivacy = dataRequest.getString("introducePrivacy");
+            if (introducePrivacy != null) {
+                if (!introducePrivacy.isBlank() && !introducePrivacy.equals("PUBLIC") && !introducePrivacy.equals("FOLLOWING") && !introducePrivacy.equals("PRIVATE")) {
+                    return CommonMethod.getReturnMessageError("参数错误：隐私设置值必须为 PUBLIC, FOLLOWING 或 PRIVATE");
+                }
+                person.setIntroducePrivacy(introducePrivacy.isBlank() ? "PUBLIC" : introducePrivacy);
+            }
+
+            personRepository.saveAndFlush(person);
+
+            // 更新临时字段
+            user.setPersonName(person.getName());
+            user.setPersonDept(person.getDept());
+            user.setPersonGender(person.getGender());
+            user.setPersonBirthday(person.getBirthday());
+            user.setPersonEmail(person.getEmail());
+            user.setPersonPhone(person.getPhone());
+            user.setPersonAddress(person.getAddress());
+            user.setPersonIntroduce(person.getIntroduce());
+            
+            // 更新隐私设置临时字段
+            user.setNamePrivacy(person.getNamePrivacy());
+            user.setDeptPrivacy(person.getDeptPrivacy());
+            user.setGenderPrivacy(person.getGenderPrivacy());
+            user.setBirthdayPrivacy(person.getBirthdayPrivacy());
+            user.setEmailPrivacy(person.getEmailPrivacy());
+            user.setPhonePrivacy(person.getPhonePrivacy());
+            user.setAddressPrivacy(person.getAddressPrivacy());
+            user.setIntroducePrivacy(person.getIntroducePrivacy());
+        }
+
         userRepository.saveAndFlush(user);
 
         if (user.getUserType() != null) {
@@ -203,5 +394,273 @@ public class BbsUserService {
         Page<User> userPage = userRepository.searchUsers(keyword, pageable);
 
         return CommonMethod.getReturnData(userPage);
+    }
+
+    public DataResponse getUserStatistics() {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<User> userOptional = userRepository.findById(currentUserId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        User user = userOptional.get();
+
+        Map<String, Object> statistics = new HashMap<>();
+        statistics.put("postCount", user.getPostCount());
+        statistics.put("commentCount", user.getCommentCount());
+
+        Integer postLikeCount = bbsPostRepository.sumLikeCountByAuthorId(currentUserId.longValue());
+        if (postLikeCount == null) postLikeCount = 0;
+
+        Integer commentLikeCount = bbsCommentRepository.sumLikeCountByAuthorId(currentUserId.longValue());
+        if (commentLikeCount == null) commentLikeCount = 0;
+
+        statistics.put("totalLikeCount", postLikeCount + commentLikeCount);
+
+        long totalFavoriteCount = bbsFavoriteRepository.countByUserId(currentUserId);
+        statistics.put("totalFavoriteCount", totalFavoriteCount);
+
+        Integer totalViewCount = bbsPostRepository.sumViewCountByAuthorId(currentUserId.longValue());
+        if (totalViewCount == null) totalViewCount = 0;
+        statistics.put("totalViewCount", totalViewCount);
+
+        statistics.put("followingCount", user.getFollowingCount());
+        statistics.put("followerCount", user.getFollowerCount());
+
+        return CommonMethod.getReturnData(statistics);
+    }
+
+    public DataResponse getMyPosts(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer pageNum = dataRequest.getInteger("pageNum");
+        Integer pageSize = dataRequest.getInteger("pageSize");
+
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 100) {
+            pageSize = 10;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<BbsPost> postPage = bbsPostRepository.findByAuthorIdAndStatusOrderByCreateTimeDesc(currentUserId.longValue(), 1, pageable);
+
+        for (BbsPost post : postPage.getContent()) {
+            Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
+            if (boardOptional.isPresent()) {
+                post.setBoardName(boardOptional.get().getName());
+            }
+        }
+
+        return CommonMethod.getReturnData(postPage);
+    }
+
+    public DataResponse getMyFavorites(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer pageNum = dataRequest.getInteger("pageNum");
+        Integer pageSize = dataRequest.getInteger("pageSize");
+
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 100) {
+            pageSize = 10;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<BbsFavorite> favoritePage = bbsFavoriteRepository.findByUserIdOrderByCreateTimeDesc(currentUserId, pageable);
+
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (BbsFavorite favorite : favoritePage.getContent()) {
+            Optional<BbsPost> postOptional = bbsPostRepository.findById(favorite.getPostId());
+            if (postOptional.isPresent()) {
+                BbsPost post = postOptional.get();
+                Map<String, Object> postMap = new HashMap<>();
+                postMap.put("id", post.getId());
+                postMap.put("title", post.getTitle());
+                postMap.put("content", post.getContent());
+                postMap.put("likeCount", post.getLikeCount());
+                postMap.put("commentCount", post.getCommentCount());
+                postMap.put("viewCount", post.getViewCount());
+                postMap.put("favoriteCount", post.getFavoriteCount());
+                postMap.put("createTime", post.getCreateTime());
+                postMap.put("favoriteTime", favorite.getCreateTime());
+
+                Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
+                if (boardOptional.isPresent()) {
+                    postMap.put("boardName", boardOptional.get().getName());
+                }
+
+                Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
+                if (authorOptional.isPresent()) {
+                    postMap.put("authorNickname", authorOptional.get().getNickname());
+                    postMap.put("authorAvatarUrl", authorOptional.get().getAvatarUrl());
+                }
+
+                resultList.add(postMap);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", resultList);
+        result.put("totalElements", favoritePage.getTotalElements());
+        result.put("totalPages", favoritePage.getTotalPages());
+        result.put("size", favoritePage.getSize());
+        result.put("number", favoritePage.getNumber());
+
+        return CommonMethod.getReturnData(result);
+    }
+
+    @Transactional
+    public DataResponse changePassword(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<User> userOptional = userRepository.findById(currentUserId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        User user = userOptional.get();
+
+        String oldPassword = dataRequest.getString("oldPassword");
+        String newPassword = dataRequest.getString("newPassword");
+
+        if (oldPassword == null || oldPassword.isBlank()) {
+            return CommonMethod.getReturnMessageError("参数错误：原密码不能为空");
+        }
+
+        if (newPassword == null || newPassword.isBlank()) {
+            return CommonMethod.getReturnMessageError("参数错误：新密码不能为空");
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return CommonMethod.getReturnMessageError("原密码错误");
+        }
+
+        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+            return CommonMethod.getReturnMessageError("参数错误：密码长度8-20，至少包含字母和数字");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            return CommonMethod.getReturnMessageError("新密码不能与原密码相同");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.saveAndFlush(user);
+
+        return CommonMethod.getReturnMessageOK("密码修改成功");
+    }
+
+    private boolean isMutuallyFollowing(Integer userId1, Integer userId2) {
+        if (userId1 == null || userId2 == null) {
+            return false;
+        }
+        boolean following = bbsFollowRepository.existsByFollowerIdAndFollowingId(userId1, userId2);
+        boolean followed = bbsFollowRepository.existsByFollowerIdAndFollowingId(userId2, userId1);
+        return following && followed;
+    }
+
+    public DataResponse getUserProfile(Integer userId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        User user = userOptional.get();
+        boolean isCurrentUser = currentUserId != null && currentUserId.equals(userId);
+        boolean isMutuallyFollowing = isMutuallyFollowing(currentUserId, userId);
+
+        // 只返回需要的信息，不返回敏感信息
+        Map<String, Object> userProfile = new HashMap<>();
+        userProfile.put("userId", user.getPersonId());
+        userProfile.put("studentId", user.getStudentId());
+        userProfile.put("nickname", user.getNickname());
+        userProfile.put("avatarUrl", user.getAvatarUrl());
+        userProfile.put("signature", user.getSignature());
+        userProfile.put("postCount", user.getPostCount());
+        userProfile.put("followerCount", user.getFollowerCount());
+        userProfile.put("followingCount", user.getFollowingCount());
+        userProfile.put("isBanned", user.getIsBanned());
+
+        // 如果是当前用户，直接返回所有 Person 信息
+        if (isCurrentUser) {
+            if (user.getPerson() != null) {
+                Person person = user.getPerson();
+                userProfile.put("personName", person.getName());
+                userProfile.put("personDept", person.getDept());
+                userProfile.put("personGender", person.getGender());
+                userProfile.put("personBirthday", person.getBirthday());
+                userProfile.put("personEmail", person.getEmail());
+                userProfile.put("personPhone", person.getPhone());
+                userProfile.put("personAddress", person.getAddress());
+                userProfile.put("personIntroduce", person.getIntroduce());
+            }
+            return CommonMethod.getReturnData(userProfile);
+        }
+
+        // 如果不是当前用户，根据隐私设置过滤 Person 信息
+        if (user.getPerson() != null) {
+            Person person = user.getPerson();
+            
+            // 检查每个字段的隐私设置
+            String namePrivacy = person.getNamePrivacy() != null ? person.getNamePrivacy() : "PUBLIC";
+            if (namePrivacy.equals("PUBLIC") || (namePrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personName", person.getName());
+            }
+            
+            String deptPrivacy = person.getDeptPrivacy() != null ? person.getDeptPrivacy() : "PUBLIC";
+            if (deptPrivacy.equals("PUBLIC") || (deptPrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personDept", person.getDept());
+            }
+            
+            String genderPrivacy = person.getGenderPrivacy() != null ? person.getGenderPrivacy() : "PUBLIC";
+            if (genderPrivacy.equals("PUBLIC") || (genderPrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personGender", person.getGender());
+            }
+            
+            String birthdayPrivacy = person.getBirthdayPrivacy() != null ? person.getBirthdayPrivacy() : "PUBLIC";
+            if (birthdayPrivacy.equals("PUBLIC") || (birthdayPrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personBirthday", person.getBirthday());
+            }
+            
+            String emailPrivacy = person.getEmailPrivacy() != null ? person.getEmailPrivacy() : "PUBLIC";
+            if (emailPrivacy.equals("PUBLIC") || (emailPrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personEmail", person.getEmail());
+            }
+            
+            String phonePrivacy = person.getPhonePrivacy() != null ? person.getPhonePrivacy() : "PUBLIC";
+            if (phonePrivacy.equals("PUBLIC") || (phonePrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personPhone", person.getPhone());
+            }
+            
+            String addressPrivacy = person.getAddressPrivacy() != null ? person.getAddressPrivacy() : "PUBLIC";
+            if (addressPrivacy.equals("PUBLIC") || (addressPrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personAddress", person.getAddress());
+            }
+            
+            String introducePrivacy = person.getIntroducePrivacy() != null ? person.getIntroducePrivacy() : "PUBLIC";
+            if (introducePrivacy.equals("PUBLIC") || (introducePrivacy.equals("FOLLOWING") && isMutuallyFollowing)) {
+                userProfile.put("personIntroduce", person.getIntroduce());
+            }
+        }
+
+        return CommonMethod.getReturnData(userProfile);
     }
 }

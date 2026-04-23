@@ -34,6 +34,7 @@ public class BbsNotificationService {
 
     public DataResponse getMyNotificationList(DataRequest dataRequest) {
         Integer isRead = dataRequest.getInteger("isRead");
+        Integer type = dataRequest.getInteger("type");
 
         Integer currentUserId = CommonMethod.getPersonId();
         if (currentUserId == null) {
@@ -42,7 +43,13 @@ public class BbsNotificationService {
 
         List<BbsNotification> notificationList;
         
-        if (isRead != null) {
+        if (type != null && isRead != null) {
+            notificationList = bbsNotificationRepository.findByReceiverIdAndTypeAndIsReadOrderByCreateTimeDesc(
+                currentUserId.longValue(), type, isRead);
+        } else if (type != null) {
+            notificationList = bbsNotificationRepository.findByReceiverIdAndTypeOrderByCreateTimeDesc(
+                currentUserId.longValue(), type);
+        } else if (isRead != null) {
             notificationList = bbsNotificationRepository.findByReceiverIdAndIsReadOrderByCreateTimeDesc(
                 currentUserId.longValue(), isRead);
         } else {
@@ -74,5 +81,17 @@ public class BbsNotificationService {
         bbsNotificationRepository.saveAndFlush(notification);
 
         return CommonMethod.getReturnMessageOK("标记已读成功");
+    }
+
+    @Transactional
+    public DataResponse markAllAsRead() {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        int updatedCount = bbsNotificationRepository.markAllAsReadByReceiverId(currentUserId.longValue());
+
+        return CommonMethod.getReturnData(updatedCount, "已将所有通知标记为已读");
     }
 }

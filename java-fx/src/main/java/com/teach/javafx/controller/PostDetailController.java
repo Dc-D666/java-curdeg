@@ -6,6 +6,7 @@ import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.FollowStateManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -18,6 +19,7 @@ import javafx.scene.layout.VBox;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class PostDetailController extends ToolController {
     @FXML
@@ -33,6 +35,8 @@ public class PostDetailController extends ToolController {
     @FXML
     private TextArea contentTextArea;
     @FXML
+    private VBox postImagesVBox;
+    @FXML
     private ScrollPane mainScrollPane;
     @FXML
     private VBox contentVBox;
@@ -45,6 +49,8 @@ public class PostDetailController extends ToolController {
     @FXML
     private Button likeButton;
     @FXML
+    private Button favoriteButton;
+    @FXML
     private Button editButton;
     @FXML
     private Button deleteButton;
@@ -54,17 +60,23 @@ public class PostDetailController extends ToolController {
     private Button featureButton;
     @FXML
     private Button reportButton;
+    @FXML
+    private Button followButton;
 
     private Long postId;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private User currentUser;
     private Post currentPost;
     private boolean isLiked = false;
+    private boolean isFollowed = false;
+    private boolean isFavorited = false;
 
     @FXML
     public void initialize() {
         submitCommentButton.setOnAction(event -> publishComment());
         likeButton.setOnAction(event -> toggleLike());
+        favoriteButton.setOnAction(event -> toggleFavorite());
+        followButton.setOnAction(event -> toggleFollow());
         editButton.setOnAction(event -> openEditDialog());
         deleteButton.setOnAction(event -> deletePost());
         topButton.setOnAction(event -> toggleTop());
@@ -76,7 +88,10 @@ public class PostDetailController extends ToolController {
         topButton.setVisible(false);
         featureButton.setVisible(false);
         submitCommentButton.setVisible(false);
+        likeButton.setVisible(false);
+        favoriteButton.setVisible(false);
         reportButton.setVisible(false);
+        followButton.setVisible(false);
         
         mainScrollPane.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, event -> {
             Object target = event.getTarget();
@@ -160,8 +175,12 @@ public class PostDetailController extends ToolController {
                     statusLabel.setText(currentPost.getStatusText());
                     contentTextArea.setText(currentPost.getContent());
                     
+                    displayPostImages();
+                    
                     updateButtonVisibility();
                     loadLikeStatus();
+                    loadFavoriteStatus();
+                    loadFollowStatus();
                 }
             });
         });
@@ -213,6 +232,21 @@ public class PostDetailController extends ToolController {
                         authorLabel.setStyle("-fx-font-weight: bold;");
                         authorBox.getChildren().addAll(avatarImageView, authorLabel);
                         
+                        boolean isLoggedIn = currentUser != null;
+                        boolean isBanned = isLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
+                        boolean isCommentAuthor = isLoggedIn && comment.getAuthorId() != null && 
+                            currentUser.getPersonId() != null && 
+                            currentUser.getPersonId().longValue() == comment.getAuthorId().longValue();
+                        
+                        Button commentFollowButton = new Button("关注");
+                        commentFollowButton.setStyle("-fx-font-size: 11px;");
+                        commentFollowButton.setVisible(isLoggedIn && !isBanned && !isCommentAuthor);
+                        authorBox.getChildren().add(commentFollowButton);
+                        
+                        if (isLoggedIn && !isBanned && !isCommentAuthor) {
+                            setupCommentFollowButton(commentFollowButton, comment.getAuthorId());
+                        }
+                        
                         Label contentLabel = new Label(comment.getContent());
                         contentLabel.setWrapText(true);
                         Label timeLabel = new Label();
@@ -228,12 +262,6 @@ public class PostDetailController extends ToolController {
                         Button reportButton = new Button("举报");
                         reportButton.setStyle("-fx-font-size: 11px;");
                         reportButton.setOnAction(e -> openCommentReportDialog(comment));
-                        
-                        boolean isLoggedIn = currentUser != null;
-                        boolean isBanned = isLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
-                        boolean isCommentAuthor = isLoggedIn && comment.getAuthorId() != null && 
-                            currentUser.getPersonId() != null && 
-                            currentUser.getPersonId().longValue() == comment.getAuthorId().longValue();
                         reportButton.setVisible(isLoggedIn && !isBanned && !isCommentAuthor);
                         
                         HBox bottomBox = new HBox(10);
@@ -273,6 +301,21 @@ public class PostDetailController extends ToolController {
                                 replyAuthorLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
                                 replyAuthorBox.getChildren().addAll(replyAvatarImageView, replyAuthorLabel);
                                 
+                                boolean replyIsLoggedIn = currentUser != null;
+                                boolean replyIsBanned = replyIsLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
+                                boolean isReplyAuthor = replyIsLoggedIn && reply.getAuthorId() != null && 
+                                    currentUser.getPersonId() != null && 
+                                    currentUser.getPersonId().longValue() == reply.getAuthorId().longValue();
+                                
+                                Button replyFollowButton = new Button("关注");
+                                replyFollowButton.setStyle("-fx-font-size: 10px;");
+                                replyFollowButton.setVisible(replyIsLoggedIn && !replyIsBanned && !isReplyAuthor);
+                                replyAuthorBox.getChildren().add(replyFollowButton);
+                                
+                                if (replyIsLoggedIn && !replyIsBanned && !isReplyAuthor) {
+                                    setupCommentFollowButton(replyFollowButton, reply.getAuthorId());
+                                }
+                                
                                 Label replyContentLabel = new Label(reply.getContent());
                                 replyContentLabel.setWrapText(true);
                                 replyContentLabel.setStyle("-fx-font-size: 12px;");
@@ -289,12 +332,6 @@ public class PostDetailController extends ToolController {
                                 Button replyReportButton = new Button("举报");
                                 replyReportButton.setStyle("-fx-font-size: 10px;");
                                 replyReportButton.setOnAction(e -> openCommentReportDialog(reply));
-                                
-                                boolean replyIsLoggedIn = currentUser != null;
-                                boolean replyIsBanned = replyIsLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
-                                boolean isReplyAuthor = replyIsLoggedIn && reply.getAuthorId() != null && 
-                                    currentUser.getPersonId() != null && 
-                                    currentUser.getPersonId().longValue() == reply.getAuthorId().longValue();
                                 replyReportButton.setVisible(replyIsLoggedIn && !replyIsBanned && !isReplyAuthor);
                                 
                                 HBox replyBottomBox = new HBox(10);
@@ -373,7 +410,10 @@ public class PostDetailController extends ToolController {
             currentUser.getPersonId().longValue() == currentPost.getUserId().longValue();
         
         submitCommentButton.setVisible(isLoggedIn && !isBanned);
+        likeButton.setVisible(isLoggedIn && !isBanned);
+        favoriteButton.setVisible(isLoggedIn && !isBanned);
         reportButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
+        followButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
         
         boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
         editButton.setVisible(canEditDelete);
@@ -632,6 +672,46 @@ public class PostDetailController extends ToolController {
         new Thread(task).start();
     }
 
+    private void toggleFavorite() {
+        if (currentPost == null || postId == null) {
+            return;
+        }
+        
+        favoriteButton.setDisable(true);
+        
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.toggleFavorite(postId);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                if (result != null) {
+                    Boolean favorited = (Boolean) result.get("favorited");
+                    Double favoriteCount = ((Number) result.get("favoriteCount")).doubleValue();
+                    
+                    isFavorited = favorited != null && favorited;
+                    currentPost.setFavoriteCount(favoriteCount.intValue());
+                    
+                    updateFavoriteButtonText();
+                }
+                favoriteButton.setDisable(false);
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("操作失败，请稍后重试");
+                favoriteButton.setDisable(false);
+            });
+        });
+        
+        new Thread(task).start();
+    }
+
     private void loadLikeStatus() {
         if (postId == null) {
             return;
@@ -657,6 +737,38 @@ public class PostDetailController extends ToolController {
                     }
                     
                     updateLikeButtonText();
+                }
+            });
+        });
+        
+        new Thread(task).start();
+    }
+
+    private void loadFavoriteStatus() {
+        if (postId == null) {
+            return;
+        }
+        
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getFavoriteStatus(postId);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                if (result != null) {
+                    Boolean favorited = (Boolean) result.get("favorited");
+                    Double favoriteCount = ((Number) result.get("favoriteCount")).doubleValue();
+                    
+                    isFavorited = favorited != null && favorited;
+                    if (currentPost != null) {
+                        currentPost.setFavoriteCount(favoriteCount.intValue());
+                    }
+                    
+                    updateFavoriteButtonText();
                 }
             });
         });
@@ -705,6 +817,19 @@ public class PostDetailController extends ToolController {
         }
     }
 
+    private void updateFavoriteButtonText() {
+        if (currentPost != null) {
+            int count = currentPost.getFavoriteCount() != null ? currentPost.getFavoriteCount() : 0;
+            if (isFavorited) {
+                favoriteButton.setText("已收藏 (" + count + ")");
+                favoriteButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+            } else {
+                favoriteButton.setText("收藏 (" + count + ")");
+                favoriteButton.setStyle("");
+            }
+        }
+    }
+
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("提示");
@@ -719,5 +844,233 @@ public class PostDetailController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void toggleFollow() {
+        if (currentPost == null || currentPost.getUserId() == null) {
+            return;
+        }
+
+        followButton.setDisable(true);
+
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.toggleFollow(currentPost.getUserId());
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                if (result != null) {
+                    Boolean followed = (Boolean) result.get("followed");
+                    isFollowed = followed != null && followed;
+                    FollowStateManager.getInstance().setFollowState(currentPost.getUserId(), isFollowed);
+                    updateFollowButtonText(isFollowed);
+                }
+                followButton.setDisable(false);
+            });
+        });
+
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("操作失败，请稍后重试");
+                followButton.setDisable(false);
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void loadFollowStatus() {
+        if (currentPost == null || currentPost.getUserId() == null) {
+            return;
+        }
+
+        Long userId = currentPost.getUserId();
+        Boolean cachedState = FollowStateManager.getInstance().getFollowState(userId);
+        
+        if (cachedState != null) {
+            isFollowed = cachedState;
+            updateFollowButtonText(isFollowed);
+            FollowStateManager.getInstance().registerListener(userId, (followed) -> {
+                Platform.runLater(() -> {
+                    isFollowed = followed;
+                    updateFollowButtonText(followed);
+                });
+            });
+        } else {
+            Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+                @Override
+                protected Map<String, Object> call() {
+                    return HttpRequestUtil.checkFollowStatus(userId);
+                }
+            };
+
+            task.setOnSucceeded(event -> {
+                Platform.runLater(() -> {
+                    Map<String, Object> result = task.getValue();
+                    if (result != null) {
+                        Boolean followed = (Boolean) result.get("followed");
+                        isFollowed = followed != null && followed;
+                        FollowStateManager.getInstance().setFollowState(userId, isFollowed);
+                        updateFollowButtonText(isFollowed);
+                        FollowStateManager.getInstance().registerListener(userId, (newFollowed) -> {
+                            Platform.runLater(() -> {
+                                isFollowed = newFollowed;
+                                updateFollowButtonText(newFollowed);
+                            });
+                        });
+                    }
+                });
+            });
+
+            new Thread(task).start();
+        }
+    }
+
+    private void updateFollowButtonText(boolean isFollowed) {
+        if (isFollowed) {
+            followButton.setText("已关注");
+            followButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        } else {
+            followButton.setText("关注");
+            followButton.setStyle("");
+        }
+    }
+
+    private void setupCommentFollowButton(Button followButton, Long userId) {
+        if (userId == null) {
+            followButton.setVisible(false);
+            return;
+        }
+
+        Boolean cachedState = FollowStateManager.getInstance().getFollowState(userId);
+        
+        if (cachedState != null) {
+            updateCommentFollowButtonText(followButton, cachedState);
+            FollowStateManager.getInstance().registerListener(userId, (followed) -> {
+                Platform.runLater(() -> {
+                    updateCommentFollowButtonText(followButton, followed);
+                });
+            });
+        } else {
+            Task<Map<String, Object>> checkTask = new Task<Map<String, Object>>() {
+                @Override
+                protected Map<String, Object> call() {
+                    return HttpRequestUtil.checkFollowStatus(userId);
+                }
+            };
+
+            checkTask.setOnSucceeded(event -> {
+                Platform.runLater(() -> {
+                    Map<String, Object> result = checkTask.getValue();
+                    if (result != null) {
+                        Boolean followed = (Boolean) result.get("followed");
+                        FollowStateManager.getInstance().setFollowState(userId, followed != null && followed);
+                        updateCommentFollowButtonText(followButton, followed != null && followed);
+                        FollowStateManager.getInstance().registerListener(userId, (newFollowed) -> {
+                            Platform.runLater(() -> {
+                                updateCommentFollowButtonText(followButton, newFollowed);
+                            });
+                        });
+                    }
+                });
+            });
+
+            new Thread(checkTask).start();
+        }
+
+        followButton.setOnAction(e -> {
+            followButton.setDisable(true);
+            
+            Task<Map<String, Object>> toggleTask = new Task<Map<String, Object>>() {
+                @Override
+                protected Map<String, Object> call() {
+                    return HttpRequestUtil.toggleFollow(userId);
+                }
+            };
+
+            toggleTask.setOnSucceeded(event -> {
+                Platform.runLater(() -> {
+                    Map<String, Object> result = toggleTask.getValue();
+                    if (result != null) {
+                        Boolean followed = (Boolean) result.get("followed");
+                        FollowStateManager.getInstance().setFollowState(userId, followed != null && followed);
+                    }
+                    followButton.setDisable(false);
+                });
+            });
+
+            toggleTask.setOnFailed(event -> {
+                Platform.runLater(() -> {
+                    showError("操作失败，请稍后重试");
+                    followButton.setDisable(false);
+                });
+            });
+
+            new Thread(toggleTask).start();
+        });
+    }
+
+    private void updateCommentFollowButtonText(Button button, boolean isFollowed) {
+        if (isFollowed) {
+            button.setText("已关注");
+            button.setStyle("-fx-font-size: 11px; -fx-background-color: #4CAF50; -fx-text-fill: white;");
+        } else {
+            button.setText("关注");
+            button.setStyle("-fx-font-size: 11px;");
+        }
+    }
+    
+    private void displayPostImages() {
+        postImagesVBox.getChildren().clear();
+        
+        if (currentPost == null) {
+            return;
+        }
+        
+        String imagesStr = currentPost.getImages();
+        if (imagesStr == null || imagesStr.isBlank()) {
+            return;
+        }
+        
+        String[] imageUrls = imagesStr.split(",");
+        for (String imageUrl : imageUrls) {
+            String trimmedUrl = imageUrl.trim();
+            if (trimmedUrl.isBlank()) {
+                continue;
+            }
+            
+            try {
+                String fullUrl;
+                if (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")) {
+                    fullUrl = trimmedUrl;
+                } else if (trimmedUrl.startsWith("/")) {
+                    fullUrl = "http://localhost:22223" + trimmedUrl;
+                } else {
+                    fullUrl = "http://localhost:22223/" + trimmedUrl;
+                }
+                
+                ImageView imageView = new ImageView();
+                imageView.setFitWidth(600);
+                imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);
+                
+                Image image = new Image(fullUrl, true);
+                imageView.setImage(image);
+                
+                image.errorProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal) {
+                        imageView.setImage(null);
+                    }
+                });
+                
+                postImagesVBox.getChildren().add(imageView);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

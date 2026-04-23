@@ -99,8 +99,6 @@ public class AuthService {
         String password = dataRequest.getString("password");
         String perName = dataRequest.getString("perName");
         String email = dataRequest.getString("email");
-        String role = dataRequest.getString("role");
-        UserType ut = null;
         Optional<User> uOp = userRepository.findByUserName(username);
         if(uOp.isPresent()) {
             return CommonMethod.getReturnMessageError("用户已经存在，不能注册！");
@@ -109,32 +107,21 @@ public class AuthService {
         p.setNum(username);
         p.setName(perName);
         p.setEmail(email);
-        if("SUPER".equals(role)) {
-            p.setType("0");
-            ut = userTypeRepository.findByName(EUserType.ROLE_SUPER.name());
-        }else if("ADMIN".equals(role)) {
-            p.setType("1");
-            ut = userTypeRepository.findByName(EUserType.ROLE_ADMIN.name());
-        }else if("STUDENT".equals(role)) {
-            p.setType("2");
-            ut = userTypeRepository.findByName(EUserType.ROLE_STUDENT.name());
-        }
-        personRepository.saveAndFlush(p);
+        p.setType("2");
+        UserType ut = userTypeRepository.findByName(EUserType.ROLE_STUDENT.name());
+        personRepository.saveAndFlush(p);  // 保存Person后，p.getPersonId()会有值
         User u = new User();
-        u.setPerson(p);
+        u.setPersonId(p.getPersonId());  // 必须手动设置主键！
         u.setUserType(ut);
         u.setUserName(username);
         u.setPassword(encoder.encode(password));
         u.setCreateTime(DateTimeTool.parseDateTime(new Date()));
         u.setCreatorId(p.getPersonId());
         u.setLoginCount(0);
+        u.setStudentId(username);
+        u.setNickname(perName);
         userRepository.saveAndFlush(u);
-        if("STUDENT".equals(role)) {
-            Student s = new Student();   // 创建实体对象
-            s.setPerson(p);
-            studentRepository.saveAndFlush(s);  //插入新的Student记录
-        }
-        return CommonMethod.getReturnData(LoginControlUtil.getInstance().getValidateCodeDataMap());
+        return CommonMethod.getReturnMessageOK("注册成功！");
     }
 
 }

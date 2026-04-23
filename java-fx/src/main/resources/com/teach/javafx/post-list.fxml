@@ -19,8 +19,8 @@
          <children>
             <Label text="板块：" />
             <ComboBox fx:id="boardComboBox" prefWidth="150.0" />
-            <TextField fx:id="keywordTextField" prefWidth="200.0" promptText="搜索帖子标题" />
-            <Button fx:id="searchButton" mnemonicParsing="false" text="搜索" />
+            <TextField fx:id="keywordTextField" prefWidth="600.0" promptText="搜索帖子标题或内容..." HBox.hgrow="ALWAYS" />
+            <Button fx:id="searchButton" mnemonicParsing="false" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="搜索" />
             <Button fx:id="publishButton" mnemonicParsing="false" text="发布帖子" />
          </children>
       </HBox>
@@ -44,6 +44,8 @@
          </padding>
          <children>
             <Label fx:id="pageInfoLabel" text="共 0 条，第 1 页" />
+            <Label text="每页显示：" />
+            <ComboBox fx:id="pageSizeComboBox" prefWidth="80.0" />
             <Button fx:id="prevButton" mnemonicParsing="false" text="上一页" />
             <Button fx:id="nextButton" mnemonicParsing="false" text="下一页" />
          </children>

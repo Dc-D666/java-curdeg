@@ -2,6 +2,8 @@ package cn.edu.sdu.java.server.repositorys;
 
 import cn.edu.sdu.java.server.models.BbsComment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,4 +24,7 @@ public interface BbsCommentRepository extends JpaRepository<BbsComment, Long> {
     void deleteByPostId(Long postId);
 
     void deleteByParentId(Long parentId);
+
+    @Query("SELECT SUM(c.likeCount) FROM BbsComment c WHERE c.authorId = :authorId")
+    Integer sumLikeCountByAuthorId(@Param("authorId") Long authorId);
 }

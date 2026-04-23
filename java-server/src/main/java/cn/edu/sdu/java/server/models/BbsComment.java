@@ -40,6 +40,9 @@ public class BbsComment {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @Column(name = "image_urls", columnDefinition = "TEXT")
+    private String imageUrls;
+
     @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
 

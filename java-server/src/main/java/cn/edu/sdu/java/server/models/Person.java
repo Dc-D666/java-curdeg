@@ -75,4 +75,36 @@ public class Person {
     @Basic(fetch = FetchType.LAZY)
     @Column(name=" photo", columnDefinition="longblob", nullable=true)
     private byte[] photo;
+
+    @Size(max = 20)
+    @Column(name = "name_privacy")
+    private String namePrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "dept_privacy")
+    private String deptPrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "gender_privacy")
+    private String genderPrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "birthday_privacy")
+    private String birthdayPrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "email_privacy")
+    private String emailPrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "phone_privacy")
+    private String phonePrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "address_privacy")
+    private String addressPrivacy = "PUBLIC";
+
+    @Size(max = 20)
+    @Column(name = "introduce_privacy")
+    private String introducePrivacy = "PUBLIC";
 }

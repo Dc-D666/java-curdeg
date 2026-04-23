@@ -40,21 +40,41 @@ public class MainApplication extends Application {
     }
 
     /**
-     * 给舞台设置新的Scene
+     * 给舞台设置新的Scene，默认全屏
      * @param name 标题
      * @param scene 新的场景对象
      */
     public static void resetStage(String name, Scene scene) {
+        resetStage(name, scene, true);
+    }
+
+    /**
+     * 给舞台设置新的Scene，可以选择是否全屏
+     * @param name 标题
+     * @param scene 新的场景对象
+     * @param maximize 是否全屏
+     */
+    public static void resetStage(String name, Scene scene, boolean maximize) {
         if(stageWidth > 0) {
             mainStage.setWidth(stageWidth);
             mainStage.setHeight(stageHeight);
             mainStage.setX(0);
             mainStage.setY(0);
-
         }
         mainStage.setTitle(name);
         mainStage.setScene(scene);
-        mainStage.setMaximized(true);
+        if (maximize) {
+            mainStage.setMaximized(true);
+        } else {
+            // 注册界面保持小窗口尺寸
+            mainStage.setWidth(320);
+            mainStage.setHeight(550);
+            // 居中显示
+            double x = (stageWidth - 320) / 2;
+            double y = (stageHeight - 550) / 2;
+            mainStage.setX(x);
+            mainStage.setY(y);
+        }
         mainStage.show();
     }
 

@@ -15,6 +15,7 @@ public class Post {
     private Integer likeCount;
     private Integer commentCount;
     private Integer viewCount;
+    private Integer favoriteCount;
     @SerializedName(value = "isTop", alternate = "top")
     private Boolean isTop;
     @SerializedName(value = "isFeatured", alternate = "featured")
@@ -92,6 +93,14 @@ public class Post {
 
     public void setCommentCount(Integer commentCount) {
         this.commentCount = commentCount;
+    }
+
+    public Integer getFavoriteCount() {
+        return favoriteCount;
+    }
+
+    public void setFavoriteCount(Integer favoriteCount) {
+        this.favoriteCount = favoriteCount;
     }
 
     public Boolean getIsTop() {

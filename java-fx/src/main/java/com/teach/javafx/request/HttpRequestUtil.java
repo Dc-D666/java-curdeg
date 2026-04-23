@@ -11,6 +11,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.lang.reflect.Type;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -22,6 +23,7 @@ import java.util.Date;
 import java.util.List;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * HttpRequestUtil 后台请求实例程序，主要实践向后台发送请求的方法
@@ -45,8 +47,7 @@ public class HttpRequestUtil {
     /**
      * String login(LoginRequest request)  用户登录请求实现
      * @param request  username 登录账号 password 登录密码
-     * @return  返回null 登录成功 AppStore注册登录账号信息 非空，登录错误信息
-     */
+     * @return  返回null 登录成功 AppStore注册登录账号信息 非空，登录错误信?     */
 
     public static String login(LoginRequest request){
             HttpRequest httpRequest = HttpRequest.newBuilder()
@@ -100,8 +101,7 @@ public class HttpRequestUtil {
     }
 
     /**
-     *  MyTreeNode requestTreeNode(String url, DataRequest request) 获取树节点对象
-     * @param url  Web请求的Url 对用后的 RequestMapping
+     *  MyTreeNode requestTreeNode(String url, DataRequest request) 获取树节点对?     * @param url  Web请求的Url 对用后的 RequestMapping
      * @param request 请求参数对象
      * @return MyTreeNode 返回后台返回数据
      */
@@ -176,8 +176,7 @@ public class HttpRequestUtil {
 
     /**
      *   List<OptionItem> getDictionaryOptionItemList(String code) 获取数据字典OptionItemList对象
-     * @param code  数据字典类型吗
-     * @param
+     * @param code  数据字典类型?     * @param
      * @return List<OptionItem> 返回后台返回数据
      */
     public static  List<OptionItem> getDictionaryOptionItemList(String code) {
@@ -187,8 +186,7 @@ public class HttpRequestUtil {
     }
 
     /**
-     *  byte[] requestByteData(String url, DataRequest request) 获取byte[] 对象 下载数据文件等
-     * @param url  Web请求的Url 对用后的 RequestMapping
+     *  byte[] requestByteData(String url, DataRequest request) 获取byte[] 对象 下载数据文件?     * @param url  Web请求的Url 对用后的 RequestMapping
      * @param request 请求参数对象
      * @return List<OptionItem> 返回后台返回数据
      */
@@ -213,8 +211,7 @@ public class HttpRequestUtil {
 
     /**
      * DataResponse uploadFile(String fileName,String remoteFile) 上传数据文件
-     * @param fileName  本地文件名
-     * @param remoteFile 远程文件路径
+     * @param fileName  本地文件?     * @param remoteFile 远程文件路径
      * @return 上传操作信息
      */
     public static DataResponse uploadFile(String uri,String fileName,String remoteFile)  {
@@ -240,8 +237,7 @@ public class HttpRequestUtil {
     /**
      * DataResponse importData(String url, String fileName, String paras) 导入数据文件
      * @param url  Web请求的Url 对用后的 RequestMapping
-     * @param fileName 本地文件名
-     * @param paras  上传参数
+     * @param fileName 本地文件?     * @param paras  上传参数
      * @return 导入结果信息
      */
     public static DataResponse importData(String url, String fileName, String paras)  {
@@ -360,6 +356,60 @@ public class HttpRequestUtil {
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             System.out.println("getCurrentUser response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<User>>(){}.getType();
+                DataResponse<User> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static User updateUserProfile(String nickname, String signature, String avatarUrl, 
+                                           String personName, String personDept, String personGender, 
+                                           String personBirthday, String personEmail, String personPhone, 
+                                           String personAddress, String personIntroduce,
+                                           String namePrivacy, String deptPrivacy, String genderPrivacy,
+                                           String birthdayPrivacy, String emailPrivacy, String phonePrivacy,
+                                           String addressPrivacy, String introducePrivacy) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("nickname", nickname);
+        dataRequest.add("signature", signature);
+        dataRequest.add("avatarUrl", avatarUrl);
+        dataRequest.add("personName", personName);
+        dataRequest.add("personDept", personDept);
+        dataRequest.add("personGender", personGender);
+        dataRequest.add("personBirthday", personBirthday);
+        dataRequest.add("personEmail", personEmail);
+        dataRequest.add("personPhone", personPhone);
+        dataRequest.add("personAddress", personAddress);
+        dataRequest.add("personIntroduce", personIntroduce);
+        dataRequest.add("namePrivacy", namePrivacy);
+        dataRequest.add("deptPrivacy", deptPrivacy);
+        dataRequest.add("genderPrivacy", genderPrivacy);
+        dataRequest.add("birthdayPrivacy", birthdayPrivacy);
+        dataRequest.add("emailPrivacy", emailPrivacy);
+        dataRequest.add("phonePrivacy", phonePrivacy);
+        dataRequest.add("addressPrivacy", addressPrivacy);
+        dataRequest.add("introducePrivacy", introducePrivacy);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/user/me"))
+                .PUT(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("updateUserProfile response: " + response.body());
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<User>>(){}.getType();
                 DataResponse<User> dataResponse = gson.fromJson(response.body(), responseType);
@@ -697,6 +747,60 @@ public class HttpRequestUtil {
         return null;
     }
 
+    public static Map<String, Object> toggleFavorite(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/favorite"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleFavorite response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getFavoriteStatus(Long postId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/favorite/status"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getFavoriteStatus response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public static com.teach.javafx.models.Report submitReport(Integer targetType, Long targetId, String reason) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("targetType", targetType);
@@ -826,37 +930,9 @@ public class HttpRequestUtil {
     }
 
     public static Long getUnreadNotificationCount() {
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(serverUrl + "/api/bbs/notification/unread-count"))
-                .GET()
-                .headers("Content-Type", "application/json");
-        
-        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
-            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
-        }
-        
-        HttpRequest httpRequest = builder.build();
-        try {
-            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            System.out.println("getUnreadNotificationCount response: " + response.body());
-            if (response.statusCode() == 200) {
-                Type responseType = new TypeToken<DataResponse<Long>>(){}.getType();
-                DataResponse<Long> dataResponse = gson.fromJson(response.body(), responseType);
-                if (dataResponse.getCode() == 0) {
-                    return dataResponse.getData();
-                }
-            }
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        return 0L;
-    }
-
-    public static java.util.List<com.teach.javafx.models.Notification> getMyNotificationList(Integer isRead) {
-        String url = serverUrl + "/api/bbs/notification/my-list";
-        if (isRead != null) {
-            url += "?isRead=" + isRead;
-        }
+        String url = serverUrl + "/api/bbs/notification/unread-count";
+        System.out.println("getUnreadNotificationCount request URL: " + url);
+        System.out.println("getUnreadNotificationCount has JWT token: " + (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null));
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -870,15 +946,78 @@ public class HttpRequestUtil {
         HttpRequest httpRequest = builder.build();
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            System.out.println("getMyNotificationList response: " + response.body());
+            System.out.println("getUnreadNotificationCount response status: " + response.statusCode());
+            System.out.println("getUnreadNotificationCount response body: " + response.body());
+            
             if (response.statusCode() == 200) {
-                Type responseType = new TypeToken<DataResponse<java.util.List<com.teach.javafx.models.Notification>>>(){}.getType();
-                DataResponse<java.util.List<com.teach.javafx.models.Notification>> dataResponse = gson.fromJson(response.body(), responseType);
-                if (dataResponse.getCode() == 0) {
-                    return dataResponse.getData();
+                Type responseType = new TypeToken<DataResponse<Long>>(){}.getType();
+                DataResponse<Long> dataResponse = gson.fromJson(response.body(), responseType);
+                
+                if (dataResponse != null) {
+                    System.out.println("getUnreadNotificationCount dataResponse code: " + dataResponse.getCode());
+                    
+                    if (dataResponse.getCode() == 0) {
+                        return dataResponse.getData();
+                    }
                 }
             }
         } catch (IOException | InterruptedException e) {
+            System.err.println("getUnreadNotificationCount exception:");
+            e.printStackTrace();
+        }
+        return 0L;
+    }
+
+    public static java.util.List<com.teach.javafx.models.Notification> getMyNotificationList(Integer isRead, Integer type) {
+        String url = serverUrl + "/api/bbs/notification/my-list";
+        java.util.List<String> params = new java.util.ArrayList<>();
+        
+        if (isRead != null) {
+            params.add("isRead=" + isRead);
+        }
+        if (type != null) {
+            params.add("type=" + type);
+        }
+        
+        if (!params.isEmpty()) {
+            url += "?" + String.join("&", params);
+        }
+        
+        System.out.println("getMyNotificationList request URL: " + url);
+        System.out.println("getMyNotificationList has JWT token: " + (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null));
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyNotificationList response status: " + response.statusCode());
+            System.out.println("getMyNotificationList response body: " + response.body());
+            
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<java.util.List<com.teach.javafx.models.Notification>>>(){}.getType();
+                DataResponse<java.util.List<com.teach.javafx.models.Notification>> dataResponse = gson.fromJson(response.body(), responseType);
+                
+                if (dataResponse != null) {
+                    System.out.println("getMyNotificationList dataResponse code: " + dataResponse.getCode());
+                    System.out.println("getMyNotificationList dataResponse msg: " + dataResponse.getMsg());
+                    
+                    if (dataResponse.getCode() == 0) {
+                        return dataResponse.getData();
+                    }
+                } else {
+                    System.out.println("getMyNotificationList dataResponse is null after deserialization!");
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            System.err.println("getMyNotificationList exception:");
             e.printStackTrace();
         }
         return null;
@@ -898,6 +1037,31 @@ public class HttpRequestUtil {
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             System.out.println("readNotification response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                return dataResponse.getCode() == 0;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static boolean markAllNotificationsAsRead() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/notification/mark-all-read"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("markAllNotificationsAsRead response: " + response.body());
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
                 DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
@@ -985,6 +1149,506 @@ public class HttpRequestUtil {
                 }
             }
         } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> toggleFollow(Long followingId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/toggle/" + followingId))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleFollow response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> checkFollowStatus(Long followingId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/status/" + followingId))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("checkFollowStatus response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<User> getMyFollowingList() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/my-following"))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyFollowingList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<User>>>(){}.getType();
+                DataResponse<List<User>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<User> getMyFollowerList() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/my-follower"))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyFollowerList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<User>>>(){}.getType();
+                DataResponse<List<User>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<User> getUserFollowingList(Integer userId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/following/" + userId))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserFollowingList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<User>>>(){}.getType();
+                DataResponse<List<User>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<User> getUserFollowerList(Integer userId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/follower/" + userId))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserFollowerList response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<User>>>(){}.getType();
+                DataResponse<List<User>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String uploadImage(String filePath) {
+        try {
+            Path file = Path.of(filePath);
+            String boundary = "---" + UUID.randomUUID().toString();
+            String newline = "\r\n";
+            
+            byte[] fileBytes = Files.readAllBytes(file);
+            String fileName = file.getFileName().toString();
+            
+            java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+            
+            outputStream.write(("--" + boundary + newline).getBytes());
+            outputStream.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"" + newline).getBytes());
+            outputStream.write(("Content-Type: image/jpeg" + newline + newline).getBytes());
+            outputStream.write(fileBytes);
+            outputStream.write(newline.getBytes());
+            outputStream.write(("--" + boundary + "--" + newline).getBytes());
+            
+            byte[] requestBody = outputStream.toByteArray();
+            
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl + "/api/bbs/file/upload-image"))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
+                    .headers("Content-Type", "multipart/form-data; boundary=" + boundary);
+            
+            if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+                builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+            }
+            
+            HttpRequest httpRequest = builder.build();
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            
+            System.out.println("uploadImage response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<String>>(){}.getType();
+                DataResponse<String> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> uploadImage(Path file) {
+        try {
+            String boundary = "---" + UUID.randomUUID().toString();
+            String newline = "\r\n";
+            
+            byte[] fileBytes = Files.readAllBytes(file);
+            String fileName = file.getFileName().toString();
+            
+            java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+            
+            outputStream.write(("--" + boundary + newline).getBytes());
+            outputStream.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"" + newline).getBytes());
+            outputStream.write(("Content-Type: image/jpeg" + newline + newline).getBytes());
+            outputStream.write(fileBytes);
+            outputStream.write(newline.getBytes());
+            outputStream.write(("--" + boundary + "--" + newline).getBytes());
+            
+            byte[] requestBody = outputStream.toByteArray();
+            
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl + "/api/bbs/file/upload-image"))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
+                    .headers("Content-Type", "multipart/form-data; boundary=" + boundary);
+            
+            if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+                builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+            }
+            
+            HttpRequest httpRequest = builder.build();
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            
+            System.out.println("uploadImage response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static String registerUser(String studentId, String nickname, String email, String password) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("username", studentId);
+        dataRequest.add("perName", nickname);
+        dataRequest.add("email", email);
+        dataRequest.add("password", password);
+        
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/auth/registerUser"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json")
+                .build();
+        
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("registerUser response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return null;
+                } else {
+                    return dataResponse.getMsg() != null ? dataResponse.getMsg() : "注册失败";
+                }
+            } else if (response.statusCode() == 400) {
+                return "注册信息无效";
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "注册失败";
+    }
+
+    public static Map<String, Object> getUserStatistics() {
+        String url = serverUrl + "/api/bbs/user/me/statistics";
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserStatistics response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+public static PageResult<Post> getMyPosts(int page, int size) {
+    String url = serverUrl + "/api/bbs/user/me/posts?pageNum=" + page + "&pageSize=" + size;
+
+    HttpRequest.Builder builder = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .headers("Content-Type", "application/json");
+
+    if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+        builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+    }
+
+    HttpRequest httpRequest = builder.build();
+    try {
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        System.out.println("getMyPosts response: " + response.body());
+        if (response.statusCode() == 200) {
+            Type responseType = new TypeToken<DataResponse<PageResult<Post>>>(){}.getType();
+            DataResponse<PageResult<Post>> dataResponse = gson.fromJson(response.body(), responseType);
+            if (dataResponse.getCode() == 0) {
+                return dataResponse.getData();
+            }
+        }
+    } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+
+public static PageResult<Post> getMyFavorites(int page, int size) {
+    String url = serverUrl + "/api/bbs/user/me/favorites?pageNum=" + page + "&pageSize=" + size;
+
+    HttpRequest.Builder builder = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .headers("Content-Type", "application/json");
+
+    if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+        builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+    }
+
+    HttpRequest httpRequest = builder.build();
+    try {
+        HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+        System.out.println("getMyFavorites response: " + response.body());
+        if (response.statusCode() == 200) {
+            Type responseType = new TypeToken<DataResponse<PageResult<Post>>>(){}.getType();
+            DataResponse<PageResult<Post>> dataResponse = gson.fromJson(response.body(), responseType);
+            if (dataResponse.getCode() == 0) {
+                return dataResponse.getData();
+            }
+        }
+    } catch (IOException | InterruptedException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+
+    public static String changePassword(String oldPassword, String newPassword) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("oldPassword", oldPassword);
+        dataRequest.add("newPassword", newPassword);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/user/me/password"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("changePassword response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return null;
+                } else {
+                    return dataResponse.getMsg() != null ? dataResponse.getMsg() : "修改密码失败";
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "修改密码失败";
+    }
+
+    public static Map<String, Object> getMyFollowingPage(int pageNum, int pageSize) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/my-following/page?pageNum=" + pageNum + "&pageSize=" + pageSize))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyFollowingPage response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getMyFollowerPage(int pageNum, int pageSize) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/my-follower/page?pageNum=" + pageNum + "&pageSize=" + pageSize))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyFollowerPage response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getUserProfile(Integer userId) {
+        String url = serverUrl + "/api/bbs/user/" + userId;
+        System.out.println("getUserProfile request URL: " + url);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserProfile response status: " + response.statusCode());
+            System.out.println("getUserProfile response body: " + response.body());
+            
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                
+                if (dataResponse != null) {
+                    System.out.println("getUserProfile dataResponse code: " + dataResponse.getCode());
+                    
+                    if (dataResponse.getCode() == 0) {
+                        return dataResponse.getData();
+                    }
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            System.err.println("getUserProfile exception:");
             e.printStackTrace();
         }
         return null;

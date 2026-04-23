@@ -48,4 +48,10 @@ public class BbsNotificationController {
     public DataResponse markAsRead(@PathVariable Long id) {
         return bbsNotificationService.markAsRead(id);
     }
+
+    @PostMapping("/mark-all-read")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse markAllAsRead() {
+        return bbsNotificationService.markAllAsRead();
+    }
 }

@@ -23,6 +23,7 @@ public class MenuInfo {
 //    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    @Column(name = "user_type_ids")
     private String userTypeIds;
     private Integer pid;
 

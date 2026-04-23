@@ -18,6 +18,8 @@ import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import com.teach.javafx.request.DataRequest;
 import com.teach.javafx.request.DataResponse;
+import com.teach.javafx.request.LoginRequest;
+import javafx.stage.Stage;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -50,17 +52,19 @@ public class MainFrameController {
     @FXML
     private MenuItem menuPostList;
     @FXML
-    private Menu menuBoard;
+    private Menu menuTool;
     @FXML
     private Menu menuMy;
     @FXML
-    private Menu menuAdmin;
+    private Menu menuSwitchAccount;
     @FXML
     private TreeView<MyTreeNode> menuTree;
     @FXML
     protected TabPane contentTabPane;
     @FXML
     private Label systemPrompt;
+    @FXML
+    private Label unreadNotificationLabel;
 
     private ChangePanelHandler handler= null;
 
@@ -185,10 +189,32 @@ public class MainFrameController {
         contentTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         contentTabPane.setStyle("-fx-background-image: url('shanda1.jpg'); -fx-background-repeat: no-repeat; -fx-background-size: cover;");
         
-        addMenuItem(menuMy, "my-report", "我的举报");
-        addMenuItem(menuMy, "my-notification", "我的通知");
-        addMenuItem(menuAdmin, "statistics", "数据统计");
-        addMenuItem(menuAdmin, "admin-report", "举报处理");
+        unreadNotificationLabel.setOnMouseClicked(event -> {
+            changeContent("my-notification", "我的通知");
+        });
+        
+        Task<List<Map>> menuTask = new Task<List<Map>>() {
+            @Override
+            protected List<Map> call() {
+                DataRequest request = new DataRequest();
+                DataResponse response = HttpRequestUtil.request("/api/base/getMenuList", request);
+                if (response.getCode() == 0 && response.getData() != null) {
+                    return (List<Map>) response.getData();
+                }
+                return null;
+            }
+        };
+        
+        menuTask.setOnSucceeded(event -> {
+            List<Map> menuList = menuTask.getValue();
+            if (menuList != null && !menuList.isEmpty()) {
+                Platform.runLater(() -> {
+                    initMenuTree(menuList);
+                });
+            }
+        });
+        
+        new Thread(menuTask).start();
         
         Task<Void> task = new Task<Void>() {
             @Override
@@ -198,23 +224,47 @@ public class MainFrameController {
                 
                 Platform.runLater(() -> {
                     String displayRole = role;
-                    boolean isAdmin = false;
                     
                     if (currentUser != null && currentUser.getAuthority() != null) {
                         displayRole = currentUser.getAuthority();
-                        isAdmin = "ROLE_ADMIN".equals(displayRole) || "ROLE_SUPER".equals(displayRole);
-                    } else if (role != null) {
-                        isAdmin = "ROLE_ADMIN".equals(role) || "ROLE_SUPER".equals(role);
                     }
                     
                     systemPrompt.setText("服务器：" + HttpRequestUtil.serverUrl + " 用户角色：" + displayRole);
-                    
-                    menuAdmin.setVisible(isAdmin);
                 });
                 return null;
             }
         };
         new Thread(task).start();
+        
+        loadUnreadNotificationCount();
+
+        String currentUsername = AppStore.getJwt().getUsername();
+        
+        MenuItem superItem = new MenuItem("super");
+        MenuItem admin1Item = new MenuItem("admin1");
+        MenuItem admin2Item = new MenuItem("admin2");
+        MenuItem user1Item = new MenuItem("user1");
+        MenuItem user2Item = new MenuItem("user2");
+        
+        menuSwitchAccount.getItems().addAll(superItem, admin1Item, admin2Item, user1Item, user2Item);
+        
+        if ("super".equals(currentUsername)) {
+            superItem.setDisable(true);
+        } else if ("admin1".equals(currentUsername)) {
+            admin1Item.setDisable(true);
+        } else if ("admin2".equals(currentUsername)) {
+            admin2Item.setDisable(true);
+        } else if ("user1".equals(currentUsername)) {
+            user1Item.setDisable(true);
+        } else if ("user2".equals(currentUsername)) {
+            user2Item.setDisable(true);
+        }
+        
+        superItem.setOnAction(e -> switchToAccount("super"));
+        admin1Item.setOnAction(e -> switchToAccount("admin1"));
+        admin2Item.setOnAction(e -> switchToAccount("admin2"));
+        user1Item.setOnAction(e -> switchToAccount("user1"));
+        user2Item.setOnAction(e -> switchToAccount("user2"));
     }
 
 
@@ -222,11 +272,14 @@ public class MainFrameController {
      * 点击菜单栏中的“退出”菜单，执行onLogoutMenuClick方法 加载登录页面，切换回登录界面
      * @param event
      */
+    @FXML
     protected void onLogoutMenuClick(ActionEvent event){
         logout();
     }
 
     protected void logout(){
+        AppStore.setJwt(null);
+        AppStore.setMainFrameController(null);
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/login-view.fxml"));
         try {
             Scene scene = new Scene(fxmlLoader.load(), 320, 240);
@@ -256,42 +309,76 @@ public class MainFrameController {
      */
 
     public  void changeContent(String name, String title) {
-        if(name == null || name.length() == 0)
+        System.out.println("=== changeContent called ===");
+        System.out.println("Original name: " + name);
+        System.out.println("title: " + title);
+        
+        // 驼峰转 kebab-case
+        String actualName = camelToKebab(name);
+        System.out.println("Looking for: " + actualName + ".fxml");
+        
+        if(actualName == null || actualName.length() == 0)
             return;
-        Tab tab = tabMap.get(name);
+        Tab tab = tabMap.get(actualName);
         Scene scene;
         Object c;
         if(tab == null) {
-            scene = sceneMap.get(name);
+            scene = sceneMap.get(actualName);
             if(scene == null) {
-                FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource(name + ".fxml"));
+                java.net.URL resource = MainApplication.class.getResource(actualName + ".fxml");
+                System.out.println("Resource found: " + resource);
+                if (resource == null) {
+                    System.out.println("ERROR: FXML file not found for: " + actualName);
+                    return;
+                }
+                FXMLLoader fxmlLoader = new FXMLLoader(resource);
                 try {
                     scene = new Scene(fxmlLoader.load(), 1024, 768);
-                    sceneMap.put(name, scene);
+                    sceneMap.put(actualName, scene);
                 } catch (IOException e) {
                     e.printStackTrace();
                     return;
                 }
                 c = fxmlLoader.getController();
                 if(c instanceof ToolController) {
-                    controlMap.put(name,(ToolController)c);
+                    controlMap.put(actualName,(ToolController)c);
                 }
-                if ("post-list".equals(name) && c instanceof com.teach.javafx.controller.PostListController) {
+                if ("post-list".equals(actualName) && c instanceof com.teach.javafx.controller.PostListController) {
                     postListController = (com.teach.javafx.controller.PostListController) c;
                 }
-                if ("post-publish".equals(name) && c instanceof com.teach.javafx.controller.PostPublishController) {
+                if ("post-publish".equals(actualName) && c instanceof com.teach.javafx.controller.PostPublishController) {
                     ((com.teach.javafx.controller.PostPublishController) c).setMainFrameController(this);
                 }
             }
             tab = new Tab(title);
-            tab.setId(name);
+            tab.setId(actualName);
             tab.setOnSelectionChanged(this::tabSelectedChanged);
             tab.setOnClosed(this::tabOnClosed);
             tab.setContent(scene.getRoot());
             contentTabPane.getTabs().add(tab);
-            tabMap.put(name, tab);
+            tabMap.put(actualName, tab);
         }
         contentTabPane.getSelectionModel().select(tab);
+    }
+    
+    // 驼峰转 kebab-case
+    private String camelToKebab(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            if (Character.isUpperCase(c)) {
+                if (i > 0) {
+                    result.append('-');
+                }
+                result.append(Character.toLowerCase(c));
+            } else {
+                result.append(c);
+            }
+        }
+        return result.toString();
     }
 
     public void changeContentWithScene(String name, String title, Scene scene, Object controller) {
@@ -448,5 +535,101 @@ public class MainFrameController {
     @FXML
     protected void onPostListMenuClick(ActionEvent event) {
         changeContent("post-list", "帖子列表");
+    }
+    
+    @FXML
+    protected void onNewMenuClick(ActionEvent event) {
+        doNewCommand();
+    }
+    
+    @FXML
+    protected void onSaveMenuClick(ActionEvent event) {
+        doSaveCommand();
+    }
+    
+    @FXML
+    protected void onDeleteMenuClick(ActionEvent event) {
+        doDeleteCommand();
+    }
+    
+    @FXML
+    protected void onPrintMenuClick(ActionEvent event) {
+        doPrintCommand();
+    }
+    
+    @FXML
+    protected void onImportMenuClick(ActionEvent event) {
+        doImportCommand();
+    }
+    
+    @FXML
+    protected void onExportMenuClick(ActionEvent event) {
+        doExportCommand();
+    }
+    
+    public void loadUnreadNotificationCount() {
+        Task<Long> task = new Task<Long>() {
+            @Override
+            protected Long call() {
+                return HttpRequestUtil.getUnreadNotificationCount();
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Long count = task.getValue();
+                if (count != null && count > 0) {
+                    unreadNotificationLabel.setText("(" + count + " 条未读)");
+                } else {
+                    unreadNotificationLabel.setText("");
+                }
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                unreadNotificationLabel.setText("");
+            });
+        });
+        
+        new Thread(task).start();
+    }
+    
+    private void switchToAccount(String username) {
+        AppStore.setJwt(null);
+        LoginRequest loginRequest = new LoginRequest(username, "123456");
+        String errorMsg = HttpRequestUtil.login(loginRequest);
+        if (errorMsg != null) {
+            MessageDialog.showDialog(errorMsg);
+            return;
+        }
+        sceneMap.clear();
+        tabMap.clear();
+        controlMap.clear();
+        FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/main-frame.fxml"));
+        try {
+            Scene scene = new Scene(fxmlLoader.load(), -1, -1);
+            AppStore.setMainFrameController((MainFrameController) fxmlLoader.getController());
+            
+            // 使用两个阶段来确保窗口正确显示
+            Stage stage = MainApplication.getMainStage();
+            // 第一阶段：先取消全屏，设置新场景
+            Platform.runLater(() -> {
+                stage.setMaximized(false);
+                stage.setTitle("学生交流社区");
+                stage.setScene(scene);
+                stage.show();
+            });
+            // 第二阶段：延迟100ms后再设置全屏
+            Platform.runLater(() -> {
+                javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(100));
+                pause.setOnFinished(event -> {
+                    stage.setMaximized(true);
+                });
+                pause.play();
+            });
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

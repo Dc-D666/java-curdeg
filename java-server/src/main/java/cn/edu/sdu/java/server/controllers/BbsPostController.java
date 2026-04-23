@@ -84,4 +84,15 @@ public class BbsPostController {
     public DataResponse getLikeStatus(@PathVariable Long id) {
         return bbsPostService.getLikeStatus(id);
     }
+
+    @PostMapping("/{id}/favorite")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse toggleFavorite(@PathVariable Long id) {
+        return bbsPostService.toggleFavorite(id);
+    }
+
+    @GetMapping("/{id}/favorite/status")
+    public DataResponse getFavoriteStatus(@PathVariable Long id) {
+        return bbsPostService.getFavoriteStatus(id);
+    }
 }

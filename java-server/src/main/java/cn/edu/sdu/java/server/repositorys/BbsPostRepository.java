@@ -29,4 +29,10 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
     List<Object[]> countDailyPostLast7Days();
 
     List<BbsPost> findTop10ByStatusOrderByLikeCountDescCommentCountDesc(Integer status);
+
+    @Query("SELECT SUM(p.viewCount) FROM BbsPost p WHERE p.authorId = :authorId")
+    Integer sumViewCountByAuthorId(@Param("authorId") Long authorId);
+
+    @Query("SELECT SUM(p.likeCount) FROM BbsPost p WHERE p.authorId = :authorId")
+    Integer sumLikeCountByAuthorId(@Param("authorId") Long authorId);
 }

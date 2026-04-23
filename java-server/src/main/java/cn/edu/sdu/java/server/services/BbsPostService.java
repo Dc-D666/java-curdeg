@@ -1,14 +1,20 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.BbsBoard;
+import cn.edu.sdu.java.server.models.BbsFollow;
+import cn.edu.sdu.java.server.models.BbsFavorite;
 import cn.edu.sdu.java.server.models.BbsLike;
+import cn.edu.sdu.java.server.models.BbsNotification;
 import cn.edu.sdu.java.server.models.BbsPost;
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.BbsBoardRepository;
 import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
+import cn.edu.sdu.java.server.repositorys.BbsFollowRepository;
+import cn.edu.sdu.java.server.repositorys.BbsFavoriteRepository;
 import cn.edu.sdu.java.server.repositorys.BbsLikeRepository;
+import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
@@ -19,7 +25,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,17 +39,25 @@ public class BbsPostService {
     private final BbsBoardRepository bbsBoardRepository;
     private final BbsCommentRepository bbsCommentRepository;
     private final BbsLikeRepository bbsLikeRepository;
+    private final BbsFavoriteRepository bbsFavoriteRepository;
     private final SensitiveWordFilter sensitiveWordFilter;
+    private final BbsFollowRepository bbsFollowRepository;
+    private final BbsNotificationRepository bbsNotificationRepository;
 
     public BbsPostService(BbsPostRepository bbsPostRepository, UserRepository userRepository,
                          BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
-                         BbsLikeRepository bbsLikeRepository, SensitiveWordFilter sensitiveWordFilter) {
+                         BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
+                         SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
+                         BbsNotificationRepository bbsNotificationRepository) {
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsBoardRepository = bbsBoardRepository;
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsLikeRepository = bbsLikeRepository;
+        this.bbsFavoriteRepository = bbsFavoriteRepository;
         this.sensitiveWordFilter = sensitiveWordFilter;
+        this.bbsFollowRepository = bbsFollowRepository;
+        this.bbsNotificationRepository = bbsNotificationRepository;
     }
 
     private void fillPostAuthorInfo(BbsPost post) {
@@ -75,7 +91,7 @@ public class BbsPostService {
             pageNum = 1;
         }
         if (pageSize == null || pageSize < 1 || pageSize > 50) {
-            pageSize = 10;
+            pageSize = 20;
         }
         if (keyword != null && keyword.length() > 50) {
             return CommonMethod.getReturnMessageError("参数错误：搜索关键词长度不能超过50");
@@ -173,6 +189,27 @@ public class BbsPostService {
         if (!hasSevereWord) {
             user.setPostCount(user.getPostCount() + 1);
             userRepository.saveAndFlush(user);
+            
+            try {
+                List<BbsFollow> followers = bbsFollowRepository.findByFollowingId(currentUserId);
+                if (!followers.isEmpty()) {
+                    List<BbsNotification> notifications = new ArrayList<>();
+                    String authorNickname = user.getNickname();
+                    String notificationContent = String.format("用户【%s】发布帖子", authorNickname);
+                    
+                    for (BbsFollow follow : followers) {
+                        BbsNotification notification = new BbsNotification();
+                        notification.setReceiverId(follow.getFollowerId().longValue());
+                        notification.setType(6);
+                        notification.setTitle("关注用户发帖通知");
+                        notification.setContent(notificationContent);
+                        notifications.add(notification);
+                    }
+                    
+                    bbsNotificationRepository.saveAll(notifications);
+                }
+            } catch (Exception e) {
+            }
         }
 
         fillPostAuthorInfo(post);
@@ -306,6 +343,7 @@ public class BbsPostService {
 
         bbsCommentRepository.deleteByPostId(id);
         bbsLikeRepository.deleteByPostId(id);
+        bbsFavoriteRepository.deleteByPostId(id);
         bbsPostRepository.delete(post);
 
         return CommonMethod.getReturnMessageOK("删除成功");
@@ -404,6 +442,67 @@ public class BbsPostService {
         Map<String, Object> result = new HashMap<>();
         result.put("liked", liked);
         result.put("likeCount", likeCount);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    @Transactional
+    public DataResponse toggleFavorite(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        if (post.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("帖子已下架");
+        }
+
+        boolean alreadyFavorited = bbsFavoriteRepository.existsByPostIdAndUserId(postId, currentUserId);
+        
+        if (alreadyFavorited) {
+            bbsFavoriteRepository.deleteByPostIdAndUserId(postId, currentUserId);
+            post.setFavoriteCount(Math.max(0, post.getFavoriteCount() - 1));
+        } else {
+            BbsFavorite favorite = new BbsFavorite();
+            favorite.setPostId(postId);
+            favorite.setUserId(currentUserId);
+            bbsFavoriteRepository.saveAndFlush(favorite);
+            post.setFavoriteCount(post.getFavoriteCount() + 1);
+        }
+        
+        bbsPostRepository.saveAndFlush(post);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("favorited", !alreadyFavorited);
+        result.put("favoriteCount", post.getFavoriteCount());
+        result.put("post", post);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getFavoriteStatus(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        boolean favorited = false;
+        long favoriteCount = 0;
+        
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isPresent()) {
+            favoriteCount = postOptional.get().getFavoriteCount() != null ? postOptional.get().getFavoriteCount() : 0;
+        }
+        
+        if (currentUserId != null) {
+            favorited = bbsFavoriteRepository.existsByPostIdAndUserId(postId, currentUserId);
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("favorited", favorited);
+        result.put("favoriteCount", favoriteCount);
         
         return CommonMethod.getReturnData(result);
     }

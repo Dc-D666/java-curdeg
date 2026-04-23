@@ -9,7 +9,11 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.util.List;
 
 public class PostPublishController extends ToolController {
@@ -21,6 +25,10 @@ public class PostPublishController extends ToolController {
     private TextArea contentTextArea;
     @FXML
     private TextField imageUrlsTextField;
+    @FXML
+    private Button selectImageButton;
+    @FXML
+    private ImageView imagePreview;
     @FXML
     private Button publishButton;
     @FXML
@@ -34,6 +42,7 @@ public class PostPublishController extends ToolController {
         
         publishButton.setOnAction(event -> publishPost());
         cancelButton.setOnAction(event -> closeTab());
+        selectImageButton.setOnAction(event -> selectAndUploadImage());
     }
     
     public void setMainFrameController(com.teach.javafx.controller.base.MainFrameController mainFrameController) {
@@ -148,5 +157,66 @@ public class PostPublishController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    
+    private void selectAndUploadImage() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择图片");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("图片文件", "*.jpg", "*.jpeg", "*.png", "*.gif"),
+            new FileChooser.ExtensionFilter("所有文件", "*.*")
+        );
+        
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile == null) {
+            return;
+        }
+        
+        try {
+            Image image = new Image(selectedFile.toURI().toString());
+            imagePreview.setImage(image);
+        } catch (Exception e) {
+            showError("图片加载失败：" + e.getMessage());
+            return;
+        }
+        
+        selectImageButton.setDisable(true);
+        selectImageButton.setText("上传中...");
+        
+        Task<String> task = new Task<String>() {
+            @Override
+            protected String call() {
+                return HttpRequestUtil.uploadImage(selectedFile.getAbsolutePath());
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                String imageUrl = task.getValue();
+                if (imageUrl != null && !imageUrl.isBlank()) {
+                    String existingUrls = imageUrlsTextField.getText().trim();
+                    if (existingUrls.isBlank()) {
+                        imageUrlsTextField.setText(imageUrl);
+                    } else {
+                        imageUrlsTextField.setText(existingUrls + "," + imageUrl);
+                    }
+                    showInfo("图片上传成功！");
+                } else {
+                    showError("图片上传失败，请稍后重试");
+                }
+                selectImageButton.setDisable(false);
+                selectImageButton.setText("选择图片");
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("图片上传失败：" + task.getException().getMessage());
+                selectImageButton.setDisable(false);
+                selectImageButton.setText("选择图片");
+            });
+        });
+        
+        new Thread(task).start();
     }
 }

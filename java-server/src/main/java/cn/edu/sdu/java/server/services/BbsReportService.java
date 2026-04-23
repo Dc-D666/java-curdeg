@@ -214,10 +214,29 @@ public class BbsReportService {
         report.setHandleTime(cn.edu.sdu.java.server.util.DateTimeTool.parseDateTime(new java.util.Date()));
         bbsReportRepository.saveAndFlush(report);
 
-        if (handleType == 1) {
-            handleDeleteContent(report);
+        String postTitle = "举报处理通知";
+        if (report.getTargetType() == 1) {
+            Optional<BbsPost> postOptional = bbsPostRepository.findById(report.getTargetId());
+            if (postOptional.isPresent()) {
+                postTitle = postOptional.get().getTitle();
+            }
         } else {
-            createNotification(report.getReporterId(), 
+            Optional<BbsComment> commentOptional = bbsCommentRepository.findById(report.getTargetId());
+            if (commentOptional.isPresent()) {
+                BbsComment comment = commentOptional.get();
+                if (comment.getPostId() != null) {
+                    Optional<BbsPost> postOptional = bbsPostRepository.findById(comment.getPostId());
+                    if (postOptional.isPresent()) {
+                        postTitle = postOptional.get().getTitle();
+                    }
+                }
+            }
+        }
+
+        if (handleType == 1) {
+            handleDeleteContent(report, postTitle);
+        } else {
+            createNotification(report.getReporterId(), 2, postTitle, 
                 "您的举报（ID：" + id + "）已处理，处理方式：驳回举报，处理备注：" + 
                 (handleRemark != null ? handleRemark : "无"));
         }
@@ -225,7 +244,7 @@ public class BbsReportService {
         return CommonMethod.getReturnMessageOK("处理成功");
     }
 
-    private void handleDeleteContent(BbsReport report) {
+    private void handleDeleteContent(BbsReport report, String postTitle) {
         if (report.getTargetType() == 1) {
             Optional<BbsPost> postOptional = bbsPostRepository.findById(report.getTargetId());
             if (postOptional.isPresent()) {
@@ -242,7 +261,7 @@ public class BbsReportService {
                                 author.setPostCount(author.getPostCount() - 1);
                                 userRepository.saveAndFlush(author);
                             }
-                            createNotification(author.getPersonId().longValue(), 
+                            createNotification(author.getPersonId().longValue(), 2, postTitle, 
                                 "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
                                 (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
                         }
@@ -265,7 +284,7 @@ public class BbsReportService {
                                 author.setCommentCount(author.getCommentCount() - 1);
                                 userRepository.saveAndFlush(author);
                             }
-                            createNotification(author.getPersonId().longValue(), 
+                            createNotification(author.getPersonId().longValue(), 2, postTitle, 
                                 "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
                                 (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
                         }
@@ -285,14 +304,16 @@ public class BbsReportService {
             }
         }
 
-        createNotification(report.getReporterId(), 
+        createNotification(report.getReporterId(), 2, postTitle, 
             "您的举报（ID：" + report.getId() + "）已处理，处理方式：删除内容，处理备注：" + 
             (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
     }
 
-    private void createNotification(Long receiverId, String content) {
+    private void createNotification(Long receiverId, Integer type, String title, String content) {
         BbsNotification notification = new BbsNotification();
         notification.setReceiverId(receiverId);
+        notification.setType(type);
+        notification.setTitle(title);
         notification.setContent(content);
         notification.setIsRead(0);
         bbsNotificationRepository.saveAndFlush(notification);

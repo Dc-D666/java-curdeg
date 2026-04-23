@@ -43,6 +43,9 @@ public class BbsPost {
     @Column(name = "view_count", nullable = false)
     private Integer viewCount = 0;
 
+    @Column(name = "favorite_count", nullable = false)
+    private Integer favoriteCount = 0;
+
     @Column(name = "is_top", nullable = false)
     private Boolean isTop = false;
 
