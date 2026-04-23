@@ -1,3 +1,4 @@
+
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.BbsBoard;
@@ -20,10 +21,13 @@ import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import cn.edu.sdu.java.server.util.SensitiveWordFilter;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class BbsPostService {
 
@@ -43,12 +48,13 @@ public class BbsPostService {
     private final SensitiveWordFilter sensitiveWordFilter;
     private final BbsFollowRepository bbsFollowRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
+    private final PostModerationService postModerationService;
 
     public BbsPostService(BbsPostRepository bbsPostRepository, UserRepository userRepository,
-                         BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
-                         BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
-                         SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
-                         BbsNotificationRepository bbsNotificationRepository) {
+                          BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
+                          BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
+                          SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
+                          BbsNotificationRepository bbsNotificationRepository, PostModerationService postModerationService) {
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsBoardRepository = bbsBoardRepository;
@@ -58,6 +64,7 @@ public class BbsPostService {
         this.sensitiveWordFilter = sensitiveWordFilter;
         this.bbsFollowRepository = bbsFollowRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
+        this.postModerationService = postModerationService;
     }
 
     private void fillPostAuthorInfo(BbsPost post) {
@@ -68,7 +75,7 @@ public class BbsPostService {
                 post.setAuthorNickname(author.getNickname());
                 String avatarUrl = author.getAvatarUrl();
                 if (avatarUrl == null || avatarUrl.isBlank()) {
-                    avatarUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+                    avatarUrl = "https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg";
                 }
                 post.setAuthorAvatarUrl(avatarUrl);
             }
@@ -77,6 +84,13 @@ public class BbsPostService {
             Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
             if (boardOptional.isPresent()) {
                 post.setBoardName(boardOptional.get().getName());
+            }
+        }
+        // 填充审核人信息
+        if (post.getModeratorId() != null) {
+            Optional<User> moderatorOptional = userRepository.findById(post.getModeratorId());
+            if (moderatorOptional.isPresent()) {
+                post.setModeratorNickname(moderatorOptional.get().getNickname());
             }
         }
     }
@@ -97,8 +111,14 @@ public class BbsPostService {
             return CommonMethod.getReturnMessageError("参数错误：搜索关键词长度不能超过50");
         }
 
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
-        Page<BbsPost> postPage = bbsPostRepository.findPostsByCondition(boardId, keyword, pageable);
+        Page<BbsPost> postPage = bbsPostRepository.findPostsByConditionWithModeration(
+                boardId, keyword, currentUserIdLong, isAdmin, pageable);
 
         postPage.getContent().forEach(this::fillPostAuthorInfo);
 
@@ -167,9 +187,14 @@ public class BbsPostService {
             return CommonMethod.getReturnMessageError("板块不存在");
         }
 
-        String filteredTitle = sensitiveWordFilter.filterNormalWord(title);
-        String filteredContent = sensitiveWordFilter.filterNormalWord(content);
-        boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(title) || sensitiveWordFilter.checkSevereWord(content);
+        // 注释掉敏感词库审核功能，只使用AI审核
+        // String filteredTitle = sensitiveWordFilter.filterNormalWord(title);
+        // String filteredContent = sensitiveWordFilter.filterNormalWord(content);
+        // boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(title) || sensitiveWordFilter.checkSevereWord(content);
+        
+        String filteredTitle = title;  // 不经过敏感词库过滤
+        String filteredContent = content;
+        boolean hasSevereWord = false;  // 禁用敏感词库检测
 
         BbsPost post = new BbsPost();
         post.setTitle(filteredTitle);
@@ -182,11 +207,33 @@ public class BbsPostService {
         post.setViewCount(0);
         post.setIsTop(false);
         post.setIsFeatured(false);
-        post.setStatus(hasSevereWord ? 0 : 1);
+        post.setStatus(0);  // 初始设为不可见，等待AI审核结果
+        post.setModerationStatus("pending");
 
+        log.info("正在保存帖子...");
         bbsPostRepository.saveAndFlush(post);
+        
+        log.info("帖子保存成功，ID：{}", post.getId());
 
-        if (!hasSevereWord) {
+        // ===== 关键修改：注册事务同步，确保事务提交后再调用异步审核 =====
+        final Long postId = post.getId();
+        
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("事务已提交，准备调用AI审核，帖子ID：{}", postId);
+                // 确保事务完全提交后再调用
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                postModerationService.moderatePostAsync(postId);
+            }
+        });
+
+        // 暂时先不更新用户发帖数，等AI审核通过后再更新（或者由AI审核通过后再处理）
+        // if (!hasSevereWord) {
             user.setPostCount(user.getPostCount() + 1);
             userRepository.saveAndFlush(user);
             
@@ -210,7 +257,7 @@ public class BbsPostService {
                 }
             } catch (Exception e) {
             }
-        }
+        // }  // 注释掉敏感词库判断结束
 
         fillPostAuthorInfo(post);
 
@@ -264,9 +311,14 @@ public class BbsPostService {
             newContent = content;
         }
 
-        String filteredTitle = sensitiveWordFilter.filterNormalWord(newTitle);
-        String filteredContent = sensitiveWordFilter.filterNormalWord(newContent);
-        boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(newTitle) || sensitiveWordFilter.checkSevereWord(newContent);
+        // 注释掉敏感词库审核功能，只使用AI审核
+        // String filteredTitle = sensitiveWordFilter.filterNormalWord(newTitle);
+        // String filteredContent = sensitiveWordFilter.filterNormalWord(newContent);
+        // boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(newTitle) || sensitiveWordFilter.checkSevereWord(newContent);
+        
+        String filteredTitle = newTitle;  // 不经过敏感词库过滤
+        String filteredContent = newContent;
+        boolean hasSevereWord = false;  // 禁用敏感词库检测
 
         post.setTitle(filteredTitle);
         post.setContent(filteredContent);
@@ -279,27 +331,31 @@ public class BbsPostService {
             post.setImageUrls(imageUrls);
         }
 
-        post.setStatus(hasSevereWord ? 0 : 1);
+        // 重置审核状态为 pending，并设置为不可见
+        post.setModerationStatus("pending");
+        post.setStatus(0);  // 审核通过前不显示
 
-        if (oldStatus == 1 && hasSevereWord) {
-            Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
-            if (authorOptional.isPresent()) {
-                User author = authorOptional.get();
-                author.setPostCount(Math.max(0, author.getPostCount() - 1));
-                userRepository.saveAndFlush(author);
-            }
-        }
-
-        if (oldStatus == 0 && !hasSevereWord) {
-            Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
-            if (authorOptional.isPresent()) {
-                User author = authorOptional.get();
-                author.setPostCount(author.getPostCount() + 1);
-                userRepository.saveAndFlush(author);
-            }
-        }
-
+        log.info("正在保存帖子...");
         bbsPostRepository.saveAndFlush(post);
+        log.info("帖子保存成功，ID：{}", post.getId());
+
+        // ===== 关键修改：注册事务同步，确保事务提交后再调用异步审核 =====
+        final Long postId = post.getId();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("事务已提交，准备调用AI审核，帖子ID：{}", postId);
+                // 确保事务完全提交后再调用
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                postModerationService.moderatePostAsync(postId);
+            }
+        });
+
         fillPostAuthorInfo(post);
 
         Map<String, Object> result = new HashMap<>();
@@ -505,5 +561,27 @@ public class BbsPostService {
         result.put("favoriteCount", favoriteCount);
         
         return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse searchPosts(String keyword, String searchType, Integer pageNum, Integer pageSize) {
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 50) {
+            pageSize = 20;
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Page<BbsPost> postPage = bbsPostRepository.searchPostsWithModeration(
+                keyword, currentUserIdLong, isAdmin, pageable);
+
+        postPage.getContent().forEach(this::fillPostAuthorInfo);
+
+        return CommonMethod.getReturnData(postPage);
     }
 }

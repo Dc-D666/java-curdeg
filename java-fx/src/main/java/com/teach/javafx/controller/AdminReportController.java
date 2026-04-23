@@ -46,6 +46,8 @@ public class AdminReportController extends ToolController {
     private Button prevButton;
     @FXML
     private Button nextButton;
+    @FXML
+    private Button refreshButton;
 
     private int currentPageNum = 1;
     private int currentPageSize = 10;
@@ -183,10 +185,24 @@ public class AdminReportController extends ToolController {
             loadReportList();
         });
 
+        refreshButton.setOnAction(event -> {
+            currentPageNum = 1;
+            loadReportList(refreshButton);
+        });
+
         loadReportList();
     }
 
     public void loadReportList() {
+        loadReportList(null);
+    }
+
+    private void loadReportList(Button refreshBtn) {
+        if (refreshBtn != null) {
+            refreshBtn.setDisable(true);
+            refreshBtn.setText("刷新中");
+        }
+        
         Task<PageResult<Report>> task = new Task<PageResult<Report>>() {
             @Override
             protected PageResult<Report> call() {
@@ -196,6 +212,11 @@ public class AdminReportController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                
                 PageResult<Report> pageResult = task.getValue();
                 if (pageResult != null && pageResult.getList() != null) {
                     reportTableView.getItems().clear();
@@ -212,7 +233,13 @@ public class AdminReportController extends ToolController {
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("加载举报列表失败"));
+            Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                showError("加载举报列表失败");
+            });
         });
 
         new Thread(task).start();

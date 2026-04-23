@@ -1,3 +1,4 @@
+
 package cn.edu.sdu.java.server.controllers;
 
 import cn.edu.sdu.java.server.payload.request.DataRequest;
@@ -94,5 +95,26 @@ public class BbsPostController {
     @GetMapping("/{id}/favorite/status")
     public DataResponse getFavoriteStatus(@PathVariable Long id) {
         return bbsPostService.getFavoriteStatus(id);
+    }
+
+    @GetMapping("/search")
+    public DataResponse searchPosts(@RequestParam Map<String, String> params) {
+        String keyword = params.get("keyword");
+        String searchType = params.get("searchType");
+        Integer pageNum = null;
+        Integer pageSize = null;
+
+        try {
+            if (params.containsKey("pageNum")) {
+                pageNum = Integer.parseInt(params.get("pageNum"));
+            }
+            if (params.containsKey("pageSize")) {
+                pageSize = Integer.parseInt(params.get("pageSize"));
+            }
+        } catch (NumberFormatException e) {
+            // 忽略解析错误，使用默认值
+        }
+
+        return bbsPostService.searchPosts(keyword, searchType, pageNum, pageSize);
     }
 }

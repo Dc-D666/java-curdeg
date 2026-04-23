@@ -26,6 +26,7 @@
                   <Button fx:id="followButton" mnemonicParsing="false" text="关注" />
                   <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" />
                   <Label fx:id="statusLabel" text="置顶 加精" />
+                  <Label fx:id="moderationStatusLabel" />
                </children>
             </HBox>
          </children>

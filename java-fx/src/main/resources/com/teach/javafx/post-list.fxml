@@ -22,6 +22,7 @@
             <TextField fx:id="keywordTextField" prefWidth="600.0" promptText="搜索帖子标题或内容..." HBox.hgrow="ALWAYS" />
             <Button fx:id="searchButton" mnemonicParsing="false" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="搜索" />
             <Button fx:id="publishButton" mnemonicParsing="false" text="发布帖子" />
+            <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新" />
          </children>
       </HBox>
    </top>
@@ -34,6 +35,7 @@
           <TableColumn fx:id="likeCountColumn" prefWidth="80.0" text="点赞数" />
           <TableColumn fx:id="commentCountColumn" prefWidth="80.0" text="评论数" />
           <TableColumn fx:id="statusColumn" prefWidth="100.0" text="状态" />
+          <TableColumn fx:id="moderationStatusColumn" prefWidth="100.0" text="审核状态" />
         </columns>
       </TableView>
    </center>

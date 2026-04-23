@@ -13,6 +13,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -32,6 +33,8 @@ public class PostDetailController extends ToolController {
     private Label createTimeLabel;
     @FXML
     private Label statusLabel;
+    @FXML
+    private Label moderationStatusLabel;
     @FXML
     private TextArea contentTextArea;
     @FXML
@@ -173,6 +176,22 @@ public class PostDetailController extends ToolController {
                         createTimeLabel.setText("发布时间：" + dateFormat.format(currentPost.getCreateTime()));
                     }
                     statusLabel.setText(currentPost.getStatusText());
+                    
+                    String moderationStatusText = currentPost.getModerationStatusText();
+                    if (moderationStatusText != null && !moderationStatusText.isEmpty()) {
+                        moderationStatusLabel.setText(moderationStatusText);
+                        String moderationStatus = currentPost.getModerationStatus();
+                        if ("pending".equals(moderationStatus) || "manual".equals(moderationStatus)) {
+                            moderationStatusLabel.setTextFill(Color.ORANGE);
+                        } else if ("pass".equals(moderationStatus)) {
+                            moderationStatusLabel.setTextFill(Color.GREEN);
+                        } else if ("reject".equals(moderationStatus)) {
+                            moderationStatusLabel.setTextFill(Color.RED);
+                        }
+                    } else {
+                        moderationStatusLabel.setText("");
+                    }
+                    
                     contentTextArea.setText(currentPost.getContent());
                     
                     displayPostImages();
@@ -409,18 +428,37 @@ public class PostDetailController extends ToolController {
             currentUser.getPersonId() != null && currentPost.getUserId() != null &&
             currentUser.getPersonId().longValue() == currentPost.getUserId().longValue();
         
-        submitCommentButton.setVisible(isLoggedIn && !isBanned);
-        likeButton.setVisible(isLoggedIn && !isBanned);
-        favoriteButton.setVisible(isLoggedIn && !isBanned);
-        reportButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
-        followButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
+        // 检查是否是违规帖
+        boolean isRejected = currentPost != null && "reject".equals(currentPost.getModerationStatus());
         
-        boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
-        editButton.setVisible(canEditDelete);
-        deleteButton.setVisible(canEditDelete);
-        
-        topButton.setVisible(isAdmin);
-        featureButton.setVisible(isAdmin);
+        // 如果是违规帖，只显示编辑和删除按钮（给作者和管理员）
+        if (isRejected) {
+            submitCommentButton.setVisible(false);
+            likeButton.setVisible(false);
+            favoriteButton.setVisible(false);
+            reportButton.setVisible(false);
+            followButton.setVisible(false);
+            topButton.setVisible(false);
+            featureButton.setVisible(false);
+            
+            boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
+            editButton.setVisible(canEditDelete);
+            deleteButton.setVisible(canEditDelete);
+        } else {
+            // 正常显示所有按钮
+            submitCommentButton.setVisible(isLoggedIn && !isBanned);
+            likeButton.setVisible(isLoggedIn && !isBanned);
+            favoriteButton.setVisible(isLoggedIn && !isBanned);
+            reportButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
+            followButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
+            
+            boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
+            editButton.setVisible(canEditDelete);
+            deleteButton.setVisible(canEditDelete);
+            
+            topButton.setVisible(isAdmin);
+            featureButton.setVisible(isAdmin);
+        }
     }
     
     private void openReportDialog() {

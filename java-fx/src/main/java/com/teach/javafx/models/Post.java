@@ -21,12 +21,18 @@ public class Post {
     @SerializedName(value = "isFeatured", alternate = "featured")
     private Boolean isFeatured;
     private Integer status;
+    private String moderationStatus;
     private Date createTime;
     private Date updateTime;
     
     private String authorNickname;
     private String authorAvatarUrl;
     private String boardName;
+    private String moderationTime;
+    private String moderatorNickname;
+    
+    private String highlightTitle;
+    private String highlightSnippet;
 
     public Post() {
     }
@@ -175,6 +181,48 @@ public class Post {
         this.boardName = boardName;
     }
 
+    public String getHighlightTitle() {
+        return highlightTitle;
+    }
+
+    public void setHighlightTitle(String highlightTitle) {
+        this.highlightTitle = highlightTitle;
+    }
+
+    public String getHighlightSnippet() {
+        return highlightSnippet;
+    }
+
+    public void setHighlightSnippet(String highlightSnippet) {
+        this.highlightSnippet = highlightSnippet;
+    }
+
+    public String getModerationStatus() {
+        return moderationStatus;
+    }
+
+    public void setModerationStatus(String moderationStatus) {
+        this.moderationStatus = moderationStatus;
+    }
+
+    public String getModerationStatusText() {
+        if (moderationStatus == null) {
+            return "";
+        }
+        switch (moderationStatus) {
+            case "pending":
+                return "审核中";
+            case "pass":
+                return "审核通过";
+            case "reject":
+                return "内容违规";
+            case "manual":
+                return "待人工审核";
+            default:
+                return "";
+        }
+    }
+
     public String getStatusText() {
         StringBuilder sb = new StringBuilder();
         if (isTop != null && isTop) {
@@ -184,5 +232,21 @@ public class Post {
             sb.append("加精");
         }
         return sb.toString().trim();
+    }
+
+    public String getModerationTime() {
+        return moderationTime;
+    }
+
+    public void setModerationTime(String moderationTime) {
+        this.moderationTime = moderationTime;
+    }
+
+    public String getModeratorNickname() {
+        return moderatorNickname;
+    }
+
+    public void setModeratorNickname(String moderatorNickname) {
+        this.moderatorNickname = moderatorNickname;
     }
 }

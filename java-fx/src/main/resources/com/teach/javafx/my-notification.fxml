@@ -20,6 +20,7 @@
             <Label fx:id="unreadCountLabel" style="-fx-text-fill: red;" text="(0 条未读)" />
             <ComboBox fx:id="typeComboBox" prefWidth="150.0" />
             <Button fx:id="markAllReadButton" mnemonicParsing="false" text="一键全部已读" />
+            <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新" />
          </children>
       </HBox>
    </top>

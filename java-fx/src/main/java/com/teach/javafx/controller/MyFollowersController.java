@@ -46,6 +46,8 @@ public class MyFollowersController extends ToolController {
     private Button followingPrevButton;
     @FXML
     private Button followingNextButton;
+    @FXML
+    private Button followingRefreshButton;
     
     @FXML
     private TableView<Map<String, Object>> followerTableView;
@@ -71,6 +73,8 @@ public class MyFollowersController extends ToolController {
     private Button followerPrevButton;
     @FXML
     private Button followerNextButton;
+    @FXML
+    private Button followerRefreshButton;
 
     private int followingCurrentPageNum = 1;
     private int followerCurrentPageNum = 1;
@@ -97,6 +101,16 @@ public class MyFollowersController extends ToolController {
         followingNextButton.setOnAction(event -> onFollowingNextPage());
         followerPrevButton.setOnAction(event -> onFollowerPrevPage());
         followerNextButton.setOnAction(event -> onFollowerNextPage());
+        
+        followingRefreshButton.setOnAction(event -> {
+            followingCurrentPageNum = 1;
+            loadFollowing(followingRefreshButton);
+        });
+        
+        followerRefreshButton.setOnAction(event -> {
+            followerCurrentPageNum = 1;
+            loadFollowers(followerRefreshButton);
+        });
         
         loadFollowing();
     }
@@ -285,6 +299,15 @@ public class MyFollowersController extends ToolController {
     }
 
     public void loadFollowing() {
+        loadFollowing(null);
+    }
+
+    private void loadFollowing(Button refreshBtn) {
+        if (refreshBtn != null) {
+            refreshBtn.setDisable(true);
+            refreshBtn.setText("刷新中");
+        }
+        
         Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
             @Override
             protected Map<String, Object> call() {
@@ -294,6 +317,11 @@ public class MyFollowersController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                
                 Map<String, Object> result = task.getValue();
                 if (result != null) {
                     List<Map<String, Object>> list = (List<Map<String, Object>>) result.get("list");
@@ -315,13 +343,28 @@ public class MyFollowersController extends ToolController {
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("加载关注列表失败"));
+            Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                showError("加载关注列表失败");
+            });
         });
 
         new Thread(task).start();
     }
 
     public void loadFollowers() {
+        loadFollowers(null);
+    }
+
+    private void loadFollowers(Button refreshBtn) {
+        if (refreshBtn != null) {
+            refreshBtn.setDisable(true);
+            refreshBtn.setText("刷新中");
+        }
+        
         Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
             @Override
             protected Map<String, Object> call() {
@@ -331,6 +374,11 @@ public class MyFollowersController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                
                 Map<String, Object> result = task.getValue();
                 if (result != null) {
                     List<Map<String, Object>> list = (List<Map<String, Object>>) result.get("list");
@@ -352,7 +400,13 @@ public class MyFollowersController extends ToolController {
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("加载粉丝列表失败"));
+            Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                showError("加载粉丝列表失败");
+            });
         });
 
         new Thread(task).start();

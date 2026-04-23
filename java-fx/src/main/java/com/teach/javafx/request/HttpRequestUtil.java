@@ -1654,4 +1654,169 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return null;
     }
 
+    public static PageResult<Post> getAdminPendingPosts(int pageNum, int pageSize) {
+        java.util.List<String> params = new java.util.ArrayList<>();
+        params.add("pageNum=" + pageNum);
+        params.add("pageSize=" + pageSize);
+
+        String url = serverUrl + "/api/admin/moderation/pending?" + String.join("&", params);
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            System.out.println("getAdminPendingPosts request: " + url);
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getAdminPendingPosts response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<PageResult<Post>>>(){}.getType();
+                DataResponse<PageResult<Post>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static PageResult<Post> getAdminAllPosts(int pageNum, int pageSize) {
+        System.out.println("===== getAdminAllPosts 开始 =====");
+        java.util.List<String> params = new java.util.ArrayList<>();
+        params.add("pageNum=" + pageNum);
+        params.add("pageSize=" + pageSize);
+
+        String url = serverUrl + "/api/admin/moderation/posts?" + String.join("&", params);
+        System.out.println("请求URL: " + url);
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            System.out.println("发送请求...");
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("收到响应，状态码: " + response.statusCode());
+            System.out.println("响应内容: " + response.body());
+            
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<PageResult<Post>>>(){}.getType();
+                DataResponse<PageResult<Post>> dataResponse = gson.fromJson(response.body(), responseType);
+                System.out.println("解析结果: code=" + dataResponse.getCode() + 
+                    ", msg=" + dataResponse.getMsg());
+                
+                if (dataResponse.getCode() == 0) {
+                    PageResult<Post> data = dataResponse.getData();
+                    if (data != null) {
+                        System.out.println("数据条数: " + (data.getList() != null ? data.getList().size() : 0) + 
+                            ", 总数: " + data.getTotal());
+                    }
+                    return data;
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            System.err.println("===== getAdminAllPosts 异常 =====");
+            e.printStackTrace();
+        }
+        System.out.println("===== getAdminAllPosts 返回 null =====");
+        return null;
+    }
+
+    public static boolean moderatePost(Long postId, String decision, String violationLevel, String violationType, String remark) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("decision", decision);
+        if (violationLevel != null) {
+            dataRequest.add("violationLevel", violationLevel);
+        }
+        if (violationType != null) {
+            dataRequest.add("violationType", violationType);
+        }
+        if (remark != null) {
+            dataRequest.add("remark", remark);
+        }
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/admin/moderation/" + postId + "/review"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            String url = serverUrl + "/api/admin/moderation/" + postId + "/review";
+            System.out.println("moderatePost request: " + url + ", decision: " + decision);
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("moderatePost response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                return dataResponse.getCode() == 0;
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static com.teach.javafx.models.PageResult<com.teach.javafx.models.Post> searchPosts(String keyword, String searchType, int pageNum, int pageSize) {
+        java.util.List<String> params = new java.util.ArrayList<>();
+
+        if (keyword != null && !keyword.isEmpty()) {
+            try {
+                params.add("keyword=" + java.net.URLEncoder.encode(keyword, "UTF-8"));
+            } catch (Exception e) {
+                params.add("keyword=" + keyword);
+            }
+        }
+        if (searchType != null && !searchType.isEmpty()) {
+            params.add("searchType=" + searchType);
+        }
+        params.add("pageNum=" + pageNum);
+        params.add("pageSize=" + pageSize);
+
+        String url = serverUrl + "/api/bbs/post/search?" + String.join("&", params);
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            System.out.println("searchPosts request: " + url);
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("searchPosts response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<com.teach.javafx.models.PageResult<com.teach.javafx.models.Post>>>(){}.getType();
+                DataResponse<com.teach.javafx.models.PageResult<com.teach.javafx.models.Post>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

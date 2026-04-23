@@ -34,6 +34,8 @@ public class MyNotificationController extends ToolController {
     @FXML
     private Button markAllReadButton;
     @FXML
+    private Button refreshButton;
+    @FXML
     private ComboBox<String> typeComboBox;
 
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -186,6 +188,11 @@ public class MyNotificationController extends ToolController {
         loadNotificationList();
         
         markAllReadButton.setOnAction(event -> markAllAsRead());
+
+        refreshButton.setOnAction(event -> {
+            loadNotificationList(refreshButton);
+            loadUnreadCount();
+        });
         
         typeComboBox.getItems().addAll("全部类型", "系统通知", "回复我的", "举报处理", "帖子审核", "新增粉丝通知", "关注用户发帖通知");
         typeComboBox.getSelectionModel().selectFirst();
@@ -253,6 +260,15 @@ public class MyNotificationController extends ToolController {
     }
 
     public void loadNotificationList() {
+        loadNotificationList(null);
+    }
+
+    private void loadNotificationList(Button refreshBtn) {
+        if (refreshBtn != null) {
+            refreshBtn.setDisable(true);
+            refreshBtn.setText("刷新中");
+        }
+        
         Task<List<Notification>> task = new Task<List<Notification>>() {
             @Override
             protected List<Notification> call() {
@@ -262,6 +278,11 @@ public class MyNotificationController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                
                 List<Notification> notifications = task.getValue();
                 if (notifications != null) {
                     notificationTableView.getItems().clear();
@@ -275,7 +296,13 @@ public class MyNotificationController extends ToolController {
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("加载通知列表失败"));
+            Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                showError("加载通知列表失败");
+            });
         });
 
         new Thread(task).start();

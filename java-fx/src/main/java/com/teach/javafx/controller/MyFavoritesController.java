@@ -35,6 +35,8 @@ public class MyFavoritesController extends ToolController {
     @FXML
     private Label pageInfoLabel;
     @FXML
+    private Button refreshButton;
+    @FXML
     private Button prevButton;
     @FXML
     private Button nextButton;
@@ -81,10 +83,24 @@ public class MyFavoritesController extends ToolController {
         prevButton.setOnAction(event -> onPrevPage());
         nextButton.setOnAction(event -> onNextPage());
 
+        refreshButton.setOnAction(event -> {
+            currentPageNum = 1;
+            loadFavorites(refreshButton);
+        });
+
         loadFavorites();
     }
 
     public void loadFavorites() {
+        loadFavorites(null);
+    }
+
+    private void loadFavorites(Button refreshBtn) {
+        if (refreshBtn != null) {
+            refreshBtn.setDisable(true);
+            refreshBtn.setText("刷新中");
+        }
+        
         Task<PageResult<Post>> task = new Task<PageResult<Post>>() {
             @Override
             protected PageResult<Post> call() {
@@ -94,6 +110,11 @@ public class MyFavoritesController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                
                 PageResult<Post> pageResult = task.getValue();
                 if (pageResult != null && pageResult.getList() != null) {
                     postTableView.getItems().clear();
@@ -111,7 +132,13 @@ public class MyFavoritesController extends ToolController {
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("加载收藏列表失败"));
+            Platform.runLater(() -> {
+                if (refreshBtn != null) {
+                    refreshBtn.setDisable(false);
+                    refreshBtn.setText("刷新");
+                }
+                showError("加载收藏列表失败");
+            });
         });
 
         new Thread(task).start();

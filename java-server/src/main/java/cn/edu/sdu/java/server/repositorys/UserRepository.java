@@ -1,3 +1,4 @@
+
 package cn.edu.sdu.java.server.repositorys;
 
 
@@ -49,4 +50,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 
     List<User> findTop10ByIsBannedOrderByPostCountDescCommentCountDesc(Boolean isBanned);
+
+    @Query("SELECT u FROM User u WHERE u.userType.id = 1 OR u.userType.id = 2")
+    List<User> findAdmins();
 }

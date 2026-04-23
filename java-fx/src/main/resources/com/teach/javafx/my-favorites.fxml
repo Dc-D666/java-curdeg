@@ -17,6 +17,7 @@
             <children>
                 <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="我的收藏"/>
                 <Label fx:id="totalLabel" text=""/>
+                <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新" />
             </children>
         </HBox>
     </top>

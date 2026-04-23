@@ -44,6 +44,14 @@ spring:
     enabled:false
 attach:
   folder: ./uploads/
+# AI内容审核配置
+moderation:
+  enabled: true
+  api:
+    url: https://xplt.sdu.edu.cn:4000/v1/chat/completions
+    key: sk-oXWyxru5nwdf-iDN6a8sJw
+    model: Ali-dashscope/Qwen3.5-Flash
+    timeout: 30000
 logging:
   config: classpath:loggback.xml
 #logging:

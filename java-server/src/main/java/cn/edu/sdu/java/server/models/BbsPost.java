@@ -55,6 +55,35 @@ public class BbsPost {
     @Column(nullable = false)
     private Integer status = 1;
 
+    // ==================== 审核相关字段 ====================
+
+    @Column(name = "moderation_status", nullable = false)
+    private String moderationStatus = "pending";
+
+    @Column(name = "moderation_violation_level")
+    private String moderationViolationLevel;
+
+    @Column(name = "moderation_violation_type")
+    private String moderationViolationType;
+
+    @Column(name = "moderation_violation_fragments", columnDefinition = "TEXT")
+    private String moderationViolationFragments;
+
+    @Column(name = "moderation_suggestion", columnDefinition = "TEXT")
+    private String moderationSuggestion;
+
+    @Column(name = "moderation_confidence")
+    private Integer moderationConfidence;
+
+    @Column(name = "moderation_remark", columnDefinition = "TEXT")
+    private String moderationRemark;
+
+    @Column(name = "moderation_time")
+    private String moderationTime;
+
+    @Column(name = "moderator_id")
+    private Integer moderatorId;
+
     @Column(name = "create_time", updatable = false)
     private String createTime;
 
@@ -71,6 +100,42 @@ public class BbsPost {
 
     @Transient
     private String boardName;
+
+    @Transient
+    private String moderatorNickname;
+
+    @Transient
+    private Double matchScore;
+
+    @Transient
+    private String highlightTitle;
+
+    @Transient
+    private String highlightSnippet;
+
+    public Double getMatchScore() {
+        return matchScore;
+    }
+
+    public void setMatchScore(Double matchScore) {
+        this.matchScore = matchScore;
+    }
+
+    public String getHighlightTitle() {
+        return highlightTitle;
+    }
+
+    public void setHighlightTitle(String highlightTitle) {
+        this.highlightTitle = highlightTitle;
+    }
+
+    public String getHighlightSnippet() {
+        return highlightSnippet;
+    }
+
+    public void setHighlightSnippet(String highlightSnippet) {
+        this.highlightSnippet = highlightSnippet;
+    }
 
     @PrePersist
     protected void onCreate() {

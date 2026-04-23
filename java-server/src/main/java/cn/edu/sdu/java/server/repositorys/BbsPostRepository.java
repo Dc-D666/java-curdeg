@@ -1,3 +1,4 @@
+
 package cn.edu.sdu.java.server.repositorys;
 
 import cn.edu.sdu.java.server.models.BbsPost;
@@ -21,6 +22,18 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
                                         @Param("keyword") String keyword,
                                         Pageable pageable);
 
+    @Query("SELECT p FROM BbsPost p WHERE " +
+           "((p.moderationStatus = 'pass' AND p.status = 1) OR " +
+           "(p.authorId = :currentUserId OR :isAdmin = true)) " +
+           "AND (:boardId IS NULL OR p.boardId = :boardId) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR p.title LIKE %:keyword%) " +
+           "ORDER BY p.isTop DESC, p.createTime DESC")
+    Page<BbsPost> findPostsByConditionWithModeration(@Param("boardId") Long boardId,
+                                                       @Param("keyword") String keyword,
+                                                       @Param("currentUserId") Long currentUserId,
+                                                       @Param("isAdmin") Boolean isAdmin,
+                                                       Pageable pageable);
+
     Page<BbsPost> findByAuthorIdAndStatusOrderByCreateTimeDesc(Long authorId, Integer status, Pageable pageable);
 
     @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_post " +
@@ -35,4 +48,17 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
 
     @Query("SELECT SUM(p.likeCount) FROM BbsPost p WHERE p.authorId = :authorId")
     Integer sumLikeCountByAuthorId(@Param("authorId") Long authorId);
+
+    @Query("SELECT p FROM BbsPost p WHERE p.moderationStatus = 'manual' ORDER BY p.createTime DESC")
+    Page<BbsPost> findPendingModerationPosts(Pageable pageable);
+
+    @Query("SELECT p FROM BbsPost p WHERE " +
+           "((p.moderationStatus = 'pass' AND p.status = 1) OR " +
+           "(p.authorId = :currentUserId OR :isAdmin = true)) AND " +
+           "(:keyword IS NULL OR :keyword = '' OR p.title LIKE %:keyword%) " +
+           "ORDER BY p.createTime DESC")
+    Page<BbsPost> searchPostsWithModeration(@Param("keyword") String keyword,
+                                               @Param("currentUserId") Long currentUserId,
+                                               @Param("isAdmin") Boolean isAdmin,
+                                               Pageable pageable);
 }

@@ -131,6 +131,8 @@ public class MainFrameController {
             sList = (List<Map>)m.get("sList");
             menu = new TreeItem<>(new MyTreeNode(null,(String)m.get("name") ,(String)m.get("title"),0));
             parent.getChildren().add(menu);
+            // 展开所有子节点
+            menu.setExpanded(true);
             if(sList !=  null && sList.size()> 0) {
                 addMenuItems(menu, sList);
             }
@@ -149,6 +151,8 @@ public class MainFrameController {
             m = mList.get(i);
             sList = (List<Map>)m.get("sList");
             menu = new TreeItem<>(new MyTreeNode(null, (String)m.get("name"), (String)m.get("title"), (Integer)m.get("isLeft")));
+            // 展开一级菜单
+            menu.setExpanded(true);
             if(sList != null && sList.size()> 0) {
                 addMenuItems(menu,sList);
             }
@@ -229,7 +233,7 @@ public class MainFrameController {
                         displayRole = currentUser.getAuthority();
                     }
                     
-                    systemPrompt.setText("服务器：" + HttpRequestUtil.serverUrl + " 用户角色：" + displayRole);
+                    systemPrompt.setText("服务器：http://localhost:22223 数据库：java_2_48 团队编号：48 成员：202400210090 戴睿羲 202333180042 南迪 202420210070 张心甜 202420210042 吴煜菲 202400210027 刘鑫");
                 });
                 return null;
             }
