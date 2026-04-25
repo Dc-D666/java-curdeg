@@ -3,9 +3,13 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TitledPane?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
@@ -18,15 +22,43 @@
             <Insets bottom="10.0" left="20.0" right="20.0" top="20.0" />
          </padding>
          <children>
-            <Label fx:id="titleLabel" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="帖子标题" />
             <HBox spacing="10.0" alignment="CENTER_LEFT">
                <children>
+                  <Button fx:id="backButton" mnemonicParsing="false" text="返回" />
+                  <Label text="›" style="-fx-text-fill: #888;" />
+                  <Label fx:id="breadcrumbLabel" text="首页" style="-fx-text-fill: #1890ff; -fx-cursor: hand;" />
+                  <Label text="›" style="-fx-text-fill: #888;" />
+                  <Label fx:id="boardLabel" text="板块" />
+               </children>
+            </HBox>
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+               <children>
+                  <Label fx:id="titleLabel" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="帖子标题" />
+                  <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新" />
+                  <ProgressIndicator fx:id="refreshProgress" visible="false" prefWidth="24.0" prefHeight="24.0" />
+               </children>
+            </HBox>
+            <HBox spacing="15.0" alignment="CENTER_LEFT">
+               <children>
                   <ImageView fx:id="authorImageView" fitHeight="40.0" fitWidth="40.0" preserveRatio="true" />
-                  <Label fx:id="authorLabel" text="作者：测试学生" />
+                  <VBox spacing="2.0">
+                     <children>
+                        <Label fx:id="authorLabel" text="作者：测试学生" style="-fx-font-weight: bold;" />
+                        <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" style="-fx-text-fill: #666; -fx-font-size: 12px;" />
+                     </children>
+                  </VBox>
                   <Button fx:id="followButton" mnemonicParsing="false" text="关注" />
-                  <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" />
-                  <Label fx:id="statusLabel" text="置顶 加精" />
-                  <Label fx:id="moderationStatusLabel" />
+                  <Separator orientation="VERTICAL" />
+                  <Label fx:id="viewCountLabel" text="👁 0" style="-fx-text-fill: #666;" />
+                  <Label fx:id="likeCountLabel" text="👍 0" style="-fx-text-fill: #666;" />
+                  <Label fx:id="commentCountLabel" text="💬 0" style="-fx-text-fill: #666;" />
+                  <Label fx:id="favoriteCountLabel" text="⭐ 0" style="-fx-text-fill: #666;" />
+               </children>
+            </HBox>
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+               <children>
+                  <Label fx:id="statusLabel" text="置顶 加精" style="-fx-text-fill: #f5222d; -fx-font-weight: bold;" />
+                  <Label fx:id="moderationStatusLabel" style="-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px;" />
                </children>
             </HBox>
          </children>
@@ -40,8 +72,43 @@
                   <Insets bottom="10.0" left="20.0" right="20.0" top="10.0" />
                </padding>
                <children>
-                  <TextArea fx:id="contentTextArea" editable="false" prefHeight="200.0" prefWidth="600.0" text="帖子内容" wrapText="true" />
+                  <VBox fx:id="violationInfoVBox" spacing="10.0" visible="false" managed="false" style="-fx-background-color: #fff2f0; -fx-border-color: #ff4d4f; -fx-border-width: 1; -fx-border-radius: 4; -fx-padding: 15;">
+                     <children>
+                        <Label style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #ff4d4f;" text="⚠️ 内容违规提示" />
+                        <Label fx:id="violationTypeLabel" style="-fx-font-size: 13px;" wrapText="true" />
+                        <Label fx:id="violationFragmentLabel" style="-fx-font-size: 12px; -fx-text-fill: #666;" wrapText="true" />
+                        <Label fx:id="violationSuggestionLabel" style="-fx-font-size: 13px;" wrapText="true" />
+                        <Label fx:id="violationRemarkLabel" style="-fx-font-size: 12px; -fx-text-fill: #666;" wrapText="true" />
+                        <Button fx:id="editViolationButton" mnemonicParsing="false" text="✏️ 编辑重新提交" style="-fx-background-color: #1890ff; -fx-text-fill: white;" />
+                     </children>
+                  </VBox>
+                  <ScrollPane fitToWidth="true" maxHeight="500.0" style="-fx-background: transparent; -fx-background-color: transparent;">
+                     <content>
+                        <Label fx:id="contentLabel" text="帖子内容" wrapText="true" style="-fx-font-size: 14px; -fx-line-spacing: 5px; -fx-text-fill: black;" />
+                     </content>
+                  </ScrollPane>
                   <VBox fx:id="postImagesVBox" spacing="10.0" />
+                  <Separator />
+                  <TitledPane fx:id="aiSummaryPane" expanded="false" text="AI 智能总结">
+                     <content>
+                        <VBox spacing="10.0" fillWidth="true">
+                           <padding>
+                              <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                           </padding>
+                           <children>
+                              <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                 <children>
+                                    <Label fx:id="postSummaryLabel" style="-fx-font-weight: bold;" text="帖子摘要" />
+                                    <ProgressIndicator fx:id="aiSummaryProgress" visible="false" prefWidth="24.0" prefHeight="24.0" />
+                                 </children>
+                              </HBox>
+                              <Label fx:id="postSummaryContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px;" />
+                              <Label fx:id="commentHotspotsTitleLabel" style="-fx-font-weight: bold;" text="评论热点" />
+                              <Label fx:id="commentHotspotsContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px;" />
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
                   <Separator />
                   <Label style="-fx-font-size: 14px; -fx-font-weight: bold;" text="评论区" />
                   <VBox fx:id="commentVBox" spacing="10.0" />
@@ -51,22 +118,34 @@
       </ScrollPane>
    </center>
    <bottom>
-      <VBox spacing="10.0" BorderPane.alignment="CENTER" minHeight="100.0" prefHeight="120.0">
+      <VBox spacing="10.0" BorderPane.alignment="CENTER" minHeight="100.0" prefHeight="140.0">
          <padding>
             <Insets bottom="20.0" left="20.0" right="20.0" top="10.0" />
          </padding>
          <children>
             <HBox spacing="10.0" alignment="CENTER_LEFT">
                <children>
-                  <TextArea fx:id="commentTextArea" prefRowCount="2" prefWidth="400.0" promptText="发表评论..." />
+                  <Button fx:id="likeButton" mnemonicParsing="false" text="👍 点赞" />
+                  <Button fx:id="favoriteButton" mnemonicParsing="false" text="⭐ 收藏" />
+                  <Button fx:id="shareButton" mnemonicParsing="false" text="🔗 分享" />
+                  <Button fx:id="reportButton" mnemonicParsing="false" text="🚩 举报" />
+                  <MenuButton fx:id="moreButton" mnemonicParsing="false" text="更多">
+                     <items>
+                        <MenuItem fx:id="editMenuItem" mnemonicParsing="false" text="✏️ 编辑" />
+                        <MenuItem fx:id="deleteMenuItem" mnemonicParsing="false" text="🗑️ 删除" />
+                        <MenuItem fx:id="topMenuItem" mnemonicParsing="false" text="📌 置顶" />
+                        <MenuItem fx:id="featureMenuItem" mnemonicParsing="false" text="🌟 加精" />
+                        <MenuItem fx:id="summaryMenuItem" mnemonicParsing="false" text="🤖 AI总结" />
+                     </items>
+                  </MenuButton>
+               </children>
+            </HBox>
+            <Separator />
+            <HBox spacing="10.0" alignment="CENTER_LEFT">
+               <children>
+                  <Button fx:id="addImageButton" mnemonicParsing="false" text="📷 图片" />
+                  <TextArea fx:id="commentTextArea" prefRowCount="2" HBox.hgrow="ALWAYS" promptText="发表评论..." />
                   <Button fx:id="submitCommentButton" mnemonicParsing="false" text="发表评论" />
-                  <Button fx:id="likeButton" mnemonicParsing="false" text="点赞" />
-                  <Button fx:id="favoriteButton" mnemonicParsing="false" text="收藏" />
-                  <Button fx:id="editButton" mnemonicParsing="false" text="编辑" />
-                  <Button fx:id="deleteButton" mnemonicParsing="false" text="删除" />
-                  <Button fx:id="topButton" mnemonicParsing="false" text="置顶" />
-                  <Button fx:id="featureButton" mnemonicParsing="false" text="加精" />
-                  <Button fx:id="reportButton" mnemonicParsing="false" text="举报" />
                </children>
             </HBox>
          </children>

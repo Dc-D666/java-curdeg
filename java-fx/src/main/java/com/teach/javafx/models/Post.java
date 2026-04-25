@@ -30,6 +30,11 @@ public class Post {
     private String boardName;
     private String moderationTime;
     private String moderatorNickname;
+    private String moderationViolationLevel;
+    private String moderationViolationType;
+    private String moderationViolationFragments;
+    private String moderationSuggestion;
+    private String moderationRemark;
     
     private String highlightTitle;
     private String highlightSnippet;
@@ -248,5 +253,45 @@ public class Post {
 
     public void setModeratorNickname(String moderatorNickname) {
         this.moderatorNickname = moderatorNickname;
+    }
+
+    public String getModerationViolationLevel() {
+        return moderationViolationLevel;
+    }
+
+    public void setModerationViolationLevel(String moderationViolationLevel) {
+        this.moderationViolationLevel = moderationViolationLevel;
+    }
+
+    public String getModerationViolationType() {
+        return moderationViolationType;
+    }
+
+    public void setModerationViolationType(String moderationViolationType) {
+        this.moderationViolationType = moderationViolationType;
+    }
+
+    public String getModerationViolationFragments() {
+        return moderationViolationFragments;
+    }
+
+    public void setModerationViolationFragments(String moderationViolationFragments) {
+        this.moderationViolationFragments = moderationViolationFragments;
+    }
+
+    public String getModerationSuggestion() {
+        return moderationSuggestion;
+    }
+
+    public void setModerationSuggestion(String moderationSuggestion) {
+        this.moderationSuggestion = moderationSuggestion;
+    }
+
+    public String getModerationRemark() {
+        return moderationRemark;
+    }
+
+    public void setModerationRemark(String moderationRemark) {
+        this.moderationRemark = moderationRemark;
     }
 }

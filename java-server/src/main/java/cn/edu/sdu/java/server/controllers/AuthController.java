@@ -6,6 +6,7 @@ import cn.edu.sdu.java.server.payload.request.LoginRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.services.AuthService;
+import cn.edu.sdu.java.server.services.EmailVerificationService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,11 +24,13 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    
-    public AuthController(AuthService authService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    private final EmailVerificationService verificationService;
+
+    public AuthController(AuthService authService, UserRepository userRepository, PasswordEncoder passwordEncoder, EmailVerificationService verificationService) {
         this.authService = authService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.verificationService = verificationService;
     }
 
     /**
@@ -48,6 +51,21 @@ public class AuthController {
     public DataResponse testValidateInfo(@Valid @RequestBody DataRequest dataRequest) {
         return authService.testValidateInfo(dataRequest);
     }
+
+    @PostMapping("/sendEmailCode")
+    public DataResponse sendEmailCode(@Valid @RequestBody DataRequest dataRequest) {
+        String email = dataRequest.getString("email");
+        String type = dataRequest.getString("type");
+        if (type == null || type.isEmpty()) {
+            type = "REGISTER";
+        }
+        String error = verificationService.sendVerificationCode(email, type);
+        if (error != null) {
+            return cn.edu.sdu.java.server.util.CommonMethod.getReturnMessageError(error);
+        }
+        return cn.edu.sdu.java.server.util.CommonMethod.getReturnMessageOK("验证码已发送，请查收邮件");
+    }
+
     @PostMapping("/registerUser")
     public DataResponse registerUser(@Valid @RequestBody DataRequest dataRequest) {
         return authService.registerUser(dataRequest);

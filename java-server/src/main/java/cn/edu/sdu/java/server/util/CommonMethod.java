@@ -47,19 +47,28 @@ public class CommonMethod {
      * @return
      */
     public static Integer getPersonId(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(authentication == null)
+            return null;
+        Object obj = authentication.getPrincipal();
         if(!(obj instanceof UserDetailsImpl userDetails))
             return null;
         return userDetails.getId();
     }
     public static String getUsername(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(authentication == null)
+            return null;
+        Object obj = authentication.getPrincipal();
         if(!(obj instanceof UserDetailsImpl userDetails))
             return null;
         return userDetails.getUsername();
     }
     public static String getRoleName(){
-        Object obj = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if(authentication == null)
+            return null;
+        Object obj = authentication.getPrincipal();
         if(!(obj instanceof UserDetailsImpl userDetails))
             return null;
         return  userDetails.getAuthorities().iterator().next().toString();

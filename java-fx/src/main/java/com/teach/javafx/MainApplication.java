@@ -67,11 +67,13 @@ public class MainApplication extends Application {
             mainStage.setMaximized(true);
         } else {
             // 注册界面保持小窗口尺寸
-            mainStage.setWidth(320);
-            mainStage.setHeight(550);
+            mainStage.setWidth(500);
+            mainStage.setHeight(600);
             // 居中显示
-            double x = (stageWidth - 320) / 2;
-            double y = (stageHeight - 550) / 2;
+            javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
+            javafx.geometry.Rectangle2D bounds = screen.getVisualBounds();
+            double x = (bounds.getWidth() - 500) / 2;
+            double y = (bounds.getHeight() - 600) / 2;
             mainStage.setX(x);
             mainStage.setY(y);
         }

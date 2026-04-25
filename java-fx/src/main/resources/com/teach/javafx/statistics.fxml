@@ -1,68 +1,293 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
 <?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.NumberAxis?>
-<?import javafx.scene.chart.XYChart?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
 
 <BorderPane fx:controller="com.teach.javafx.controller.StatisticsController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-   <top>
-      <VBox alignment="CENTER_LEFT" spacing="10.0" BorderPane.alignment="CENTER">
-         <padding>
-            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-         </padding>
-         <children>
-            <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="数据统计" />
-         </children>
-      </VBox>
-   </top>
-   <center>
-      <TabPane prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
-        <tabs>
-          <Tab text="每日发帖量">
-            <content>
-               <LineChart fx:id="dailyPostChart" animated="false">
-                  <xAxis>
-                     <NumberAxis fx:id="xAxis" label="日期" />
-                  </xAxis>
-                  <yAxis>
-                     <NumberAxis fx:id="yAxis" label="发帖量" />
-                  </yAxis>
-               </LineChart>
-            </content>
-          </Tab>
-          <Tab text="热门帖子 Top10">
-            <content>
-               <TableView fx:id="hotPostTableView" prefHeight="200.0" prefWidth="200.0">
-                 <columns>
-                   <TableColumn fx:id="hotPostTitleColumn" prefWidth="300.0" text="标题" />
-                   <TableColumn fx:id="hotPostAuthorColumn" prefWidth="100.0" text="作者" />
-                   <TableColumn fx:id="hotPostLikeCountColumn" prefWidth="80.0" text="点赞数" />
-                   <TableColumn fx:id="hotPostCommentCountColumn" prefWidth="80.0" text="评论数" />
-                 </columns>
-               </TableView>
-            </content>
-          </Tab>
-          <Tab text="活跃用户 Top10">
-            <content>
-               <TableView fx:id="activeUserTableView" prefHeight="200.0" prefWidth="200.0">
-                 <columns>
-                   <TableColumn fx:id="activeUserNicknameColumn" prefWidth="150.0" text="昵称" />
-                   <TableColumn fx:id="activeUserStudentIdColumn" prefWidth="120.0" text="学号" />
-                   <TableColumn fx:id="activeUserPostCountColumn" prefWidth="80.0" text="发帖数" />
-                   <TableColumn fx:id="activeUserCommentCountColumn" prefWidth="80.0" text="评论数" />
-                 </columns>
-               </TableView>
-            </content>
-          </Tab>
-        </tabs>
-      </TabPane>
-   </center>
+    <top>
+        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
+            <Label style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="数据统计分析" />
+            <Label style="-fx-font-size: 13px; -fx-text-fill: #7f8c8d;" text="全面监控论坛运营数据，洞察用户行为与内容趋势" />
+        </VBox>
+    </top>
+    <center>
+        <TabPane fx:id="mainTabPane" prefHeight="800" prefWidth="1200" style="-fx-background-color: white;">
+            <Tab closable="false" text="数据概览">
+                <content>
+                    <VBox spacing="15" style="-fx-padding: 20;">
+                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="关键指标" />
+                        <GridPane fx:id="overviewGrid" hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="120" vgrow="SOMETIMES" />
+                                <RowConstraints minHeight="120" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                        </GridPane>
+                        <Separator />
+                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="快速趋势" />
+                        <GridPane hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="300" vgrow="ALWAYS" />
+                            </rowConstraints>
+                            <LineChart fx:id="quickPostTrendChart" GridPane.columnIndex="0" animated="false" title="近7日发帖趋势" style="-fx-background-color: white;">
+                                <xAxis>
+                                    <CategoryAxis fx:id="quickPostXAxis" label="日期" />
+                                </xAxis>
+                                <yAxis>
+                                    <NumberAxis fx:id="quickPostYAxis" label="发帖量" />
+                                </yAxis>
+                            </LineChart>
+                            <LineChart fx:id="quickUserTrendChart" GridPane.columnIndex="1" animated="false" title="近7日用户增长趋势" style="-fx-background-color: white;">
+                                <xAxis>
+                                    <CategoryAxis fx:id="quickUserXAxis" label="日期" />
+                                </xAxis>
+                                <yAxis>
+                                    <NumberAxis fx:id="quickUserYAxis" label="新增用户" />
+                                </yAxis>
+                            </LineChart>
+                        </GridPane>
+                    </VBox>
+                </content>
+            </Tab>
+            
+            <Tab closable="false" text="用户统计">
+                <content>
+                    <VBox spacing="15" style="-fx-padding: 20;">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="用户增长趋势" />
+                            <ChoiceBox fx:id="userGrowthDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
+                            <Button fx:id="refreshUserBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                        </HBox>
+                        <LineChart fx:id="userGrowthChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
+                            <xAxis>
+                                <CategoryAxis fx:id="userGrowthXAxis" label="日期" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="userGrowthYAxis" label="新增用户数" />
+                            </yAxis>
+                        </LineChart>
+                        <Separator />
+                        <GridPane hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="300" vgrow="ALWAYS" />
+                            </rowConstraints>
+                            <VBox spacing="10" GridPane.columnIndex="0">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="用户类型分布" />
+                                <PieChart fx:id="userTypeChart" animated="false" style="-fx-background-color: white;" />
+                            </VBox>
+                            <VBox spacing="10" GridPane.columnIndex="1">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="用户活跃度分布" />
+                                <BarChart fx:id="userActivityChart" animated="false" style="-fx-background-color: white;">
+                                    <xAxis>
+                                        <CategoryAxis label="发帖数区间" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis label="用户数" />
+                                    </yAxis>
+                                </BarChart>
+                            </VBox>
+                        </GridPane>
+                        <Separator />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="活跃用户排行榜 (Top 20)" />
+                            <ChoiceBox fx:id="activeUserSortChoice" prefWidth="120" style="-fx-background-color: white;" />
+                        </HBox>
+                        <TableView fx:id="activeUserTableView" prefHeight="250" style="-fx-background-color: white;">
+                            <columns>
+                                <TableColumn fx:id="activeUserRankCol" prefWidth="60" text="排名" />
+                                <TableColumn fx:id="activeUserNicknameCol" prefWidth="150" text="昵称" />
+                                <TableColumn fx:id="activeUserStudentIdCol" prefWidth="120" text="学号/工号" />
+                                <TableColumn fx:id="activeUserTypeCol" prefWidth="80" text="角色" />
+                                <TableColumn fx:id="activeUserPostCol" prefWidth="80" text="发帖数" />
+                                <TableColumn fx:id="activeUserCommentCol" prefWidth="80" text="评论数" />
+                                <TableColumn fx:id="activeUserLikeCol" prefWidth="80" text="获赞数" />
+                            </columns>
+                        </TableView>
+                    </VBox>
+                </content>
+            </Tab>
+            
+            <Tab closable="false" text="内容统计">
+                <content>
+                    <VBox spacing="15" style="-fx-padding: 20;">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="发帖趋势" />
+                            <ChoiceBox fx:id="postTrendDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
+                            <Button fx:id="refreshContentBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                        </HBox>
+                        <LineChart fx:id="postTrendChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
+                            <xAxis>
+                                <CategoryAxis fx:id="postTrendXAxis" label="日期" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="postTrendYAxis" label="发帖量" />
+                            </yAxis>
+                        </LineChart>
+                        <Separator />
+                        <GridPane hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="300" vgrow="ALWAYS" />
+                            </rowConstraints>
+                            <VBox spacing="10" GridPane.columnIndex="0">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="板块发帖分布" />
+                                <PieChart fx:id="boardDistributionChart" animated="false" style="-fx-background-color: white;" />
+                            </VBox>
+                            <VBox spacing="10" GridPane.columnIndex="1">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="帖子状态分布" />
+                                <PieChart fx:id="postStatusChart" animated="false" style="-fx-background-color: white;" />
+                            </VBox>
+                        </GridPane>
+                        <Separator />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="热门帖子排行榜 (Top 20)" />
+                            <ChoiceBox fx:id="hotPostSortChoice" prefWidth="120" style="-fx-background-color: white;" />
+                        </HBox>
+                        <TableView fx:id="hotPostTableView" prefHeight="250" style="-fx-background-color: white;">
+                            <columns>
+                                <TableColumn fx:id="hotPostRankCol" prefWidth="60" text="排名" />
+                                <TableColumn fx:id="hotPostTitleCol" prefWidth="300" text="标题" />
+                                <TableColumn fx:id="hotPostBoardCol" prefWidth="100" text="板块" />
+                                <TableColumn fx:id="hotPostAuthorCol" prefWidth="100" text="作者" />
+                                <TableColumn fx:id="hotPostViewCol" prefWidth="70" text="浏览" />
+                                <TableColumn fx:id="hotPostLikeCol" prefWidth="70" text="点赞" />
+                                <TableColumn fx:id="hotPostCommentCol" prefWidth="70" text="评论" />
+                                <TableColumn fx:id="hotPostFavoriteCol" prefWidth="70" text="收藏" />
+                            </columns>
+                        </TableView>
+                    </VBox>
+                </content>
+            </Tab>
+            
+            <Tab closable="false" text="互动统计">
+                <content>
+                    <VBox spacing="15" style="-fx-padding: 20;">
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="互动趋势" />
+                            <ChoiceBox fx:id="interactionDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
+                            <Button fx:id="refreshInteractionBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                        </HBox>
+                        <GridPane hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="250" vgrow="ALWAYS" />
+                                <RowConstraints minHeight="250" vgrow="ALWAYS" />
+                            </rowConstraints>
+                            <LineChart fx:id="likeTrendChart" animated="false" title="点赞趋势" style="-fx-background-color: white;">
+                                <xAxis>
+                                    <CategoryAxis label="日期" />
+                                </xAxis>
+                                <yAxis>
+                                    <NumberAxis label="点赞数" />
+                                </yAxis>
+                            </LineChart>
+                            <LineChart fx:id="followTrendChart" animated="false" title="关注趋势" style="-fx-background-color: white;">
+                                <xAxis>
+                                    <CategoryAxis label="日期" />
+                                </xAxis>
+                                <yAxis>
+                                    <NumberAxis label="关注数" />
+                                </yAxis>
+                            </LineChart>
+                            <TableView fx:id="hotCommentTableView" prefHeight="200" style="-fx-background-color: white;" GridPane.rowIndex="1" GridPane.columnIndex="0" GridPane.columnSpan="2">
+                                <columns>
+                                    <TableColumn fx:id="hotCommentRankCol" prefWidth="60" text="排名" />
+                                    <TableColumn fx:id="hotCommentContentCol" prefWidth="400" text="评论内容" />
+                                    <TableColumn fx:id="hotCommentAuthorCol" prefWidth="100" text="作者" />
+                                    <TableColumn fx:id="hotCommentPostCol" prefWidth="200" text="所属帖子" />
+                                    <TableColumn fx:id="hotCommentLikeCol" prefWidth="80" text="获赞数" />
+                                    <TableColumn fx:id="hotCommentTimeCol" prefWidth="150" text="评论时间" />
+                                </columns>
+                            </TableView>
+                        </GridPane>
+                    </VBox>
+                </content>
+            </Tab>
+            
+            <Tab closable="false" text="内容安全统计">
+                <content>
+                    <VBox spacing="15" style="-fx-padding: 20;">
+                        <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="审核统计概览" />
+                        <GridPane fx:id="moderationGrid" hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="250" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="120" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                        </GridPane>
+                        <Separator />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="审核趋势" />
+                            <ChoiceBox fx:id="moderationDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
+                            <Button fx:id="refreshSafetyBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                        </HBox>
+                        <LineChart fx:id="moderationTrendChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
+                            <xAxis>
+                                <CategoryAxis fx:id="moderationXAxis" label="日期" />
+                            </xAxis>
+                            <yAxis>
+                                <NumberAxis fx:id="moderationYAxis" label="数量" />
+                            </yAxis>
+                        </LineChart>
+                        <Separator />
+                        <GridPane hgap="15" vgap="15" alignment="CENTER">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="ALWAYS" />
+                                <ColumnConstraints hgrow="ALWAYS" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints minHeight="300" vgrow="ALWAYS" />
+                            </rowConstraints>
+                            <VBox spacing="10" GridPane.columnIndex="0">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="违规类型分布" />
+                                <PieChart fx:id="violationTypeChart" animated="false" style="-fx-background-color: white;" />
+                            </VBox>
+                            <VBox spacing="10" GridPane.columnIndex="1">
+                                <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="举报统计" />
+                                <GridPane fx:id="reportStatsGrid" hgap="15" vgap="15" alignment="CENTER">
+                                    <columnConstraints>
+                                        <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="200" />
+                                        <ColumnConstraints hgrow="ALWAYS" minWidth="150" prefWidth="200" />
+                                    </columnConstraints>
+                                    <rowConstraints>
+                                        <RowConstraints minHeight="100" vgrow="SOMETIMES" />
+                                        <RowConstraints minHeight="100" vgrow="SOMETIMES" />
+                                    </rowConstraints>
+                                </GridPane>
+                            </VBox>
+                        </GridPane>
+                    </VBox>
+                </content>
+            </Tab>
+        </TabPane>
+    </center>
 </BorderPane>

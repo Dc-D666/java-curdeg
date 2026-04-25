@@ -1,24 +1,37 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
+import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.ComboBoxListCell;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.util.Duration;
+import javafx.util.StringConverter;
+
+import java.io.File;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.regex.Pattern;
 
 public class PersonalProfileController extends ToolController {
     @FXML
     private ImageView avatarImageView;
+    @FXML
+    private Button uploadAvatarButton;
     @FXML
     private Label studentIdLabel;
     @FXML
@@ -34,7 +47,7 @@ public class PersonalProfileController extends ToolController {
     @FXML
     private ComboBox<String> personGenderComboBox;
     @FXML
-    private TextField personBirthdayTextField;
+    private DatePicker personBirthdayPicker;
     @FXML
     private TextField personEmailTextField;
     @FXML
@@ -71,6 +84,14 @@ public class PersonalProfileController extends ToolController {
     private ComboBox<String> addressPrivacyComboBox;
     @FXML
     private ComboBox<String> introducePrivacyComboBox;
+    @FXML
+    private GridPane statsGrid;
+    @FXML
+    private VBox postCountBox;
+    @FXML
+    private VBox followingCountBox;
+    @FXML
+    private VBox followerCountBox;
 
     private User currentUser;
     private String originalNickname;
@@ -93,20 +114,31 @@ public class PersonalProfileController extends ToolController {
     private String originalAddressPrivacy;
     private String originalIntroducePrivacy;
 
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    
+    // 正则表达式
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final Pattern URL_PATTERN = Pattern.compile("^(https?|ftp)://.*$");
+
+    // 隐私选项的简化显示
+    private static final ObservableList<String> PRIVACY_OPTIONS = FXCollections.observableArrayList("公开", "仅关注可见", "私密");
+    private static final ObservableList<String> PRIVACY_VALUES = FXCollections.observableArrayList("PUBLIC", "FOLLOWING", "PRIVATE");
+
     @FXML
     public void initialize() {
         ObservableList<String> genderOptions = FXCollections.observableArrayList("", "男", "女");
         personGenderComboBox.setItems(genderOptions);
         
-        ObservableList<String> privacyOptions = FXCollections.observableArrayList("PUBLIC", "FOLLOWING", "PRIVATE");
-        namePrivacyComboBox.setItems(privacyOptions);
-        deptPrivacyComboBox.setItems(privacyOptions);
-        genderPrivacyComboBox.setItems(privacyOptions);
-        birthdayPrivacyComboBox.setItems(privacyOptions);
-        emailPrivacyComboBox.setItems(privacyOptions);
-        phonePrivacyComboBox.setItems(privacyOptions);
-        addressPrivacyComboBox.setItems(privacyOptions);
-        introducePrivacyComboBox.setItems(privacyOptions);
+        // 为所有隐私下拉框设置自定义显示
+        setupPrivacyComboBox(namePrivacyComboBox);
+        setupPrivacyComboBox(deptPrivacyComboBox);
+        setupPrivacyComboBox(genderPrivacyComboBox);
+        setupPrivacyComboBox(birthdayPrivacyComboBox);
+        setupPrivacyComboBox(emailPrivacyComboBox);
+        setupPrivacyComboBox(phonePrivacyComboBox);
+        setupPrivacyComboBox(addressPrivacyComboBox);
+        setupPrivacyComboBox(introducePrivacyComboBox);
         
         loadUserData();
         toggleEditMode(false);
@@ -114,6 +146,61 @@ public class PersonalProfileController extends ToolController {
         editButton.setOnAction(event -> onEdit());
         saveButton.setOnAction(event -> onSave());
         cancelButton.setOnAction(event -> onCancel());
+        uploadAvatarButton.setOnAction(event -> selectAndUploadAvatar());
+        avatarImageView.setOnMouseClicked(event -> selectAndUploadAvatar());
+        
+        // 设置统计卡片的点击事件
+        setupStatsCardEvents();
+    }
+
+    private void setupPrivacyComboBox(ComboBox<String> comboBox) {
+        comboBox.setItems(PRIVACY_OPTIONS);
+        comboBox.setConverter(new StringConverter<String>() {
+            @Override
+            public String toString(String object) {
+                if (object == null) return "";
+                int index = PRIVACY_VALUES.indexOf(object);
+                return index != -1 ? PRIVACY_OPTIONS.get(index) : object;
+            }
+
+            @Override
+            public String fromString(String string) {
+                if (string == null) return "";
+                int index = PRIVACY_OPTIONS.indexOf(string);
+                return index != -1 ? PRIVACY_VALUES.get(index) : string;
+            }
+        });
+    }
+
+    private void setupStatsCardEvents() {
+        // 发帖数点击跳转到 myPosts
+        postCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            AppStore.getMainFrameController().changeContent("myPosts", "我的帖子");
+        });
+        
+        // 关注数点击跳转到 myFollowers
+        followingCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            AppStore.getMainFrameController().changeContent("myFollowers", "我的关注");
+        });
+        
+        // 粉丝数点击跳转到 myFollowers
+        followerCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
+            AppStore.getMainFrameController().changeContent("myFollowers", "我的粉丝");
+        });
+        
+        // 添加悬停效果
+        addHoverEffect(postCountBox);
+        addHoverEffect(followingCountBox);
+        addHoverEffect(followerCountBox);
+    }
+
+    private void addHoverEffect(VBox box) {
+        box.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
+            box.setStyle("-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand; -fx-background-color: #e0e0e0;");
+        });
+        box.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
+            box.setStyle("-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand;");
+        });
     }
 
     private void loadUserData() {
@@ -150,7 +237,19 @@ public class PersonalProfileController extends ToolController {
         personNameTextField.setText(user.getPersonName() != null ? user.getPersonName() : "");
         personDeptTextField.setText(user.getPersonDept() != null ? user.getPersonDept() : "");
         personGenderComboBox.setValue(user.getPersonGender() != null ? user.getPersonGender() : "");
-        personBirthdayTextField.setText(user.getPersonBirthday() != null ? user.getPersonBirthday() : "");
+        
+        // 设置生日
+        if (user.getPersonBirthday() != null && !user.getPersonBirthday().isEmpty()) {
+            try {
+                LocalDate date = LocalDate.parse(user.getPersonBirthday(), DATE_FORMATTER);
+                personBirthdayPicker.setValue(date);
+            } catch (Exception e) {
+                personBirthdayPicker.setValue(null);
+            }
+        } else {
+            personBirthdayPicker.setValue(null);
+        }
+        
         personEmailTextField.setText(user.getPersonEmail() != null ? user.getPersonEmail() : "");
         personPhoneTextField.setText(user.getPersonPhone() != null ? user.getPersonPhone() : "");
         personAddressTextField.setText(user.getPersonAddress() != null ? user.getPersonAddress() : "");
@@ -159,14 +258,23 @@ public class PersonalProfileController extends ToolController {
         followingCountLabel.setText(user.getFollowingCount() != null ? String.valueOf(user.getFollowingCount()) : "0");
         followerCountLabel.setText(user.getFollowerCount() != null ? String.valueOf(user.getFollowerCount()) : "0");
         
-        namePrivacyComboBox.setValue(user.getNamePrivacy() != null ? user.getNamePrivacy() : "PUBLIC");
-        deptPrivacyComboBox.setValue(user.getDeptPrivacy() != null ? user.getDeptPrivacy() : "PUBLIC");
-        genderPrivacyComboBox.setValue(user.getGenderPrivacy() != null ? user.getGenderPrivacy() : "PUBLIC");
-        birthdayPrivacyComboBox.setValue(user.getBirthdayPrivacy() != null ? user.getBirthdayPrivacy() : "PUBLIC");
-        emailPrivacyComboBox.setValue(user.getEmailPrivacy() != null ? user.getEmailPrivacy() : "PUBLIC");
-        phonePrivacyComboBox.setValue(user.getPhonePrivacy() != null ? user.getPhonePrivacy() : "PUBLIC");
-        addressPrivacyComboBox.setValue(user.getAddressPrivacy() != null ? user.getAddressPrivacy() : "PUBLIC");
-        introducePrivacyComboBox.setValue(user.getIntroducePrivacy() != null ? user.getIntroducePrivacy() : "PUBLIC");
+        // 设置隐私选项
+        setPrivacyComboBoxValue(namePrivacyComboBox, user.getNamePrivacy());
+        setPrivacyComboBoxValue(deptPrivacyComboBox, user.getDeptPrivacy());
+        setPrivacyComboBoxValue(genderPrivacyComboBox, user.getGenderPrivacy());
+        setPrivacyComboBoxValue(birthdayPrivacyComboBox, user.getBirthdayPrivacy());
+        setPrivacyComboBoxValue(emailPrivacyComboBox, user.getEmailPrivacy());
+        setPrivacyComboBoxValue(phonePrivacyComboBox, user.getPhonePrivacy());
+        setPrivacyComboBoxValue(addressPrivacyComboBox, user.getAddressPrivacy());
+        setPrivacyComboBoxValue(introducePrivacyComboBox, user.getIntroducePrivacy());
+        
+        if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+            try {
+                Image avatarImage = new Image(user.getAvatarUrl(), true);
+                avatarImageView.setImage(avatarImage);
+            } catch (Exception e) {
+            }
+        }
         
         originalNickname = user.getNickname();
         originalSignature = user.getSignature();
@@ -189,7 +297,26 @@ public class PersonalProfileController extends ToolController {
         originalIntroducePrivacy = user.getIntroducePrivacy();
     }
 
+    private void setPrivacyComboBoxValue(ComboBox<String> comboBox, String value) {
+        if (value == null || value.isEmpty()) {
+            value = "PUBLIC";
+        }
+        int index = PRIVACY_VALUES.indexOf(value);
+        if (index != -1) {
+            comboBox.setValue(PRIVACY_OPTIONS.get(index));
+        } else {
+            comboBox.setValue(value);
+        }
+    }
+
     private void toggleEditMode(boolean isEditing) {
+        // 添加淡入淡出效果
+        FadeTransition fadeTransition = new FadeTransition(Duration.millis(300));
+        fadeTransition.setNode(statsGrid.getParent());
+        fadeTransition.setFromValue(0.5);
+        fadeTransition.setToValue(1.0);
+        fadeTransition.play();
+        
         nicknameTextField.setEditable(isEditing);
         nicknameTextField.setDisable(!isEditing);
         signatureTextArea.setEditable(isEditing);
@@ -201,8 +328,7 @@ public class PersonalProfileController extends ToolController {
         personDeptTextField.setEditable(isEditing);
         personDeptTextField.setDisable(!isEditing);
         personGenderComboBox.setDisable(!isEditing);
-        personBirthdayTextField.setEditable(isEditing);
-        personBirthdayTextField.setDisable(!isEditing);
+        personBirthdayPicker.setDisable(!isEditing);
         personEmailTextField.setEditable(isEditing);
         personEmailTextField.setDisable(!isEditing);
         personPhoneTextField.setEditable(isEditing);
@@ -211,6 +337,8 @@ public class PersonalProfileController extends ToolController {
         personAddressTextField.setDisable(!isEditing);
         personIntroduceTextArea.setEditable(isEditing);
         personIntroduceTextArea.setDisable(!isEditing);
+        
+        // 隐私设置下拉框：编辑模式显示完整，查看模式禁用但可通过Tooltip查看
         namePrivacyComboBox.setDisable(!isEditing);
         deptPrivacyComboBox.setDisable(!isEditing);
         genderPrivacyComboBox.setDisable(!isEditing);
@@ -220,6 +348,28 @@ public class PersonalProfileController extends ToolController {
         addressPrivacyComboBox.setDisable(!isEditing);
         introducePrivacyComboBox.setDisable(!isEditing);
         
+        // 为查看模式添加Tooltip
+        if (!isEditing) {
+            addTooltipToPrivacyComboBox(namePrivacyComboBox);
+            addTooltipToPrivacyComboBox(deptPrivacyComboBox);
+            addTooltipToPrivacyComboBox(genderPrivacyComboBox);
+            addTooltipToPrivacyComboBox(birthdayPrivacyComboBox);
+            addTooltipToPrivacyComboBox(emailPrivacyComboBox);
+            addTooltipToPrivacyComboBox(phonePrivacyComboBox);
+            addTooltipToPrivacyComboBox(addressPrivacyComboBox);
+            addTooltipToPrivacyComboBox(introducePrivacyComboBox);
+        } else {
+            // 移除Tooltip
+            namePrivacyComboBox.setTooltip(null);
+            deptPrivacyComboBox.setTooltip(null);
+            genderPrivacyComboBox.setTooltip(null);
+            birthdayPrivacyComboBox.setTooltip(null);
+            emailPrivacyComboBox.setTooltip(null);
+            phonePrivacyComboBox.setTooltip(null);
+            addressPrivacyComboBox.setTooltip(null);
+            introducePrivacyComboBox.setTooltip(null);
+        }
+        
         editButton.setVisible(!isEditing);
         editButton.setManaged(!isEditing);
         saveButton.setVisible(isEditing);
@@ -228,30 +378,57 @@ public class PersonalProfileController extends ToolController {
         cancelButton.setManaged(isEditing);
     }
 
+    private void addTooltipToPrivacyComboBox(ComboBox<String> comboBox) {
+        String value = comboBox.getValue();
+        if (value != null) {
+            int index = PRIVACY_OPTIONS.indexOf(value);
+            String description;
+            if (index == 0) {
+                description = "所有人可见";
+            } else if (index == 1) {
+                description = "仅您关注的人可见";
+            } else {
+                description = "仅您自己可见";
+            }
+            Tooltip tooltip = new Tooltip(description);
+            comboBox.setTooltip(tooltip);
+        }
+    }
+
     private void onEdit() {
         toggleEditMode(true);
     }
 
     private void onSave() {
-        String nickname = nicknameTextField.getText();
-        String signature = signatureTextArea.getText();
-        String avatarUrl = avatarUrlTextField.getText();
-        String personName = personNameTextField.getText();
-        String personDept = personDeptTextField.getText();
-        String personGender = personGenderComboBox.getValue();
-        String personBirthday = personBirthdayTextField.getText();
-        String personEmail = personEmailTextField.getText();
-        String personPhone = personPhoneTextField.getText();
-        String personAddress = personAddressTextField.getText();
-        String personIntroduce = personIntroduceTextArea.getText();
-        String namePrivacy = namePrivacyComboBox.getValue();
-        String deptPrivacy = deptPrivacyComboBox.getValue();
-        String genderPrivacy = genderPrivacyComboBox.getValue();
-        String birthdayPrivacy = birthdayPrivacyComboBox.getValue();
-        String emailPrivacy = emailPrivacyComboBox.getValue();
-        String phonePrivacy = phonePrivacyComboBox.getValue();
-        String addressPrivacy = addressPrivacyComboBox.getValue();
-        String introducePrivacy = introducePrivacyComboBox.getValue();
+        // 表单验证
+        if (!validateForm()) {
+            return;
+        }
+        
+        final String nickname = nicknameTextField.getText();
+        final String signature = signatureTextArea.getText();
+        final String avatarUrl = avatarUrlTextField.getText();
+        final String personName = personNameTextField.getText();
+        final String personDept = personDeptTextField.getText();
+        final String personGender = personGenderComboBox.getValue();
+        final String personBirthday;
+        if (personBirthdayPicker.getValue() != null) {
+            personBirthday = personBirthdayPicker.getValue().format(DATE_FORMATTER);
+        } else {
+            personBirthday = null;
+        }
+        final String personEmail = personEmailTextField.getText();
+        final String personPhone = personPhoneTextField.getText();
+        final String personAddress = personAddressTextField.getText();
+        final String personIntroduce = personIntroduceTextArea.getText();
+        final String namePrivacy = getPrivacyValue(namePrivacyComboBox.getValue());
+        final String deptPrivacy = getPrivacyValue(deptPrivacyComboBox.getValue());
+        final String genderPrivacy = getPrivacyValue(genderPrivacyComboBox.getValue());
+        final String birthdayPrivacy = getPrivacyValue(birthdayPrivacyComboBox.getValue());
+        final String emailPrivacy = getPrivacyValue(emailPrivacyComboBox.getValue());
+        final String phonePrivacy = getPrivacyValue(phonePrivacyComboBox.getValue());
+        final String addressPrivacy = getPrivacyValue(addressPrivacyComboBox.getValue());
+        final String introducePrivacy = getPrivacyValue(introducePrivacyComboBox.getValue());
 
         Task<User> task = new Task<User>() {
             @Override
@@ -287,6 +464,68 @@ public class PersonalProfileController extends ToolController {
         new Thread(task).start();
     }
 
+    private String getPrivacyValue(String displayValue) {
+        if (displayValue == null || displayValue.isEmpty()) {
+            return "PUBLIC";
+        }
+        int index = PRIVACY_OPTIONS.indexOf(displayValue);
+        return index != -1 ? PRIVACY_VALUES.get(index) : displayValue;
+    }
+
+    private boolean validateForm() {
+        boolean isValid = true;
+        
+        // 昵称验证：2-20字符
+        String nickname = nicknameTextField.getText();
+        if (nickname == null || nickname.trim().length() < 2 || nickname.trim().length() > 20) {
+            setFieldError(nicknameTextField, "昵称长度应在2-20个字符之间");
+            isValid = false;
+        } else {
+            clearFieldError(nicknameTextField);
+        }
+        
+        // 邮箱验证
+        String email = personEmailTextField.getText();
+        if (email != null && !email.isEmpty() && !EMAIL_PATTERN.matcher(email).matches()) {
+            setFieldError(personEmailTextField, "请输入有效的邮箱地址");
+            isValid = false;
+        } else {
+            clearFieldError(personEmailTextField);
+        }
+        
+        // 电话验证
+        String phone = personPhoneTextField.getText();
+        if (phone != null && !phone.isEmpty() && !PHONE_PATTERN.matcher(phone).matches()) {
+            setFieldError(personPhoneTextField, "请输入有效的11位手机号码");
+            isValid = false;
+        } else {
+            clearFieldError(personPhoneTextField);
+        }
+        
+        // URL验证
+        String url = avatarUrlTextField.getText();
+        if (url != null && !url.isEmpty() && !URL_PATTERN.matcher(url).matches()) {
+            setFieldError(avatarUrlTextField, "请输入有效的URL地址");
+            isValid = false;
+        } else {
+            clearFieldError(avatarUrlTextField);
+        }
+        
+        return isValid;
+    }
+
+    private void setFieldError(TextField field, String message) {
+        field.setStyle("-fx-border-color: red; -fx-border-width: 2px;");
+        Tooltip tooltip = new Tooltip(message);
+        tooltip.setStyle("-fx-text-fill: red;");
+        field.setTooltip(tooltip);
+    }
+
+    private void clearFieldError(TextField field) {
+        field.setStyle("");
+        field.setTooltip(null);
+    }
+
     private void onCancel() {
         nicknameTextField.setText(originalNickname != null ? originalNickname : "");
         signatureTextArea.setText(originalSignature != null ? originalSignature : "");
@@ -294,20 +533,125 @@ public class PersonalProfileController extends ToolController {
         personNameTextField.setText(originalPersonName != null ? originalPersonName : "");
         personDeptTextField.setText(originalPersonDept != null ? originalPersonDept : "");
         personGenderComboBox.setValue(originalPersonGender != null ? originalPersonGender : "");
-        personBirthdayTextField.setText(originalPersonBirthday != null ? originalPersonBirthday : "");
+        
+        // 恢复生日
+        if (originalPersonBirthday != null && !originalPersonBirthday.isEmpty()) {
+            try {
+                LocalDate date = LocalDate.parse(originalPersonBirthday, DATE_FORMATTER);
+                personBirthdayPicker.setValue(date);
+            } catch (Exception e) {
+                personBirthdayPicker.setValue(null);
+            }
+        } else {
+            personBirthdayPicker.setValue(null);
+        }
+        
         personEmailTextField.setText(originalPersonEmail != null ? originalPersonEmail : "");
         personPhoneTextField.setText(originalPersonPhone != null ? originalPersonPhone : "");
         personAddressTextField.setText(originalPersonAddress != null ? originalPersonAddress : "");
         personIntroduceTextArea.setText(originalPersonIntroduce != null ? originalPersonIntroduce : "");
-        namePrivacyComboBox.setValue(originalNamePrivacy != null ? originalNamePrivacy : "PUBLIC");
-        deptPrivacyComboBox.setValue(originalDeptPrivacy != null ? originalDeptPrivacy : "PUBLIC");
-        genderPrivacyComboBox.setValue(originalGenderPrivacy != null ? originalGenderPrivacy : "PUBLIC");
-        birthdayPrivacyComboBox.setValue(originalBirthdayPrivacy != null ? originalBirthdayPrivacy : "PUBLIC");
-        emailPrivacyComboBox.setValue(originalEmailPrivacy != null ? originalEmailPrivacy : "PUBLIC");
-        phonePrivacyComboBox.setValue(originalPhonePrivacy != null ? originalPhonePrivacy : "PUBLIC");
-        addressPrivacyComboBox.setValue(originalAddressPrivacy != null ? originalAddressPrivacy : "PUBLIC");
-        introducePrivacyComboBox.setValue(originalIntroducePrivacy != null ? originalIntroducePrivacy : "PUBLIC");
+        
+        // 恢复隐私设置
+        setPrivacyComboBoxValue(namePrivacyComboBox, originalNamePrivacy);
+        setPrivacyComboBoxValue(deptPrivacyComboBox, originalDeptPrivacy);
+        setPrivacyComboBoxValue(genderPrivacyComboBox, originalGenderPrivacy);
+        setPrivacyComboBoxValue(birthdayPrivacyComboBox, originalBirthdayPrivacy);
+        setPrivacyComboBoxValue(emailPrivacyComboBox, originalEmailPrivacy);
+        setPrivacyComboBoxValue(phonePrivacyComboBox, originalPhonePrivacy);
+        setPrivacyComboBoxValue(addressPrivacyComboBox, originalAddressPrivacy);
+        setPrivacyComboBoxValue(introducePrivacyComboBox, originalIntroducePrivacy);
+        
+        // 清除错误状态
+        clearFieldError(nicknameTextField);
+        clearFieldError(personEmailTextField);
+        clearFieldError(personPhoneTextField);
+        clearFieldError(avatarUrlTextField);
+        
+        if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
+            try {
+                Image avatarImage = new Image(originalAvatarUrl, true);
+                avatarImageView.setImage(avatarImage);
+            } catch (Exception e) {
+            }
+        }
+        
         toggleEditMode(false);
+    }
+
+    private void selectAndUploadAvatar() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择头像");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("图片文件", "*.jpg", "*.jpeg", "*.png", "*.gif"),
+            new FileChooser.ExtensionFilter("所有文件", "*.*")
+        );
+        
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile == null) {
+            return;
+        }
+        
+        try {
+            Image localImage = new Image(selectedFile.toURI().toString());
+            avatarImageView.setImage(localImage);
+        } catch (Exception e) {
+            showError("图片预览失败");
+            return;
+        }
+        
+        String originalButtonText = uploadAvatarButton.getText();
+        uploadAvatarButton.setDisable(true);
+        uploadAvatarButton.setText("上传中...");
+        
+        Task<String> task = new Task<String>() {
+            @Override
+            protected String call() {
+                return HttpRequestUtil.uploadImage(selectedFile.getAbsolutePath());
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                String avatarUrl = task.getValue();
+                if (avatarUrl != null && !avatarUrl.isBlank()) {
+                    avatarUrlTextField.setText(avatarUrl);
+                    try {
+                        Image avatarImage = new Image(avatarUrl, true);
+                        avatarImageView.setImage(avatarImage);
+                    } catch (Exception e) {
+                    }
+                    showSuccess("头像上传成功");
+                } else {
+                    showError("头像上传失败");
+                    if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
+                        try {
+                            Image avatarImage = new Image(originalAvatarUrl, true);
+                            avatarImageView.setImage(avatarImage);
+                        } catch (Exception e) {
+                        }
+                    }
+                }
+                uploadAvatarButton.setDisable(false);
+                uploadAvatarButton.setText(originalButtonText);
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("头像上传失败");
+                if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
+                    try {
+                        Image avatarImage = new Image(originalAvatarUrl, true);
+                        avatarImageView.setImage(avatarImage);
+                    } catch (Exception e) {
+                    }
+                }
+                uploadAvatarButton.setDisable(false);
+                uploadAvatarButton.setText(originalButtonText);
+            });
+        });
+        
+        new Thread(task).start();
     }
 
     private void showError(String message) {

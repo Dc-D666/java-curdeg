@@ -1,0 +1,34 @@
+# AI 写作助手功能 - Verification Checklist
+
+- [x] Checkpoint 1: 后端 AiWriteRequest 和 AiWriteResponse DTO 正确创建
+- [x] Checkpoint 2: AiWriteService 服务类正确实现，包含三个预设提示词
+- [x] Checkpoint 3: AiWriteService 的 System Prompt 严格要求大模型返回 JSON 格式
+- [x] Checkpoint 4: AiWriteService 包含完善的大模型返回结果解析和容错处理
+- [x] Checkpoint 5: BbsPostController 中新增了 /api/bbs/post/ai-write API 接口
+- [x] Checkpoint 6: API 接口正确使用 DataResponse 包装返回结果
+- [x] Checkpoint 7: 前端 AiWriteResponse 模型类正确创建
+- [x] Checkpoint 8: HttpRequestUtil 中新增 aiWrite 方法
+- [x] Checkpoint 9: post-publish.fxml 正确新增了 AI 指令输入区域 UI
+- [x] Checkpoint 10: UI 包含三个预设按钮、AI 指令输入框和 AI 生成按钮
+- [x] Checkpoint 11: PostPublishController 正确绑定了新增的 UI 控件
+- [x] Checkpoint 12: AI 指令输入框内容变化监听正确实现
+- [x] Checkpoint 13: AI 生成按钮根据输入框内容正确控制启用/禁用状态
+- [x] Checkpoint 14: "AI帮写"、"AI续写"、"AI润色"三个预设按钮点击事件正确实现
+- [x] Checkpoint 15: 点击预设按钮时正确填充对应的预定义提示词
+- [x] Checkpoint 16: AI 生成按钮点击事件正确实现
+- [x] Checkpoint 17: AI 生成时正确显示加载状态
+- [x] Checkpoint 18: 使用 Task 异步调用后端 API
+- [x] Checkpoint 19: 用户原始输入的标题和内容正确暂存
+- [x] Checkpoint 20: AI 生成结果正确填充到输入框
+- [x] Checkpoint 21: "采纳/弃用"确认对话框正确显示
+- [x] Checkpoint 22: 点击"采纳"按钮时正确保留 AI 生成内容
+- [x] Checkpoint 23: 点击"弃用"按钮时正确恢复用户原始内容
+- [x] Checkpoint 24: AI API 调用失败时正确处理
+- [x] Checkpoint 25: 网络异常时正确处理
+- [x] Checkpoint 26: 大模型返回格式错误时正确处理
+- [x] Checkpoint 27: 错误时正确显示友好的提示信息
+- [x] Checkpoint 28: 错误时 AI 生成按钮正确恢复可用状态
+- [x] Checkpoint 29: 错误时不影响用户原始内容
+- [x] Checkpoint 30: 端到端完整功能测试通过
+- [x] Checkpoint 31: UI 响应流畅，无卡顿
+- [x] Checkpoint 32: 日志输出规范完善

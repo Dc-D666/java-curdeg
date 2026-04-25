@@ -8,6 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -84,5 +88,43 @@ public class BbsFileService {
             return "";
         }
         return filename.substring(lastDotIndex + 1);
+    }
+    
+    public String downloadAndSaveImage(String imageUrl) {
+        log.info("Starting to download and save image from URL: {}", imageUrl);
+        
+        try {
+            URL url = URI.create(imageUrl).toURL();
+            URLConnection connection = url.openConnection();
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(30000);
+            
+            try (InputStream inputStream = connection.getInputStream()) {
+                String dateFolder = DateTimeTool.parseDateTime(new Date(), "yyyyMMdd");
+                log.info("Date folder for downloaded image: {}", dateFolder);
+                
+                String fullFolderPath = UPLOAD_FOLDER + dateFolder + File.separator;
+                File folder = new File(fullFolderPath);
+                if (!folder.exists()) {
+                    boolean created = folder.mkdirs();
+                    log.info("Folder created: {}, path: {}", created, fullFolderPath);
+                }
+                
+                String uniqueFileName = UUID.randomUUID().toString() + ".png";
+                String fullFilePath = fullFolderPath + uniqueFileName;
+                log.info("Saving downloaded image to: {}", fullFilePath);
+                
+                Path destPath = Paths.get(fullFilePath);
+                Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+                
+                String returnUrl = "/uploads/" + dateFolder + "/" + uniqueFileName;
+                log.info("Downloaded image saved successfully, returning URL: {}", returnUrl);
+                
+                return returnUrl;
+            }
+        } catch (IOException e) {
+            log.error("Failed to download and save image from URL: {}", imageUrl, e);
+            return null;
+        }
     }
 }

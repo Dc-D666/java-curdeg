@@ -1,12 +1,14 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.BbsComment;
+import cn.edu.sdu.java.server.models.BbsCommentLike;
 import cn.edu.sdu.java.server.models.BbsNotification;
 import cn.edu.sdu.java.server.models.BbsPost;
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.request.DataRequest;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
+import cn.edu.sdu.java.server.repositorys.BbsCommentLikeRepository;
 import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
@@ -28,15 +30,17 @@ public class BbsCommentService {
     private final UserRepository userRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
     private final SensitiveWordFilter sensitiveWordFilter;
+    private final BbsCommentLikeRepository bbsCommentLikeRepository;
 
     public BbsCommentService(BbsCommentRepository bbsCommentRepository, BbsPostRepository bbsPostRepository,
-                           UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository,
-                           SensitiveWordFilter sensitiveWordFilter) {
+                          UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository,
+                          SensitiveWordFilter sensitiveWordFilter, BbsCommentLikeRepository bbsCommentLikeRepository) {
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.sensitiveWordFilter = sensitiveWordFilter;
+        this.bbsCommentLikeRepository = bbsCommentLikeRepository;
     }
     
     private void createNotification(Long receiverId, Integer type, String title, String content) {
@@ -349,6 +353,68 @@ public class BbsCommentService {
             }
         }
 
+        bbsCommentLikeRepository.deleteByCommentId(comment.getId());
         bbsCommentRepository.delete(comment);
+    }
+
+    @Transactional
+    public DataResponse toggleLike(Long commentId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsComment> commentOptional = bbsCommentRepository.findById(commentId);
+        if (commentOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("评论不存在");
+        }
+
+        BbsComment comment = commentOptional.get();
+        if (comment.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("评论已下架");
+        }
+
+        boolean alreadyLiked = bbsCommentLikeRepository.existsByCommentIdAndUserId(commentId, currentUserId);
+        
+        if (alreadyLiked) {
+            bbsCommentLikeRepository.deleteByCommentIdAndUserId(commentId, currentUserId);
+            comment.setLikeCount(Math.max(0, comment.getLikeCount() - 1));
+        } else {
+            BbsCommentLike like = new BbsCommentLike();
+            like.setCommentId(commentId);
+            like.setUserId(currentUserId);
+            bbsCommentLikeRepository.saveAndFlush(like);
+            comment.setLikeCount(comment.getLikeCount() + 1);
+        }
+        
+        bbsCommentRepository.saveAndFlush(comment);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", !alreadyLiked);
+        result.put("likeCount", comment.getLikeCount());
+        result.put("comment", comment);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getLikeStatus(Long commentId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        boolean liked = false;
+        long likeCount = 0;
+        
+        Optional<BbsComment> commentOptional = bbsCommentRepository.findById(commentId);
+        if (commentOptional.isPresent()) {
+            likeCount = commentOptional.get().getLikeCount() != null ? commentOptional.get().getLikeCount() : 0;
+        }
+        
+        if (currentUserId != null) {
+            liked = bbsCommentLikeRepository.existsByCommentIdAndUserId(commentId, currentUserId);
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeCount);
+        
+        return CommonMethod.getReturnData(result);
     }
 }

@@ -45,4 +45,15 @@ public class BbsCommentController {
     public DataResponse deleteComment(@PathVariable Long id) {
         return bbsCommentService.deleteComment(id);
     }
+
+    @PostMapping("/{id}/like")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse toggleLike(@PathVariable Long id) {
+        return bbsCommentService.toggleLike(id);
+    }
+
+    @GetMapping("/{id}/like/status")
+    public DataResponse getLikeStatus(@PathVariable Long id) {
+        return bbsCommentService.getLikeStatus(id);
+    }
 }

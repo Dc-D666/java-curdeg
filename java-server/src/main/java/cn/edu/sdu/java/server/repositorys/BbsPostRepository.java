@@ -61,4 +61,55 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
                                                @Param("currentUserId") Long currentUserId,
                                                @Param("isAdmin") Boolean isAdmin,
                                                Pageable pageable);
+
+    @Query(value = "SELECT * FROM bbs_post p WHERE " +
+           "((p.moderation_status = 'pass' AND p.status = 1) OR " +
+           "(p.author_id = :currentUserId OR :isAdmin = true)) AND " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           "  (:searchType = 'fulltext' AND (p.title LIKE CONCAT('%', :keyword, '%') OR p.content LIKE CONCAT('%', :keyword, '%'))) OR " +
+           "  (:searchType != 'fulltext' AND p.title LIKE CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY p.create_time DESC",
+           countQuery = "SELECT COUNT(*) FROM bbs_post p WHERE " +
+           "((p.moderation_status = 'pass' AND p.status = 1) OR " +
+           "(p.author_id = :currentUserId OR :isAdmin = true)) AND " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           "  (:searchType = 'fulltext' AND (p.title LIKE CONCAT('%', :keyword, '%') OR p.content LIKE CONCAT('%', :keyword, '%'))) OR " +
+           "  (:searchType != 'fulltext' AND p.title LIKE CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY p.create_time DESC",
+           nativeQuery = true)
+    Page<BbsPost> searchPostsWithModerationByType(@Param("keyword") String keyword,
+                                                     @Param("searchType") String searchType,
+                                                     @Param("currentUserId") Long currentUserId,
+                                                     @Param("isAdmin") Boolean isAdmin,
+                                                     Pageable pageable);
+
+    // ==================== 统计功能扩展 ====================
+
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_post " +
+           "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyPostTrend(@Param("days") Integer days);
+
+    List<BbsPost> findTop20ByStatusOrderByLikeCountDesc(Integer status);
+    List<BbsPost> findTop20ByStatusOrderByCommentCountDesc(Integer status);
+    List<BbsPost> findTop20ByStatusOrderByViewCountDesc(Integer status);
+    List<BbsPost> findTop20ByStatusOrderByFavoriteCountDesc(Integer status);
+
+    @Query(value = "SELECT status, COUNT(*) as count FROM bbs_post GROUP BY status", nativeQuery = true)
+    List<Object[]> countPostsByStatus();
+
+    @Query(value = "SELECT CASE WHEN image_urls IS NOT NULL AND image_urls != '' THEN 'with_image' ELSE 'without_image' END as type, COUNT(*) as count FROM bbs_post GROUP BY type", nativeQuery = true)
+    List<Object[]> countPostsByImageStatus();
+
+    @Query(value = "SELECT board_id, COUNT(*) as count FROM bbs_post GROUP BY board_id ORDER BY count DESC", nativeQuery = true)
+    List<Object[]> countPostsByBoard();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_post", nativeQuery = true)
+    Long countTotalPosts();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
+    Long countTodayPosts();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'pending'", nativeQuery = true)
+    Long countPendingModerationPosts();
 }

@@ -19,7 +19,7 @@
          <children>
             <Label text="板块：" />
             <ComboBox fx:id="boardComboBox" prefWidth="150.0" />
-            <TextField fx:id="keywordTextField" prefWidth="600.0" promptText="搜索帖子标题或内容..." HBox.hgrow="ALWAYS" />
+            <TextField fx:id="keywordTextField" prefWidth="600.0" promptText="搜索帖子标题或内容...或在此粘贴分享链接" HBox.hgrow="ALWAYS" />
             <Button fx:id="searchButton" mnemonicParsing="false" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="搜索" />
             <Button fx:id="publishButton" mnemonicParsing="false" text="发布帖子" />
             <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新" />

@@ -133,6 +133,11 @@ public class BbsPostService {
         }
 
         BbsPost post = postOptional.get();
+        
+        // 增加浏览量
+        post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
+        bbsPostRepository.saveAndFlush(post);
+        
         fillPostAuthorInfo(post);
 
         return CommonMethod.getReturnData(post);
@@ -148,15 +153,15 @@ public class BbsPostService {
         if (title == null || title.isBlank()) {
             return CommonMethod.getReturnMessageError("参数错误：帖子标题不能为空");
         }
-        if (title.length() < 5 || title.length() > 100) {
-            return CommonMethod.getReturnMessageError("参数错误：帖子标题长度5-100");
+        if (title.length() > 256) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子标题长度不能超过256");
         }
 
         if (content == null || content.isBlank()) {
             return CommonMethod.getReturnMessageError("参数错误：帖子内容不能为空");
         }
-        if (content.length() < 10) {
-            return CommonMethod.getReturnMessageError("参数错误：帖子内容长度至少10");
+        if (content.length() > 20000) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子内容长度不能超过20000");
         }
 
         if (imageUrls != null && imageUrls.length() > 1000) {
@@ -297,16 +302,16 @@ public class BbsPostService {
 
         String title = dataRequest.getString("title");
         if (title != null && !title.isBlank()) {
-            if (title.length() < 5 || title.length() > 100) {
-                return CommonMethod.getReturnMessageError("参数错误：帖子标题长度5-100");
+            if (title.length() > 256) {
+                return CommonMethod.getReturnMessageError("参数错误：帖子标题长度不能超过256");
             }
             newTitle = title;
         }
 
         String content = dataRequest.getString("content");
         if (content != null) {
-            if (content.length() < 10) {
-                return CommonMethod.getReturnMessageError("参数错误：帖子内容长度至少10");
+            if (content.length() > 20000) {
+                return CommonMethod.getReturnMessageError("参数错误：帖子内容长度不能超过20000");
             }
             newContent = content;
         }
@@ -577,11 +582,108 @@ public class BbsPostService {
         Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
-        Page<BbsPost> postPage = bbsPostRepository.searchPostsWithModeration(
-                keyword, currentUserIdLong, isAdmin, pageable);
+        Page<BbsPost> postPage = bbsPostRepository.searchPostsWithModerationByType(
+                keyword, searchType, currentUserIdLong, isAdmin, pageable);
 
-        postPage.getContent().forEach(this::fillPostAuthorInfo);
+        // 填充信息并处理高亮
+        postPage.getContent().forEach(post -> {
+            fillPostAuthorInfo(post);
+            applyHighlight(post, keyword, searchType);
+        });
 
         return CommonMethod.getReturnData(postPage);
+    }
+
+    private void applyHighlight(BbsPost post, String keyword, String searchType) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            post.setHighlightTitle(post.getTitle());
+            post.setHighlightSnippet(extractSnippet(post.getContent()));
+            return;
+        }
+
+        // 对标题进行高亮处理
+        String highlightedTitle = highlightText(post.getTitle(), keyword);
+        post.setHighlightTitle(highlightedTitle);
+
+        // 对内容进行高亮并提取片段
+        String snippet = extractAndHighlightSnippet(post.getContent(), keyword);
+        post.setHighlightSnippet(snippet);
+    }
+
+    private String highlightText(String text, String keyword) {
+        if (text == null || keyword == null || keyword.trim().isEmpty()) {
+            return text;
+        }
+
+        String highlightStart = "<span style=\"color:red;font-weight:bold\">";
+        String highlightEnd = "</span>";
+
+        // 简单的不区分大小写替换
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+
+        int lastIndex = 0;
+        StringBuilder sb = new StringBuilder();
+        int index;
+
+        while ((index = lowerText.indexOf(lowerKeyword, lastIndex)) != -1) {
+            // 添加匹配前的部分
+            sb.append(text, lastIndex, index);
+            // 添加高亮标签和匹配内容
+            sb.append(highlightStart);
+            sb.append(text, index, index + keyword.length());
+            sb.append(highlightEnd);
+            // 更新位置
+            lastIndex = index + keyword.length();
+        }
+        // 添加剩余部分
+        sb.append(text, lastIndex, text.length());
+
+        return sb.toString();
+    }
+
+    private String extractAndHighlightSnippet(String content, String keyword) {
+        if (content == null) {
+            return "";
+        }
+
+        String cleanContent = content.replaceAll("\\s+", " ").trim();
+
+        // 如果内容很短，直接高亮返回
+        if (cleanContent.length() <= 200) {
+            return highlightText(cleanContent, keyword);
+        }
+
+        // 尝试找到关键词位置
+        int keywordIndex = cleanContent.toLowerCase().indexOf(keyword.toLowerCase());
+
+        String snippet;
+        if (keywordIndex >= 0) {
+            // 从关键词前后各截取一部分，构成片段
+            int start = Math.max(0, keywordIndex - 50);
+            int end = Math.min(cleanContent.length(), keywordIndex + keyword.length() + 150);
+            if (start > 0) {
+                snippet = "..." + cleanContent.substring(start, end) + "...";
+            } else {
+                snippet = cleanContent.substring(start, end) + "...";
+            }
+        } else {
+            // 如果没找到关键词，截取开头
+            snippet = cleanContent.substring(0, Math.min(200, cleanContent.length())) + "...";
+        }
+
+        return highlightText(snippet, keyword);
+    }
+
+    private String extractSnippet(String content) {
+        if (content == null) {
+            return "";
+        }
+
+        String cleanContent = content.replaceAll("\\s+", " ").trim();
+        if (cleanContent.length() <= 200) {
+            return cleanContent;
+        }
+        return cleanContent.substring(0, 200) + "...";
     }
 }

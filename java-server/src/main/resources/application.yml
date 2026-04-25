@@ -41,7 +41,20 @@ spring:
       enabled: true
       force: true
   jmx:
-    enabled:false
+    enabled: false
+# 邮件服务配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 3303188265@qq.com
+    password: xadlxijeyjaecich
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 attach:
   folder: ./uploads/
 # AI内容审核配置
@@ -50,7 +63,15 @@ moderation:
   api:
     url: https://xplt.sdu.edu.cn:4000/v1/chat/completions
     key: sk-oXWyxru5nwdf-iDN6a8sJw
-    model: Ali-dashscope/Qwen3.5-Flash
+    model: Ali-dashscope/DeepSeek-V3.2
+    timeout: 30000
+# AI图片生成配置
+ai-image:
+  enabled: true
+  api:
+    url: https://open.bigmodel.cn/api/paas/v4/images/generations
+    key: 68c1b48b1b0448fdb7e11e25e8ff107d.JyhwtU9wuCB1aAE5
+    model: cogview-3-flash
     timeout: 30000
 logging:
   config: classpath:loggback.xml

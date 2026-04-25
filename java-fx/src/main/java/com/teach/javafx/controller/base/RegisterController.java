@@ -4,13 +4,18 @@ import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.request.LoginRequest;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
+
 import java.io.IOException;
 import java.util.regex.Pattern;
 
@@ -22,6 +27,10 @@ public class RegisterController {
     @FXML
     private TextField emailField;
     @FXML
+    private TextField emailCodeField;
+    @FXML
+    private Button sendCodeButton;
+    @FXML
     private PasswordField passwordField;
     @FXML
     private PasswordField confirmPasswordField;
@@ -31,6 +40,9 @@ public class RegisterController {
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
             "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$"
     );
+
+    private int countdownSeconds = 0;
+    private Timeline countdownTimeline;
 
     @FXML
     public void initialize() {
@@ -50,6 +62,12 @@ public class RegisterController {
         
         emailField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
+                emailCodeField.requestFocus();
+            }
+        });
+        
+        emailCodeField.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ENTER) {
                 passwordField.requestFocus();
             }
         });
@@ -68,10 +86,57 @@ public class RegisterController {
     }
 
     @FXML
+    protected void onSendCodeButtonClick() {
+        String email = emailField.getText();
+        
+        if (email == null || email.isEmpty()) {
+            MessageDialog.showDialog("请先输入邮箱");
+            return;
+        }
+        
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            MessageDialog.showDialog("邮箱格式不正确");
+            return;
+        }
+        
+        String msg = HttpRequestUtil.sendEmailCode(email);
+        if (msg != null) {
+            MessageDialog.showDialog(msg);
+            return;
+        }
+        
+        startCountdown();
+    }
+
+    private void startCountdown() {
+        countdownSeconds = 60;
+        sendCodeButton.setDisable(true);
+        sendCodeButton.setText("60秒后重发");
+        
+        if (countdownTimeline != null) {
+            countdownTimeline.stop();
+        }
+        
+        countdownTimeline = new Timeline(new KeyFrame(Duration.seconds(1), event -> {
+            countdownSeconds--;
+            if (countdownSeconds > 0) {
+                sendCodeButton.setText(countdownSeconds + "秒后重发");
+            } else {
+                sendCodeButton.setDisable(false);
+                sendCodeButton.setText("发送验证码");
+                countdownTimeline.stop();
+            }
+        }));
+        countdownTimeline.setCycleCount(Timeline.INDEFINITE);
+        countdownTimeline.play();
+    }
+
+    @FXML
     protected void onRegisterButtonClick() {
         String studentId = studentIdField.getText();
         String nickname = nicknameField.getText();
         String email = emailField.getText();
+        String emailCode = emailCodeField.getText();
         String password = passwordField.getText();
         String confirmPassword = confirmPasswordField.getText();
 
@@ -99,6 +164,14 @@ public class RegisterController {
             MessageDialog.showDialog("邮箱格式不正确");
             return;
         }
+        if (emailCode == null || emailCode.isEmpty()) {
+            MessageDialog.showDialog("请输入邮箱验证码");
+            return;
+        }
+        if (emailCode.length() != 6) {
+            MessageDialog.showDialog("验证码必须是6位数字");
+            return;
+        }
         if (password == null || password.isEmpty()) {
             MessageDialog.showDialog("密码不能为空");
             return;
@@ -116,7 +189,7 @@ public class RegisterController {
             return;
         }
 
-        String msg = HttpRequestUtil.registerUser(studentId, nickname, email, password);
+        String msg = HttpRequestUtil.registerUser(studentId, nickname, email, password, emailCode);
         if (msg != null) {
             MessageDialog.showDialog(msg);
             return;

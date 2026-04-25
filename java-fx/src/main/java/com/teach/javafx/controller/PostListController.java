@@ -225,14 +225,22 @@ public class PostListController extends ToolController {
         });
 
         searchButton.setOnAction(event -> {
-            currentKeyword = keywordTextField.getText();
+            String input = keywordTextField.getText();
+            if (tryOpenPostFromLink(input)) {
+                return;
+            }
+            currentKeyword = input;
             System.out.println("Search clicked, keyword=" + currentKeyword);
             currentPageNum = 1;
             loadPostList();
         });
         
         keywordTextField.setOnAction(event -> {
-            currentKeyword = keywordTextField.getText();
+            String input = keywordTextField.getText();
+            if (tryOpenPostFromLink(input)) {
+                return;
+            }
+            currentKeyword = input;
             System.out.println("Enter pressed, keyword=" + currentKeyword);
             currentPageNum = 1;
             loadPostList();
@@ -454,5 +462,30 @@ public class PostListController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private boolean tryOpenPostFromLink(String input) {
+        if (input == null || input.trim().isEmpty()) {
+            return false;
+        }
+
+        String trimmedInput = input.trim();
+
+        // 从文本中提取 bbs://post/{id} 链接（可以包含其他文本）
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("bbs://post/(\\d+)");
+        java.util.regex.Matcher matcher = pattern.matcher(trimmedInput);
+
+        if (matcher.find()) {
+            try {
+                Long postId = Long.parseLong(matcher.group(1));
+                openPostDetail(postId);
+                return true;
+            } catch (NumberFormatException e) {
+                // 解析失败，继续正常搜索
+                return false;
+            }
+        }
+
+        return false;
     }
 }

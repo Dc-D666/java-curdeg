@@ -59,16 +59,16 @@ public class PostEditController {
             showError("标题不能为空");
             return;
         }
-        if (title.length() < 5 || title.length() > 100) {
-            showError("标题长度必须在5-100个字符之间");
+        if (title.length() > 256) {
+            showError("标题不能超过256个字符");
             return;
         }
         if (content.isEmpty()) {
             showError("内容不能为空");
             return;
         }
-        if (content.length() < 10) {
-            showError("内容长度至少需要10个字符");
+        if (content.length() > 20000) {
+            showError("内容不能超过20000个字符");
             return;
         }
 

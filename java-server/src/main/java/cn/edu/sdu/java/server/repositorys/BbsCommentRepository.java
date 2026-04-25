@@ -27,4 +27,24 @@ public interface BbsCommentRepository extends JpaRepository<BbsComment, Long> {
 
     @Query("SELECT SUM(c.likeCount) FROM BbsComment c WHERE c.authorId = :authorId")
     Integer sumLikeCountByAuthorId(@Param("authorId") Long authorId);
+
+    // ==================== 统计功能扩展 ====================
+
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_comment " +
+           "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyCommentTrend(@Param("days") Integer days);
+
+    List<BbsComment> findTop10ByStatusOrderByLikeCountDesc(Integer status);
+
+    List<BbsComment> findTop5ByPostIdAndStatusOrderByLikeCountDesc(Long postId, Integer status);
+
+    @Query(value = "SELECT * FROM bbs_comment WHERE post_id = :postId AND status = :status ORDER BY like_count DESC LIMIT :n", nativeQuery = true)
+    List<BbsComment> findTopNByPostIdAndStatusOrderByLikeCountDesc(@Param("postId") Long postId, @Param("status") Integer status, @Param("n") int n);
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_comment", nativeQuery = true)
+    Long countTotalComments();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_comment WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
+    Long countTodayComments();
 }

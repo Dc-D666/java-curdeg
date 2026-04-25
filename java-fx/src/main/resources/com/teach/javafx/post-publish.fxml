@@ -6,55 +6,108 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.ProgressBar?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.shape.Rectangle?>
 
 <BorderPane fx:controller="com.teach.javafx.controller.PostPublishController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-   <center>
-      <VBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">
-         <padding>
-            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-         </padding>
-         <children>
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Label text="标题：" />
-                  <TextField fx:id="titleTextField" prefWidth="400.0" />
-               </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Label text="板块：" />
-                  <ComboBox fx:id="boardComboBox" prefWidth="200.0" />
-               </children>
-            </HBox>
-            <VBox alignment="CENTER_LEFT" spacing="5.0">
-               <children>
-                  <Label text="内容：" />
-                  <TextArea fx:id="contentTextArea" prefHeight="300.0" prefWidth="600.0" wrapText="true" />
-               </children>
-            </VBox>
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Label text="图片 URL（逗号分隔）：" />
-                  <TextField fx:id="imageUrlsTextField" prefWidth="400.0" />
-               </children>
-            </HBox>
-            <HBox alignment="CENTER_LEFT" spacing="10.0">
-               <children>
-                  <Button fx:id="selectImageButton" mnemonicParsing="false" text="选择图片" />
-                  <ImageView fx:id="imagePreview" fitHeight="200.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
-               </children>
-            </HBox>
+    <center>
+        <VBox alignment="TOP_LEFT" spacing="15.0" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
+            </padding>
+            
+            <!-- 基本信息区域 -->
+            <TitledPane text="基本信息" animated="false">
+                <VBox spacing="12.0">
+                    <padding>
+                        <Insets bottom="15.0" left="10.0" right="10.0" top="10.0" />
+                    </padding>
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label text="标题:" style="-fx-font-weight: bold; -fx-min-width: 60px;" />
+                        <TextField fx:id="titleTextField" prefWidth="500.0" promptText="请输入帖子标题（最多256字）" />
+                        <Label fx:id="titleCountLabel" text="0/256" style="-fx-text-fill: #666; -fx-min-width: 60px;" />
+                    </HBox>
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Label text="板块:" style="-fx-font-weight: bold; -fx-min-width: 60px;" />
+                        <ComboBox fx:id="boardComboBox" prefWidth="250.0" promptText="请选择板块" />
+                    </HBox>
+                </VBox>
+            </TitledPane>
+            
+            <!-- 内容编辑区域 -->
+            <TitledPane text="帖子内容" animated="false">
+                <VBox spacing="8.0">
+                    <padding>
+                        <Insets bottom="15.0" left="10.0" right="10.0" top="10.0" />
+                    </padding>
+                    <TextArea fx:id="contentTextArea" prefHeight="200.0" prefWidth="700.0" wrapText="true" promptText="请输入帖子内容（最多20000字）" />
+                    <HBox alignment="CENTER_RIGHT" spacing="10.0">
+                        <Label fx:id="contentCountLabel" text="0/20000" style="-fx-text-fill: #666;" />
+                    </HBox>
+                </VBox>
+            </TitledPane>
+            
+            <!-- AI写作助手区域（可折叠） -->
+            <TitledPane fx:id="aiAssistantPane" text="AI写作助手" animated="true" expanded="false">
+                <VBox spacing="10.0">
+                    <padding>
+                        <Insets bottom="15.0" left="10.0" right="10.0" top="10.0" />
+                    </padding>
+                    <HBox spacing="10.0">
+                        <Button fx:id="aiHelpWriteButton" mnemonicParsing="false" text="AI帮写" style="-fx-background-color: #1890ff; -fx-text-fill: white; -fx-min-width: 80px;" />
+                        <Button fx:id="aiContinueButton" mnemonicParsing="false" text="AI续写" style="-fx-background-color: #52c41a; -fx-text-fill: white; -fx-min-width: 80px;" />
+                        <Button fx:id="aiPolishButton" mnemonicParsing="false" text="AI润色" style="-fx-background-color: #722ed1; -fx-text-fill: white; -fx-min-width: 80px;" />
+                    </HBox>
+                    <TextArea fx:id="aiInstructionTextArea" prefHeight="80.0" prefWidth="700.0" wrapText="true" promptText="输入您想让AI帮您做什么，例如：写一篇关于校园生活的帖子..." />
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Button fx:id="aiGenerateButton" disable="true" mnemonicParsing="false" text="AI生成" style="-fx-background-color: #ff7a45; -fx-text-fill: white; -fx-min-width: 100px;" />
+                        <Label fx:id="aiStatusLabel" text="" style="-fx-text-fill: #666;" />
+                    </HBox>
+                    <!-- AI 生成进度条 - 使用JavaFX自带ProgressBar -->
+                    <VBox fx:id="aiProgressContainer" spacing="5.0" visible="false" managed="false">
+                        <ProgressBar fx:id="aiProgressBar" prefWidth="700.0" prefHeight="25.0" progress="0.0" style="-fx-accent: #ff7a45; -fx-pref-height: 25px;" />
+                        <Label fx:id="aiProgressLabel" text="" style="-fx-text-fill: #666;" />
+                    </VBox>
+                </VBox>
+            </TitledPane>
+            
+            <!-- 媒体附件区域 -->
+            <TitledPane text="图片附件" animated="true">
+                <VBox spacing="12.0">
+                    <padding>
+                        <Insets bottom="15.0" left="10.0" right="10.0" top="10.0" />
+                    </padding>
+                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                        <Button fx:id="selectImageButton" mnemonicParsing="false" text="选择图片" style="-fx-background-color: #2f54eb; -fx-text-fill: white;" />
+                        <Button fx:id="aiImageButton" mnemonicParsing="false" text="一键配图" style="-fx-background-color: #ff7a45; -fx-text-fill: white;" />
+                        <Label fx:id="imageUploadStatusLabel" text="" style="-fx-text-fill: #666;" />
+                    </HBox>
+                    <FlowPane fx:id="imagePreviewPane" hgap="10.0" vgap="10.0" prefWidth="700.0" prefHeight="150.0" style="-fx-border-color: #e8e8e8; -fx-border-radius: 4; -fx-background-color: #fafafa; -fx-background-radius: 4;" />
+                    <HBox alignment="CENTER_LEFT" spacing="10.0" visible="false" managed="false">
+                        <Label text="图片URL:" />
+                        <TextField fx:id="imageUrlsTextField" prefWidth="500.0" promptText="图片URL将在此显示" />
+                    </HBox>
+                </VBox>
+            </TitledPane>
+            
+            <!-- 操作按钮区域 -->
             <HBox alignment="CENTER" spacing="20.0">
-               <children>
-                  <Button fx:id="publishButton" mnemonicParsing="false" prefWidth="100.0" text="发布" />
-                  <Button fx:id="cancelButton" mnemonicParsing="false" prefWidth="100.0" text="取消" />
-               </children>
+                <padding>
+                    <Insets top="10.0" />
+                </padding>
+                <Button fx:id="previewButton" mnemonicParsing="false" prefWidth="100.0" text="预览" style="-fx-background-color: #13c2c2; -fx-text-fill: white;" />
+                <Button fx:id="saveDraftButton" mnemonicParsing="false" prefWidth="100.0" text="保存草稿" />
+                <Button fx:id="publishButton" mnemonicParsing="false" prefWidth="100.0" text="发布" style="-fx-background-color: #52c41a; -fx-text-fill: white;" />
+                <Button fx:id="cancelButton" mnemonicParsing="false" prefWidth="100.0" text="取消" />
             </HBox>
-         </children>
-      </VBox>
-   </center>
+        </VBox>
+    </center>
 </BorderPane>

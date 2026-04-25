@@ -53,4 +53,37 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     @Query("SELECT u FROM User u WHERE u.userType.id = 1 OR u.userType.id = 2")
     List<User> findAdmins();
+
+    // ==================== 统计功能扩展 ====================
+
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM user " +
+           "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyUserGrowth(@Param("days") Integer days);
+
+    List<User> findTop20ByIsBannedOrderByPostCountDesc(Boolean isBanned);
+    List<User> findTop20ByIsBannedOrderByCommentCountDesc(Boolean isBanned);
+
+    @Query(value = "SELECT " +
+           "CASE WHEN post_count = 0 THEN '0' " +
+           "WHEN post_count BETWEEN 1 AND 5 THEN '1-5' " +
+           "WHEN post_count BETWEEN 6 AND 20 THEN '6-20' " +
+           "WHEN post_count BETWEEN 21 AND 50 THEN '21-50' " +
+           "ELSE '50+' END as activity_range, " +
+           "COUNT(*) as count FROM user GROUP BY activity_range ORDER BY activity_range", nativeQuery = true)
+    List<Object[]> countUserActivityDistribution();
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.isBanned = true")
+    Long countBannedUsers();
+
+    List<User> findByIsBanned(Boolean isBanned);
+
+    @Query(value = "SELECT COUNT(*) FROM user", nativeQuery = true)
+    Long countTotalUsers();
+
+    @Query(value = "SELECT COUNT(*) FROM user WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
+    Long countTodayNewUsers();
+
+    @Query(value = "SELECT COUNT(*) FROM user WHERE last_login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)", nativeQuery = true)
+    Long countMonthlyActiveUsers();
 }

@@ -35,8 +35,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder encoder;
+    private final EmailVerificationService verificationService;
 
-    public AuthService(PersonRepository personRepository, UserRepository userRepository, UserTypeRepository userTypeRepository, StudentRepository studentRepository,AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder, ResourceLoader resourceLoader) {
+    public AuthService(PersonRepository personRepository, UserRepository userRepository, UserTypeRepository userTypeRepository, StudentRepository studentRepository, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder encoder, ResourceLoader resourceLoader, EmailVerificationService verificationService) {
         this.personRepository = personRepository;
         this.userRepository = userRepository;
         this.userTypeRepository = userTypeRepository;
@@ -44,6 +45,7 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.encoder = encoder;
+        this.verificationService = verificationService;
     }
     public ResponseEntity<?> authenticateUser(LoginRequest loginRequest) {
 
@@ -99,6 +101,17 @@ public class AuthService {
         String password = dataRequest.getString("password");
         String perName = dataRequest.getString("perName");
         String email = dataRequest.getString("email");
+        String emailCode = dataRequest.getString("emailCode");
+
+        if (emailCode == null || emailCode.isEmpty()) {
+            return CommonMethod.getReturnMessageError("请输入邮箱验证码！");
+        }
+
+        String verifyError = verificationService.verifyCode(email, emailCode, "REGISTER");
+        if (verifyError != null) {
+            return CommonMethod.getReturnMessageError(verifyError);
+        }
+
         Optional<User> uOp = userRepository.findByUserName(username);
         if(uOp.isPresent()) {
             return CommonMethod.getReturnMessageError("用户已经存在，不能注册！");
