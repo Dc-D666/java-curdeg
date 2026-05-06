@@ -84,7 +84,7 @@ public class PostPublishController extends ToolController {
     private Thread aiProgressThread;
     private volatile boolean aiRunning = false;
     private long aiStartTime = 0;
-    private static final long TOTAL_EXPECTED_TIME = 6000; // 假设总共需要6秒
+    private static final long TOTAL_EXPECTED_TIME = 10000; // 假设总共需要10秒
     
     // 保存原始内容，用于"弃用"功能
     private String originalTitle;
@@ -729,12 +729,23 @@ public class PostPublishController extends ToolController {
                 // 计算已经过去的时间
                 long elapsed = System.currentTimeMillis() - aiStartTime;
                 
-                // 计算进度百分比 (0.0-0.95)
-                double progress = (double) elapsed / TOTAL_EXPECTED_TIME;
+                // 计算进度百分比 (先快后慢，到99.5%)
+                double rawProgress = (double) elapsed / TOTAL_EXPECTED_TIME;
+                // 使用平滑函数，先快后慢
+                double progress;
+                if (rawProgress < 0.3) {
+                    progress = rawProgress * 1.0; // 快进阶段（100%速度）
+                } else if (rawProgress < 0.6) {
+                    progress = 0.3 + (rawProgress - 0.3) * 0.8; // 中等阶段（80%速度）
+                } else if (rawProgress < 0.9) {
+                    progress = 0.54 + (rawProgress - 0.6) * 0.6; // 慢速阶段（60%速度）
+                } else {
+                    progress = 0.72 + (rawProgress - 0.9) * 0.2; // 极慢阶段（20%速度）
+                }
                 
-                // 限制最大进度
-                if (progress > 0.95) {
-                    progress = 0.95;
+                // 限制最大进度为99.5%
+                if (progress > 0.995) {
+                    progress = 0.995;
                 }
                 
                 // 根据时间选择状态文本
@@ -850,5 +861,28 @@ public class PostPublishController extends ToolController {
     
     public void setMainFrameController(com.teach.javafx.controller.base.MainFrameController mainFrameController) {
         this.mainFrameController = mainFrameController;
+    }
+    
+    /**
+     * 预填标题
+     */
+    public void prefillTitle(String title) {
+        if (title != null && !title.isBlank()) {
+            titleTextField.setText(title);
+            updateWordCount();
+        }
+    }
+    
+    /**
+     * 预填帖子标题和内容
+     */
+    public void prefillPost(String title, String content) {
+        if (title != null && !title.isBlank()) {
+            titleTextField.setText(title);
+        }
+        if (content != null && !content.isBlank()) {
+            contentTextArea.setText(content);
+        }
+        updateWordCount();
     }
 }

@@ -1,6 +1,7 @@
 
 package cn.edu.sdu.java.server.services;
 
+import cn.edu.sdu.java.server.configs.AiSearchConfig;
 import cn.edu.sdu.java.server.configs.ModerationConfig;
 import cn.edu.sdu.java.server.models.BbsComment;
 import cn.edu.sdu.java.server.models.BbsPost;
@@ -21,10 +22,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -48,21 +53,46 @@ public class AiSearchService {
 6. 使用Markdown格式：**加粗**, *斜体*, ~~删除线~~
 7. 重要的关键词或重点内容用[红色]标红文本[/红色]标红
 8. 段落之间用换行分隔
-"""; 
+
+【发帖建议】
+在回答结束后**单独一段**添加发帖建议：
+[SUGGEST_POST]
+标题：{推荐的帖子标题}
+内容：{推荐的帖子初始内容}
+[/SUGGEST_POST]
+""";
+ 
+
+    private static final String KEYWORD_REFACTOR_PROMPT = """
+你是校园论坛搜索关键词优化专家。请分析用户的问题，提取1-2个最核心的搜索关键词。
+
+【用户问题】
+{question}
+
+【要求】
+1. 只提取{keywordCount}个最核心的关键词，不要太多
+2. 关键词要简洁，直接使用用户问题中的核心词汇
+3. 每个关键词用逗号分隔
+4. 只输出关键词列表，不要其他解释
+5. 输出格式：关键词1, 关键词2
+""";
 
     private final BbsPostService bbsPostService;
     private final BbsCommentRepository bbsCommentRepository;
     private final RestTemplate restTemplate;
     private final ModerationConfig moderationConfig;
+    private final AiSearchConfig aiSearchConfig;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
     public AiSearchService(BbsPostService bbsPostService, BbsCommentRepository bbsCommentRepository,
-                          RestTemplate restTemplate, ModerationConfig moderationConfig, ObjectMapper objectMapper) {
+                          RestTemplate restTemplate, ModerationConfig moderationConfig, 
+                          AiSearchConfig aiSearchConfig, ObjectMapper objectMapper) {
         this.bbsPostService = bbsPostService;
         this.bbsCommentRepository = bbsCommentRepository;
         this.restTemplate = restTemplate;
         this.moderationConfig = moderationConfig;
+        this.aiSearchConfig = aiSearchConfig;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
     }
@@ -94,32 +124,201 @@ public class AiSearchService {
     }
 
     /**
-     * 搜索帖子和评论（供流式接口使用）
+     * 搜索帖子和评论（供流式接口使用）- 增强版本，支持关键词重构
      */
     public List<BbsPost> searchPostsOnly(String keyword) {
-        log.info("开始搜索帖子... (搜索模式: fulltext全文搜索)");
-        DataResponse searchResponse = bbsPostService.searchPosts(keyword, "fulltext", 1, 5);
+        log.debug("开始增强版搜索帖子，原始关键词: {}", keyword);
+        
+        // 检查配置是否启用关键词重构
+        if (!aiSearchConfig.isEnabled()) {
+            log.debug("关键词重构功能未启用，使用原始搜索流程");
+            return searchWithSingleKeyword(keyword);
+        }
+        
+        try {
+            // 调用关键词重构
+            List<String> refactoredKeywords = refactorKeywords(keyword);
+            log.debug("重构后的关键词列表: {}", refactoredKeywords);
+            
+            if (refactoredKeywords.isEmpty()) {
+                log.warn("未获得有效重构关键词，回退到原始搜索");
+                return searchWithSingleKeyword(keyword);
+            }
+            
+            // 使用重构后的关键词进行多关键词搜索
+            List<BbsPost> posts = searchWithMultipleKeywords(refactoredKeywords);
+            log.info("增强版搜索完成，共找到 {} 个帖子", posts.size());
+            return posts;
+            
+        } catch (Exception e) {
+            log.error("关键词重构搜索流程出错，回退到原始搜索: {}", e.getMessage(), e);
+            return searchWithSingleKeyword(keyword);
+        }
+    }
+    
+    /**
+     * 使用单个关键词搜索（原始流程）
+     */
+    private List<BbsPost> searchWithSingleKeyword(String keyword) {
+        log.debug("开始搜索帖子... (单关键词)");
+        DataResponse searchResponse = bbsPostService.searchPosts(keyword, "fulltext", 1, aiSearchConfig.getResultCount());
         Page<BbsPost> postPage = (Page<BbsPost>) searchResponse.getData();
         List<BbsPost> posts = postPage != null ? postPage.getContent() : new ArrayList<>();
-        log.info("搜索完成，找到 {} 个相关帖子", posts.size());
+        log.debug("搜索完成，找到 {} 个相关帖子", posts.size());
         return posts;
+    }
+    
+    /**
+     * 使用多个关键词进行搜索
+     */
+    public List<BbsPost> searchWithMultipleKeywords(List<String> keywords) {
+        log.debug("开始多关键词搜索，关键词数量: {}, 关键词列表: {}", keywords.size(), keywords);
+        
+        List<List<BbsPost>> allResults = new ArrayList<>();
+        
+        for (String keyword : keywords) {
+            try {
+                log.debug("正在搜索关键词: [{}]", keyword);
+                DataResponse searchResponse = bbsPostService.searchPosts(keyword, "fulltext", 1, aiSearchConfig.getResultCount());
+                Page<BbsPost> postPage = (Page<BbsPost>) searchResponse.getData();
+                List<BbsPost> posts = postPage != null ? postPage.getContent() : new ArrayList<>();
+                log.debug("关键词 [{}] 找到 {} 个帖子", keyword, posts.size());
+                allResults.add(posts);
+            } catch (Exception e) {
+                log.error("搜索关键词 [{}] 时出错: {}", keyword, e.getMessage(), e);
+            }
+        }
+        
+        log.debug("多关键词搜索完成，开始合并去重");
+        List<BbsPost> mergedPosts = mergeAndDeduplicatePosts(allResults);
+        log.debug("合并去重后有 {} 个帖子，开始排序", mergedPosts.size());
+        
+        List<BbsPost> sortedPosts = sortPosts(mergedPosts);
+        
+        // 限制结果数量
+        int limit = aiSearchConfig.getResultCount();
+        if (sortedPosts.size() > limit) {
+            sortedPosts = sortedPosts.subList(0, limit);
+        }
+        
+        log.debug("多关键词搜索处理完成，最终返回 {} 个帖子", sortedPosts.size());
+        return sortedPosts;
+    }
+    
+    /**
+     * 合并搜索结果并根据帖子ID去重
+     */
+    public List<BbsPost> mergeAndDeduplicatePosts(List<List<BbsPost>> results) {
+        log.debug("开始合并 {} 组搜索结果", results.size());
+        
+        Map<Long, BbsPost> postMap = new java.util.LinkedHashMap<>();
+        
+        for (List<BbsPost> postList : results) {
+            for (BbsPost post : postList) {
+                if (!postMap.containsKey(post.getId())) {                    
+                    postMap.put(post.getId(), post);
+                }
+            }
+        }
+        
+        List<BbsPost> mergedPosts = new ArrayList<>(postMap.values());
+        log.debug("合并去重完成，获得 {} 个唯一帖子", mergedPosts.size());
+        return mergedPosts;
+    }
+    
+    /**
+     * 排序帖子（综合考虑热度、时间、点赞数等）
+     */
+    public List<BbsPost> sortPosts(List<BbsPost> posts) {
+        log.debug("开始排序 {} 个帖子", posts.size());
+        
+        List<BbsPost> sortedPosts = new ArrayList<>(posts);
+        
+        sortedPosts.sort((p1, p2) -> {
+            // 计算综合评分
+            double score1 = calculatePostScore(p1);
+            double score2 = calculatePostScore(p2);
+            
+            // 存储评分用于调试
+            p1.setMatchScore(score1);
+            p2.setMatchScore(score2);
+            
+            // 降序排列，分数高的在前
+            return Double.compare(score2, score1);
+        });
+        
+        log.debug("排序完成");
+        return sortedPosts;
+    }
+    
+    /**
+     * 计算帖子综合评分
+     */
+    private double calculatePostScore(BbsPost post) {
+        double score = 0.0;
+        
+        // 点赞数权重
+        int likeCount = post.getLikeCount() != null ? post.getLikeCount() : 0;
+        score += likeCount * 5.0;
+        
+        // 评论数权重
+        int commentCount = post.getCommentCount() != null ? post.getCommentCount() : 0;
+        score += commentCount * 3.0;
+        
+        // 浏览数权重
+        int viewCount = post.getViewCount() != null ? post.getViewCount() : 0;
+        score += viewCount * 0.1;
+        
+        // 收藏数权重
+        int favoriteCount = post.getFavoriteCount() != null ? post.getFavoriteCount() : 0;
+        score += favoriteCount * 4.0;
+        
+        // 置顶帖子加高分
+        if (Boolean.TRUE.equals(post.getIsTop())) {
+            score += 1000.0;
+        }
+        
+        // 精选帖子加分
+        if (Boolean.TRUE.equals(post.getIsFeatured())) {
+            score += 500.0;
+        }
+        
+        // 考虑时间因素（新帖子加分）
+        try {
+            String createTime = post.getCreateTime();
+            if (createTime != null) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                java.util.Date postDate = sdf.parse(createTime);
+                long daysSincePost = (System.currentTimeMillis() - postDate.getTime()) / (1000 * 60 * 60 * 24);
+                // 7天内的帖子每天减5分，超过30天每天减1分
+                if (daysSincePost < 7) {
+                    score += (7 - daysSincePost) * 50;
+                } else if (daysSincePost > 30) {
+                    score -= (daysSincePost - 30) * 2;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("计算帖子时间分数时出错: {}", e.getMessage());
+        }
+        
+        return score;
     }
 
     /**
      * 构建带评论的帖子列表
      */
     public List<PostWithComments> buildPostWithComments(List<BbsPost> posts) {
-        log.info("开始获取评论...");
+        log.debug("开始获取评论...");
         List<PostWithComments> postWithCommentsList = new ArrayList<>();
         int totalComments = 0;
 
         for (BbsPost post : posts) {
             List<BbsComment> comments = bbsCommentRepository.findTop5ByPostIdAndStatusOrderByLikeCountDesc(post.getId(), 1);
-            log.info("  帖子 {} (id={}) 找到 {} 条评论", post.getTitle(), post.getId(), comments.size());
+            log.trace("  帖子 {} (id={}) 找到 {} 条评论", post.getTitle(), post.getId(), comments.size());
             postWithCommentsList.add(new PostWithComments(post, comments));
             totalComments += comments.size();
         }
-        log.info("评论获取完成，共 {} 条", totalComments);
+        log.debug("评论获取完成，共 {} 条", totalComments);
         return postWithCommentsList;
     }
 
@@ -131,7 +330,7 @@ public class AiSearchService {
         String prompt = SYSTEM_PROMPT
                 .replace("{postsContent}", postsContent)
                 .replace("{question}", keyword);
-        log.debug("--- 完整Prompt开始 ---\n{}\n--- 完整Prompt结束 ---", prompt);
+        log.trace("--- 完整Prompt开始 ---\n{}\n--- 完整Prompt结束 ---", prompt);
         return prompt;
     }
 
@@ -139,10 +338,10 @@ public class AiSearchService {
      * 流式调用AI API
      */
     public void callAiApiStream(String prompt, Consumer<String> onContent, Runnable onComplete, Consumer<Exception> onError) {
-        log.info("===== 开始流式调用AI API =====");
+        log.debug("开始流式调用AI API");
         new Thread(() -> {
             try {
-                log.info("1/3: 构建请求体...");
+                log.debug("构建请求体...");
                 Map<String, Object> requestBody = buildRequestBodyStream(prompt);
 
                 HttpRequest request = HttpRequest.newBuilder()
@@ -152,15 +351,14 @@ public class AiSearchService {
                         .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                         .build();
 
-                log.info("2/3: 发送流式HTTP请求...");
+                log.debug("发送流式HTTP请求...");
                 long startTime = System.currentTimeMillis();
                 HttpResponse<java.io.InputStream> response = httpClient.send(request, 
                         HttpResponse.BodyHandlers.ofInputStream());
                 
-                log.info("3/3: 开始接收流式响应... (耗时: {}ms)", System.currentTimeMillis() - startTime);
+                log.debug("开始接收流式响应... (耗时: {}ms)", System.currentTimeMillis() - startTime);
                 
                 java.io.InputStream inputStream = response.body();
-                // ⚠️ 关键：不使用 BufferedReader 缓冲！直接无缓冲读取！
                 java.io.InputStreamReader isr = new java.io.InputStreamReader(inputStream, java.nio.charset.StandardCharsets.UTF_8);
                 
                 boolean completed = false;
@@ -169,14 +367,13 @@ public class AiSearchService {
                 int c;
                 while ((c = isr.read()) != -1) {
                     if (c == '\n') {
-                        // 读完一行
                         String line = lineBuffer.toString();
-                        lineBuffer.setLength(0); // 清空 buffer
+                        lineBuffer.setLength(0);
                         
                         if (line.startsWith("data: ")) {
                             String data = line.substring(6);
                             if ("[DONE]".equals(data.trim())) {
-                                log.info("[{}ms] 接收到流式结束标记，共收到{}个chunk", System.currentTimeMillis() - startTime, totalChunks);
+                                log.debug("接收到流式结束标记，共收到{}个chunk，耗时{}ms", totalChunks, System.currentTimeMillis() - startTime);
                                 completed = true;
                                 onComplete.run();
                                 break;
@@ -189,8 +386,7 @@ public class AiSearchService {
                                     if (delta != null && delta.has("content")) {
                                         String content = delta.get("content").asText();
                                         totalChunks++;
-                                        long timeSinceStart = System.currentTimeMillis() - startTime;
-                                        log.info("[{}ms] AI返回chunk #{}: '{}'", timeSinceStart, totalChunks, content);
+                                        log.trace("AI返回chunk #{}: '{}'", totalChunks, content);
                                         onContent.accept(content);
                                     }
                                 }
@@ -199,18 +395,17 @@ public class AiSearchService {
                             }
                         }
                     } else if (c != '\r') {
-                        // 忽略 \r，只追加其他字符
                         lineBuffer.append((char) c);
                     }
                 }
                 
                 if (!completed) {
-                    log.info("[{}ms] 未收到结束标记，手动完成", System.currentTimeMillis() - startTime);
+                    log.debug("未收到结束标记，手动完成");
                     onComplete.run();
                 }
                 
             } catch (Exception e) {
-                log.error("===== 流式调用AI API过程中发生错误 =====", e);
+                log.error("流式调用AI API过程中发生错误", e);
                 onError.accept(e);
             }
         }).start();
@@ -232,21 +427,21 @@ public class AiSearchService {
     }
 
     public Map<String, Object> aiSearch(String keyword) {
-        log.info("===== 开始AI智能搜索 =====");
+        log.info("===== 开始增强版AI智能搜索 =====");
         log.info("搜索关键词: {}", keyword);
 
         try {
-            log.info("1/5: 开始搜索帖子... (搜索模式: fulltext全文搜索)");
-            DataResponse searchResponse = bbsPostService.searchPosts(keyword, "fulltext", 1, 5);
-            Page<BbsPost> postPage = (Page<BbsPost>) searchResponse.getData();
-            List<BbsPost> posts = postPage != null ? postPage.getContent() : new ArrayList<>();
+            // 使用增强版搜索方法获取帖子
+            log.info("1/5: 开始搜索帖子... (增强模式)");
+            List<BbsPost> posts = searchPostsOnly(keyword);
             log.info("2/5: 搜索完成，找到 {} 个相关帖子", posts.size());
             
             // 输出帖子详情
             for (int i = 0; i < posts.size(); i++) {
                 BbsPost post = posts.get(i);
-                log.info("  帖子 {}: id={}, title={}, author={}", 
-                         i+1, post.getId(), post.getTitle(), post.getAuthorNickname());
+                log.info("  帖子 {}: id={}, title={}, author={}, score={}", 
+                         i+1, post.getId(), post.getTitle(), post.getAuthorNickname(), 
+                         post.getMatchScore() != null ? post.getMatchScore() : "N/A");
             }
 
             log.info("3/5: 开始获取评论...");
@@ -277,7 +472,7 @@ public class AiSearchService {
             result.put("answer", answer);
             result.put("relatedPosts", posts);
 
-            log.info("===== AI智能搜索完成 =====");
+            log.info("===== 增强版AI智能搜索完成 =====");
             return result;
 
         } catch (Exception e) {
@@ -418,6 +613,89 @@ public class AiSearchService {
             log.error("解析AI响应失败，响应内容：{}", response, e);
             return "抱歉，解析AI响应失败。";
         }
+    }
+
+    public List<String> refactorKeywords(String question) {
+        log.debug("开始关键词重构，原始问题: {}", question);
+        
+        if (!aiSearchConfig.isEnabled()) {
+            log.debug("关键词重构功能未启用，返回原始关键词");
+            return List.of(question);
+        }
+
+        try {
+            log.debug("构建关键词重构Prompt...");
+            String prompt = KEYWORD_REFACTOR_PROMPT
+                    .replace("{question}", question)
+                    .replace("{keywordCount}", String.valueOf(aiSearchConfig.getKeywordCount()));
+            
+            log.trace("关键词重构Prompt: {}", prompt);
+
+            log.debug("调用AI API进行关键词重构...");
+            long startTime = System.currentTimeMillis();
+            String aiResponse = callAiApi(prompt);
+            long duration = System.currentTimeMillis() - startTime;
+            
+            log.debug("AI返回结果，耗时={}ms", duration);
+
+            List<String> keywords = parseKeywords(aiResponse);
+            log.info("关键词重构完成: {} -> {}", question, keywords);
+            
+            if (keywords.isEmpty()) {
+                log.warn("未解析出有效关键词，返回原始问题");
+                return List.of(question);
+            }
+
+            return keywords;
+
+        } catch (Exception e) {
+            log.error("关键词重构过程中发生错误，返回原始关键词作为降级方案", e);
+            return List.of(question);
+        }
+    }
+
+    private List<String> parseKeywords(String aiResponse) {
+        log.trace("开始解析关键词...");
+        
+        if (aiResponse == null || aiResponse.trim().isEmpty()) {
+            log.warn("AI响应为空");
+            return new ArrayList<>();
+        }
+
+        String cleanedResponse = aiResponse.trim();
+        List<String> keywords = new ArrayList<>();
+
+        // 尝试按逗号分割
+        String[] parts = cleanedResponse.split("[，,]");
+        
+        for (String part : parts) {
+            String keyword = part.trim();
+            if (!keyword.isEmpty()) {
+                // 清理关键词（去除编号、引号等）
+                keyword = keyword.replaceAll("^\\d+[.、]\\s*", "");
+                keyword = keyword.replaceAll("^[\"']|['\"]$", "");
+                keyword = keyword.trim();
+                if (!keyword.isEmpty()) {
+                    keywords.add(keyword);
+                }
+            }
+        }
+
+        // 如果没有解析出关键词，尝试按空格分割
+        if (keywords.isEmpty()) {
+            keywords = Arrays.stream(cleanedResponse.split("\\s+"))
+                    .filter(k -> !k.isEmpty())
+                    .collect(Collectors.toList());
+        }
+
+        // 限制关键词数量
+        int maxCount = aiSearchConfig.getKeywordCount();
+        if (keywords.size() > maxCount) {
+            keywords = keywords.subList(0, maxCount);
+        }
+
+        log.trace("解析完成，得到 {} 个关键词", keywords.size());
+        return keywords;
     }
 }
 

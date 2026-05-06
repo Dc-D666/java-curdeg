@@ -129,6 +129,14 @@ public class PostDetailController extends ToolController {
         refreshButton.setOnAction(event -> handleRefresh());
         breadcrumbLabel.setOnMouseClicked(event -> handleBack());
         
+        // 头像点击事件
+        authorImageView.setStyle("-fx-cursor: hand;");
+        authorImageView.setOnMouseClicked(event -> {
+            if (currentPost != null && currentPost.getUserId() != null) {
+                openUserHome(currentPost.getUserId().intValue(), currentPost.getAuthorNickname());
+            }
+        });
+        
         submitCommentButton.setOnAction(event -> publishComment());
         likeButton.setOnAction(event -> toggleLike());
         favoriteButton.setOnAction(event -> toggleFavorite());
@@ -206,7 +214,9 @@ public class PostDetailController extends ToolController {
                     String avatarUrl = currentPost.getAuthorAvatarUrl();
                     if (avatarUrl != null && !avatarUrl.isBlank()) {
                         try {
-                            Image image = new Image(avatarUrl, true);
+                            String fullAvatarUrl = avatarUrl.startsWith("/") ? 
+                                HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                            Image image = new Image(fullAvatarUrl, true);
                             authorImageView.setImage(image);
                         } catch (Exception e) {
                             authorImageView.setImage(null);
@@ -219,10 +229,10 @@ public class PostDetailController extends ToolController {
                         createTimeLabel.setText("发布时间：" + dateFormat.format(currentPost.getCreateTime()));
                     }
                     
-                    viewCountLabel.setText("👁 " + (currentPost.getViewCount() != null ? currentPost.getViewCount() : 0));
-                    likeCountLabel.setText("👍 " + (currentPost.getLikeCount() != null ? currentPost.getLikeCount() : 0));
-                    commentCountLabel.setText("💬 " + (currentPost.getCommentCount() != null ? currentPost.getCommentCount() : 0));
-                    favoriteCountLabel.setText("⭐ " + (currentPost.getFavoriteCount() != null ? currentPost.getFavoriteCount() : 0));
+                    viewCountLabel.setText("浏览量：" + (currentPost.getViewCount() != null ? currentPost.getViewCount() : 0));
+                    likeCountLabel.setText("点赞量：" + (currentPost.getLikeCount() != null ? currentPost.getLikeCount() : 0));
+                    commentCountLabel.setText("评论量：" + (currentPost.getCommentCount() != null ? currentPost.getCommentCount() : 0));
+                    favoriteCountLabel.setText("收藏量：" + (currentPost.getFavoriteCount() != null ? currentPost.getFavoriteCount() : 0));
                     
                     statusLabel.setText(currentPost.getStatusText());
                     
@@ -271,7 +281,7 @@ public class PostDetailController extends ToolController {
                         
                         // 审核建议
                         if (currentPost.getModerationSuggestion() != null && !currentPost.getModerationSuggestion().isEmpty()) {
-                            violationSuggestionLabel.setText("💡 审核建议：" + currentPost.getModerationSuggestion());
+                            violationSuggestionLabel.setText("审核建议：" + currentPost.getModerationSuggestion());
                             violationSuggestionLabel.setVisible(true);
                         } else {
                             violationSuggestionLabel.setVisible(false);
@@ -482,27 +492,42 @@ public class PostDetailController extends ToolController {
         aiSummaryPane.setExpanded(true);
         postSummaryContentLabel.setText("正在总结中，请稍后......");
         commentHotspotsContentLabel.setText("正在总结中，请稍后......");
-        
-        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+
+        Task<com.teach.javafx.request.DataResponse<Map<String, Object>>> task = new Task<com.teach.javafx.request.DataResponse<Map<String, Object>>>() {
             @Override
-            protected Map<String, Object> call() {
+            protected com.teach.javafx.request.DataResponse<Map<String, Object>> call() {
                 return HttpRequestUtil.getPostSummary(postId);
             }
         };
-        
+
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
-                Map<String, Object> result = task.getValue();
+                com.teach.javafx.request.DataResponse<Map<String, Object>> result = task.getValue();
                 if (result != null) {
-                    String postSummary = (String) result.get("postSummary");
-                    String commentHotspots = (String) result.get("commentHotspots");
-                    
-                    if (postSummary != null && !postSummary.isEmpty()) {
-                        postSummaryContentLabel.setText(postSummary);
-                    }
-                    
-                    if (commentHotspots != null && !commentHotspots.isEmpty()) {
-                        commentHotspotsContentLabel.setText(commentHotspots);
+                    if (result.getCode() == 0) {
+                        // 成功！
+                        Map<String, Object> data = result.getData();
+                        if (data != null) {
+                            String postSummary = (String) data.get("postSummary");
+                            String commentHotspots = (String) data.get("commentHotspots");
+
+                            if (postSummary != null && !postSummary.isEmpty()) {
+                                postSummaryContentLabel.setText(postSummary);
+                            }
+
+                            if (commentHotspots != null && !commentHotspots.isEmpty()) {
+                                commentHotspotsContentLabel.setText(commentHotspots);
+                            }
+                        }
+                    } else {
+                        // 失败或info情况！显示msg
+                        String message = result.getMsg();
+                        if (message != null && !message.isEmpty()) {
+                            postSummaryContentLabel.setText(message);
+                            commentHotspotsContentLabel.setText(message);
+                        } else {
+                            showError("获取总结失败，请稍后重试");
+                        }
                     }
                 } else {
                     showError("获取总结失败，请稍后重试");
@@ -511,7 +536,7 @@ public class PostDetailController extends ToolController {
                 summaryMenuItem.setDisable(false);
             });
         });
-        
+
         task.setOnFailed(event -> {
             Platform.runLater(() -> {
                 showError("获取总结失败，请稍后重试");
@@ -519,7 +544,7 @@ public class PostDetailController extends ToolController {
                 summaryMenuItem.setDisable(false);
             });
         });
-        
+
         new Thread(task).start();
     }
     
@@ -935,10 +960,10 @@ public class PostDetailController extends ToolController {
         if (currentPost != null) {
             int count = currentPost.getLikeCount() != null ? currentPost.getLikeCount() : 0;
             if (isLiked) {
-                likeButton.setText("👍 已赞 (" + count + ")");
+                likeButton.setText("已赞 (" + count + ")");
                 likeButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
             } else {
-                likeButton.setText("👍 点赞");
+                likeButton.setText("点赞");
                 likeButton.setStyle("");
             }
         }
@@ -948,10 +973,10 @@ public class PostDetailController extends ToolController {
         if (currentPost != null) {
             int count = currentPost.getFavoriteCount() != null ? currentPost.getFavoriteCount() : 0;
             if (isFavorited) {
-                favoriteButton.setText("⭐ 已收藏 (" + count + ")");
+                favoriteButton.setText("已收藏 (" + count + ")");
                 favoriteButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
             } else {
-                favoriteButton.setText("⭐ 收藏");
+                favoriteButton.setText("收藏");
                 favoriteButton.setStyle("");
             }
         }
@@ -1175,5 +1200,11 @@ public class PostDetailController extends ToolController {
             refreshProgress.setVisible(false);
         });
         pause.play();
+    }
+    
+    private void openUserHome(Integer userId, String nickname) {
+        if (AppStore.getMainFrameController() != null) {
+            AppStore.getMainFrameController().openUserHome(userId, nickname);
+        }
     }
 }

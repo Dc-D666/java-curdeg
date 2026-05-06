@@ -29,8 +29,8 @@
    <center>
       <TableView fx:id="postTableView" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
         <columns>
-          <TableColumn fx:id="titleColumn" prefWidth="300.0" text="标题" />
-          <TableColumn fx:id="authorColumn" prefWidth="100.0" text="作者" />
+          <TableColumn fx:id="titleColumn" prefWidth="350.0" text="标题" />
+          <TableColumn fx:id="authorColumn" prefWidth="180.0" text="作者" />
           <TableColumn fx:id="createTimeColumn" prefWidth="150.0" text="发布时间" />
           <TableColumn fx:id="likeCountColumn" prefWidth="80.0" text="点赞数" />
           <TableColumn fx:id="commentCountColumn" prefWidth="80.0" text="评论数" />

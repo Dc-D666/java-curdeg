@@ -2506,7 +2506,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return null;
     }
 
-    public static Map<String, Object> getPostSummary(Long postId) {
+    public static DataResponse<Map<String, Object>> getPostSummary(Long postId) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/post/" + postId + "/summary"))
                 .POST(HttpRequest.BodyPublishers.noBody())
@@ -2523,8 +2523,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
                 DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
-                if (dataResponse.getCode() == 0) {                    return dataResponse.getData();
-                }
+                return dataResponse;
             }
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
@@ -2536,7 +2535,8 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             java.util.function.Consumer<List<com.teach.javafx.models.Post>> onPosts, 
             java.util.function.Consumer<String> onContent, 
             java.util.function.Consumer<String> onError, 
-            Runnable onComplete) {
+            Runnable onComplete,
+            java.util.function.BiConsumer<String, String> onSuggestPost) {
         
         new Thread(() -> {
             java.io.InputStream inputStream = null;
@@ -2610,6 +2610,13 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
                                             String content = jsonObject.get("data").getAsString();
                                             System.out.println("[前端 " + time + "ms] #"+chunkCounter[0]+" 收到 content: '" + content + "'");
                                             onContent.accept(content);
+                                        } else if ("suggest_post".equals(type)) {
+                                            String title = jsonObject.has("title") ? jsonObject.get("title").getAsString() : null;
+                                            String content = jsonObject.has("content") ? jsonObject.get("content").getAsString() : null;
+                                            System.out.println("[前端 " + time + "ms] #"+chunkCounter[0]+" 收到 suggest_post事件: " + title);
+                                            if (onSuggestPost != null) {
+                                                onSuggestPost.accept(title, content);
+                                            }
                                         } else if ("done".equals(type)) {
                                             System.out.println("[前端 " + time + "ms] #"+chunkCounter[0]+" 收到 done事件");
                                             if (!isCompleted[0]) {
@@ -2739,5 +2746,114 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         errorResponse.setSuccess(false);
         errorResponse.setMessage("AI图片生成调用失败");
         return errorResponse;
+    }
+
+    public static Map<String, Object> getCurrentUserData() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/user/me"))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getCurrentUserData response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getUserPosts(Integer userId, int pageNum, int pageSize) {
+        String url = serverUrl + "/api/bbs/post/user/" + userId + "?pageNum=" + pageNum + "&pageSize=" + pageSize;
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserPosts response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> checkFollowStatus(Integer userId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/check/" + userId))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("checkFollowStatus response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> toggleFollow(Integer userId) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/follow/toggle/" + userId))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("toggleFollow response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

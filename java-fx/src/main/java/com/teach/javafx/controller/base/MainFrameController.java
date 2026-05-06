@@ -536,6 +536,50 @@ public class MainFrameController {
         }
     }
 
+    public void openUserHome(Integer userId, String nickname) {
+        String tabId = "user-home-" + userId;
+        String tabTitle = (nickname != null ? nickname : "用户") + "的主页";
+        
+        Tab existingTab = tabMap.get(tabId);
+        if (existingTab != null) {
+            contentTabPane.getSelectionModel().select(existingTab);
+            return;
+        }
+        
+        try {
+            java.net.URL resource = MainApplication.class.getResource("user-home.fxml");
+            if (resource == null) {
+                System.out.println("ERROR: user-home.fxml not found");
+                return;
+            }
+            
+            FXMLLoader fxmlLoader = new FXMLLoader(resource);
+            Scene scene = new Scene(fxmlLoader.load(), 1024, 768);
+            
+            Object controller = fxmlLoader.getController();
+            if (controller instanceof com.teach.javafx.controller.UserHomeController) {
+                ((com.teach.javafx.controller.UserHomeController) controller).setUserId(userId);
+            }
+            
+            Tab tab = new Tab(tabTitle);
+            tab.setId(tabId);
+            tab.setOnSelectionChanged(this::tabSelectedChanged);
+            tab.setOnClosed(this::tabOnClosed);
+            tab.setContent(scene.getRoot());
+            
+            contentTabPane.getTabs().add(tab);
+            tabMap.put(tabId, tab);
+            sceneMap.put(tabId, scene);
+            if (controller instanceof ToolController) {
+                controlMap.put(tabId, (ToolController) controller);
+            }
+            
+            contentTabPane.getSelectionModel().select(tab);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @FXML
     protected void onPostListMenuClick(ActionEvent event) {
         changeContent("post-list", "帖子列表");

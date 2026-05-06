@@ -112,4 +112,14 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'pending'", nativeQuery = true)
     Long countPendingModerationPosts();
+
+    @Query("SELECT p FROM BbsPost p WHERE " +
+           "p.authorId = :authorId AND " +
+           "((p.moderationStatus = 'pass' AND p.status = 1) OR " +
+           "(p.authorId = :currentUserId OR :isAdmin = true)) " +
+           "ORDER BY p.createTime DESC")
+    Page<BbsPost> findUserPostsWithModeration(@Param("authorId") Long authorId,
+                                                @Param("currentUserId") Long currentUserId,
+                                                @Param("isAdmin") Boolean isAdmin,
+                                                Pageable pageable);
 }

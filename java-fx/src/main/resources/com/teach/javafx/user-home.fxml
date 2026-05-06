@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:controller="com.teach.javafx.controller.UserHomeController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+    <top>
+        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="10"/>
+            </padding>
+            <children>
+                <!-- 面包屑 -->
+                <HBox spacing="5" alignment="CENTER_LEFT">
+                    <children>
+                        <Button fx:id="backButton" mnemonicParsing="false" text="返回"/>
+                        <Label text="›" style="-fx-text-fill: #888;"/>
+                        <Label fx:id="breadcrumbLabel" text="用户主页" style="-fx-text-fill: #1890ff;"/>
+                    </children>
+                </HBox>
+                
+                <!-- 用户信息区 -->
+                <HBox spacing="15" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 8;">
+                    <children>
+                        <!-- 头像 -->
+                        <ImageView fx:id="avatarImageView" fitHeight="80" fitWidth="80" preserveRatio="true" style="-fx-background-radius: 40; -fx-border-radius: 40;"/>
+                        
+                        <!-- 用户基本信息 -->
+                        <VBox spacing="8" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label fx:id="nicknameLabel" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+                                <Label fx:id="signatureLabel" style="-fx-font-size: 14; -fx-text-fill: #666;" wrapText="true"/>
+                                
+                                <!-- 统计数据 -->
+                                <HBox spacing="20" style="-fx-padding: 8 0 0 0;">
+                                    <children>
+                                        <VBox spacing="2" alignment="CENTER">
+                                            <Label fx:id="postCountLabel" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                                            <Label text="帖子" style="-fx-font-size: 12; -fx-text-fill: #888;"/>
+                                        </VBox>
+                                        <VBox spacing="2" alignment="CENTER">
+                                            <Label fx:id="followerCountLabel" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                                            <Label text="粉丝" style="-fx-font-size: 12; -fx-text-fill: #888;"/>
+                                        </VBox>
+                                        <VBox spacing="2" alignment="CENTER">
+                                            <Label fx:id="followingCountLabel" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                                            <Label text="关注" style="-fx-font-size: 12; -fx-text-fill: #888;"/>
+                                        </VBox>
+                                    </children>
+                                </HBox>
+                            </children>
+                        </VBox>
+                        
+                        <!-- 操作按钮区 -->
+                        <VBox fx:id="actionButtonsVBox" spacing="8" alignment="CENTER_RIGHT">
+                            <children>
+                                <Button fx:id="followButton" mnemonicParsing="false" text="关注" prefWidth="100"/>
+                                <Button fx:id="messageButton" mnemonicParsing="false" text="私信" prefWidth="100" style="-fx-background-color: #52c41a; -fx-text-fill: white;"/>
+                            </children>
+                        </VBox>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+    
+    <center>
+        <VBox spacing="10" style="-fx-background-color: white;">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="10"/>
+            </padding>
+            <children>
+                <!-- 帖子列表标题 -->
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <children>
+                        <Label text="TA的帖子" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                        <Button fx:id="refreshButton" mnemonicParsing="false" text="刷新"/>
+                        <ProgressIndicator fx:id="refreshProgressIndicator" visible="false" prefWidth="24" prefHeight="24"/>
+                    </children>
+                </HBox>
+                
+                <Separator/>
+                
+                <!-- 帖子列表 -->
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-background: white;">
+                    <content>
+                        <VBox fx:id="postListVBox" spacing="10" style="-fx-background-color: white;">
+                            <padding>
+                                <Insets bottom="10" left="5" right="5" top="5"/>
+                            </padding>
+                            <children>
+                                <!-- 动态加载帖子 -->
+                            </children>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+                
+                <!-- 分页控件 -->
+                <HBox spacing="10" alignment="CENTER" style="-fx-padding: 10 0;">
+                    <children>
+                        <Button fx:id="prevPageButton" mnemonicParsing="false" text="上一页"/>
+                        <Label fx:id="pageInfoLabel" text="第 1 页 / 共 1 页"/>
+                        <Button fx:id="nextPageButton" mnemonicParsing="false" text="下一页"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </center>
+</BorderPane>

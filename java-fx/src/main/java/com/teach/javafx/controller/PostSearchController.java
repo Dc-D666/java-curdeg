@@ -32,6 +32,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 public class PostSearchController extends ToolController {
@@ -66,13 +71,15 @@ public class PostSearchController extends ToolController {
     @FXML
     private TableColumn<Post, String> statusColumn;
     @FXML
-    private Label pageInfoLabel;
+    private Label progressLabel;
     @FXML
-    private ComboBox<Integer> pageSizeComboBox;
+    private VBox emptyResultBox;
     @FXML
-    private Button prevButton;
+    private Label emptyTitleLabel;
     @FXML
-    private Button nextButton;
+    private Label emptyDescLabel;
+    @FXML
+    private Button quickPostBtn;
 
     @FXML
     private VBox aiAnswerBox;
@@ -103,9 +110,25 @@ public class PostSearchController extends ToolController {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private User currentUser;
     private Set<Integer> followingUserIds = new HashSet<>();
+    
+    // AI 推荐的发帖信息
+    private String suggestedPostTitle = null;
+    private String suggestedPostContent = null;
+    private boolean hasRelatedPosts = false; // 是否有相关帖子
+    
+    // AI 搜索缓冲机制相关变量
+    private final StringBuilder streamBuffer = new StringBuilder();
+    private final AtomicBoolean bufferDirty = new AtomicBoolean(false);
+    private final AtomicLong lastFlushTime = new AtomicLong(0);
+    private ScheduledExecutorService flushExecutor;
+    private final Object bufferLock = new Object();
+    private static final long BUFFER_FLUSH_INTERVAL_MS = 100; // 100ms 刷新窗口
 
     @FXML
     public void initialize() {
+        // 启动缓冲刷新定时器
+        startBufferFlushTimer();
+        
         // 设置表格行高
         postTableView.setFixedCellSize(50.0);
         
@@ -175,7 +198,9 @@ public class PostSearchController extends ToolController {
 
                     if (avatarUrl != null && !avatarUrl.isBlank()) {
                         try {
-                            Image image = new Image(avatarUrl, true);
+                            String fullAvatarUrl = avatarUrl.startsWith("/") ? 
+                                HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                            Image image = new Image(fullAvatarUrl, true);
                             imageView.setImage(image);
                         } catch (Exception e) {
                             imageView.setImage(null);
@@ -293,26 +318,8 @@ public class PostSearchController extends ToolController {
             }
         });
 
-        prevButton.setOnAction(event -> {
-            if (currentPageNum > 1) {
-                currentPageNum--;
-                doSearch();
-            }
-        });
-
-        nextButton.setOnAction(event -> {
-            currentPageNum++;
-            doSearch();
-        });
-
-        pageSizeComboBox.setItems(FXCollections.observableArrayList(10, 20, 50));
-        pageSizeComboBox.setValue(currentPageSize);
-        pageSizeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                currentPageSize = newValue;
-                currentPageNum = 1;
-                doSearch();
-            }
+        quickPostBtn.setOnAction(event -> {
+            openQuickPostPage();
         });
 
         searchModeGroup.selectedToggleProperty().addListener((observable, oldToggle, newToggle) -> {
@@ -551,11 +558,15 @@ public class PostSearchController extends ToolController {
             refreshBtn.setDisable(true);
             refreshBtn.setText("刷新中");
         }
+        
+        // 先隐藏空结果框
+        emptyResultBox.setVisible(false);
+        emptyResultBox.setManaged(false);
 
         Task<PageResult<Post>> task = new Task<PageResult<Post>>() {
             @Override
             protected PageResult<Post> call() {
-                return HttpRequestUtil.searchPosts(currentKeyword, currentSearchType, currentPageNum, currentPageSize);
+                return HttpRequestUtil.searchPosts(currentKeyword, currentSearchType, 1, 20);
             }
         };
 
@@ -567,21 +578,12 @@ public class PostSearchController extends ToolController {
                 }
                 
                 PageResult<Post> pageResult = task.getValue();
-                if (pageResult != null && pageResult.getList() != null) {
+                if (pageResult != null && pageResult.getList() != null && !pageResult.getList().isEmpty()) {
                     postTableView.getItems().clear();
                     postTableView.getItems().addAll(pageResult.getList());
-
-                    long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " 页");
-
-                    prevButton.setDisable(currentPageNum <= 1);
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    nextButton.setDisable(currentPageNum >= totalPages);
                 } else {
                     postTableView.getItems().clear();
-                    pageInfoLabel.setText("未找到结果");
-                    prevButton.setDisable(true);
-                    nextButton.setDisable(true);
+                    showEmptyResultBox();
                 }
             });
         });
@@ -632,6 +634,67 @@ public class PostSearchController extends ToolController {
         alert.showAndWait();
     }
 
+    /**
+     * 启动缓冲刷新定时器
+     */
+    private void startBufferFlushTimer() {
+        flushExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "AI-Search-Flush-Thread");
+            t.setDaemon(true);
+            return t;
+        });
+        
+        flushExecutor.scheduleAtFixedRate(this::flushBufferIfNeeded, 
+                                           BUFFER_FLUSH_INTERVAL_MS, 
+                                           BUFFER_FLUSH_INTERVAL_MS, 
+                                           TimeUnit.MILLISECONDS);
+        
+        System.out.println("[AI搜索前端] 缓冲刷新定时器已启动，刷新间隔=" + BUFFER_FLUSH_INTERVAL_MS + "ms");
+    }
+    
+    /**
+     * 刷新缓冲区（如果需要）
+     */
+    private void flushBufferIfNeeded() {
+        if (bufferDirty.get()) {
+            flushBuffer();
+        }
+    }
+    
+    /**
+     * 强制刷新缓冲区到 UI
+     */
+    private void flushBuffer() {
+        String contentToFlush;
+        synchronized (bufferLock) {
+            if (streamBuffer.length() == 0) {
+                bufferDirty.set(false);
+                return;
+            }
+            contentToFlush = streamBuffer.toString();
+            bufferDirty.set(false);
+            lastFlushTime.set(System.currentTimeMillis());
+        }
+        
+        final String finalContent = contentToFlush;
+        Platform.runLater(() -> {
+            currentAnswerText = finalContent;
+            updateStreamDisplay(finalContent);
+        });
+    }
+    
+    /**
+     * 更新流式显示（纯文本）
+     */
+    private void updateStreamDisplay(String text) {
+        // 先清理 SUGGEST_POST 标签，确保不会显示
+        String cleanedText = removeSuggestPostTags(text);
+        aiAnswerTextFlow.getChildren().clear();
+        Text t = new Text(cleanedText);
+        t.setStyle("-fx-font-size: 13px; -fx-line-spacing: 5px;");
+        aiAnswerTextFlow.getChildren().add(t);
+    }
+
 private void aiSearch() {
         if (currentKeyword == null || currentKeyword.isBlank()) {
             showAlert("提示", "请输入搜索关键词");
@@ -644,178 +707,368 @@ private void aiSearch() {
         // 清空并准备
         currentAnswerText = "";
         aiAnswerTextFlow.getChildren().clear();
-        aiAnswerBox.setVisible(true);
-        aiAnswerBox.setManaged(true);
         normalSearchBox.setVisible(false);
         normalSearchBox.setManaged(false);
-
+        relatedPostsBox.setVisible(false);
+        relatedPostsBox.setManaged(false);
+        aiAnswerBox.setVisible(false);
+        aiAnswerBox.setManaged(false);
+        emptyResultBox.setVisible(false);
+        emptyResultBox.setManaged(false);
+        
+        // 重置 AI 推荐信息
+        suggestedPostTitle = null;
+        suggestedPostContent = null;
+        
+        // 显示进度提示
+        showProgressLabel("正在理解用户意图...");
+        
+        // 清空缓冲
+        synchronized (bufferLock) {
+            streamBuffer.setLength(0);
+            bufferDirty.set(false);
+        }
+        
         final StringBuilder fullAnswerBuffer = new StringBuilder();
-        // 用于记录解析状态，避免重复解析
-        final int[] lastParsedLength = {0};
+        final AtomicBoolean streamStarted = new AtomicBoolean(false);
+        final AtomicBoolean hasRelatedPostsLocal = new AtomicBoolean(false);
+        final AtomicLong contentReceivedCount = new AtomicLong(0);
+
+        System.out.println("[AI搜索前端] 开始 AI 搜索，关键词=" + currentKeyword);
 
         HttpRequestUtil.aiSearchStream(
             currentKeyword,
             posts -> Platform.runLater(() -> {
-                searchButton.setText("思考中...");
+                showProgressLabel("正在连接 AI 服务...");
                 if (posts != null && !posts.isEmpty()) {
+                    hasRelatedPostsLocal.set(true);
+                    hasRelatedPosts = true;
                     displayRelatedPosts(posts);
                     relatedPostsBox.setVisible(true);
                     relatedPostsBox.setManaged(true);
+                } else {
+                    hasRelatedPosts = false;
                 }
             }),
-            content -> Platform.runLater(() -> {
-                searchButton.setText("生成中...");
-                fullAnswerBuffer.append(content);
-                currentAnswerText = fullAnswerBuffer.toString();
+            content -> {
+                long count = contentReceivedCount.incrementAndGet();
+                System.out.println("[AI搜索前端] 收到内容片段 #" + count + ", 长度=" + content.length());
                 
-                // 边流式输出，边增量解析！只解析新增加的部分！
-                incrementalParseAndDisplay(currentAnswerText, lastParsedLength[0]);
-                lastParsedLength[0] = currentAnswerText.length();
-            }),
-            error -> Platform.runLater(() -> {
-                searchButton.setDisable(false);
-                searchButton.setText("搜索");
-                showError("AI 搜索失败: " + error);
-            }),
-            () -> Platform.runLater(() -> {
-                searchButton.setDisable(false);
-                searchButton.setText("搜索");
-                // 输出完成后，自动格式化显示！（几百个字符不会卡死！）
-                System.out.println("[AI搜索] 输出完成！开始格式化... 当前长度=" + currentAnswerText.length());
-                aiAnswerTextFlow.getChildren().clear();
-                parseAndDisplayMarkdown(currentAnswerText);
-                System.out.println("[AI搜索] 格式化完成！");
-            })
+                fullAnswerBuffer.append(content);
+                
+                // 添加到缓冲区
+                synchronized (bufferLock) {
+                    streamBuffer.append(content);
+                    bufferDirty.set(true);
+                }
+                
+                // 第一次收到内容时立即更新 UI
+                if (streamStarted.compareAndSet(false, true)) {
+                    Platform.runLater(() -> {
+                        showProgressLabel("AI 正在回复...");
+                        aiAnswerBox.setVisible(true);
+                        aiAnswerBox.setManaged(true);
+                    });
+                }
+            },
+            error -> {
+                System.out.println("[AI搜索前端] 收到错误: " + error);
+                // 先刷新剩余缓冲
+                flushBuffer();
+                Platform.runLater(() -> {
+                    hideProgressLabel();
+                    searchButton.setDisable(false);
+                    searchButton.setText("搜索");
+                    showError("AI 搜索失败: " + error);
+                });
+            },
+            () -> {
+                System.out.println("[AI搜索前端] 流完成，总共收到 " + contentReceivedCount.get() + " 个片段");
+                // 强制刷新所有缓冲
+                flushBuffer();
+                Platform.runLater(() -> {
+                    String rawAnswer = fullAnswerBuffer.toString();
+                    // 先清理 SUGGEST_POST 标签，再保存和显示
+                    currentAnswerText = removeSuggestPostTags(rawAnswer);
+                    
+                    if (currentAnswerText.isEmpty() && !hasRelatedPostsLocal.get()) {
+                        // 没有结果也没有相关帖子，显示引导界面
+                        hideProgressLabel();
+                        searchButton.setDisable(false);
+                        searchButton.setText("搜索");
+                        showEmptyResultBox();
+                    } else {
+                        // 有内容，显示进度完成并格式化
+                        showProgressLabel("回复完成！");
+                        
+                        if (!currentAnswerText.isEmpty()) {
+                            System.out.println("[AI搜索前端] 开始格式化 Markdown，原始长度=" + rawAnswer.length() + "，清理后长度=" + currentAnswerText.length());
+                            parseAndDisplayMarkdown(currentAnswerText);
+                        }
+                        
+                        searchButton.setDisable(false);
+                        searchButton.setText("搜索");
+                        
+                        // 2秒后隐藏进度提示
+                        javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
+                        pause.setOnFinished(e -> hideProgressLabel());
+                        pause.play();
+                    }
+                });
+            },
+            (title, content) -> {
+                // 收到 AI 建议的发帖信息
+                Platform.runLater(() -> {
+                    System.out.println("[AI搜索前端] 收到 AI 发帖建议！标题=" + title);
+                    suggestedPostTitle = title;
+                    suggestedPostContent = content;
+                    // 显示引导界面
+                    hideProgressLabel();
+                    searchButton.setDisable(false);
+                    searchButton.setText("搜索");
+                    showEmptyResultBox();
+                });
+            }
         );
     }
 
     private void displayAiAnswer(String answer) {
         this.currentAnswerText = answer; // 保存原始答案
         aiAnswerTextFlow.getChildren().clear();
-        
-        // 初始化时完整解析一次
-        incrementalParseAndDisplay(answer, 0);
+        updateStreamDisplay(answer);
     }
     
     /**
-     * 核心增量解析方法！
-     * 策略：
-     * 1. 永远不做全量重绘（防止卡死）
-     * 2. 每次只追加解析增量，或者简单地更新
-     * 3. 在性能和显示效果之间平衡！
+     * 清理资源（在控制器销毁时调用）
      */
-    private void incrementalParseAndDisplay(String fullText, int oldLength) {
-        // 简单但高效的策略：
-        // 流式过程中，使用单个Text节点显示纯文本
-        // 这样100%不会卡死！用户体验最流畅！
-        aiAnswerTextFlow.getChildren().clear();
-        Text text = new Text(fullText);
-        text.setStyle("-fx-font-size: 13px; -fx-line-spacing: 5px;");
-        aiAnswerTextFlow.getChildren().add(text);
+    public void cleanup() {
+        if (flushExecutor != null && !flushExecutor.isShutdown()) {
+            flushExecutor.shutdownNow();
+            System.out.println("[AI搜索前端] 缓冲刷新定时器已关闭");
+        }
     }
     
     /**
      * 解析 Markdown 格式并显示在 TextFlow 中
-     * 支持: **加粗**, *斜体*, ~~删除线**, [红色]标红文本[/红色]
+     * 简化版本：优先保证所有文字都显示，再应用格式
      */
     private void parseAndDisplayMarkdown(String content) {
-        // 关闭刷屏日志
+        long startTime = System.currentTimeMillis();
+        // System.out.println("[Markdown解析] 开始解析，内容长度=" + (content != null ? content.length() : 0));
+        
         if (content == null || content.isEmpty()) {
+            // System.out.println("[Markdown解析] 内容为空，直接返回");
             return;
         }
         
-        // 处理换行
-        content = content.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
-        
-        int index = 0;
-        int length = content.length();
-        
-        while (index < length) {
-            // 优先检查红色标签，因为它的匹配方式和其他不同
-            int redStart = content.indexOf("[红色]", index);
-            if (redStart == index) {
-                // 找到了红色标签开始
-                int redEnd = content.indexOf("[/红色]", redStart + 4);
-                if (redEnd != -1) {
-                    String redText = content.substring(redStart + 4, redEnd);
-                    addStyledText(redText, "-fx-fill: #ff4444; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = redEnd + 5; // [/红色] 是 5 个字符
+        try {
+            // 先输出原始内容的前100字符用于调试
+            // System.out.println("[Markdown解析] 原始内容前100字符：" + 
+            //     (content.length() > 100 ? content.substring(0, 100) + "..." : content));
+            
+            // 1. 先清理 SUGGEST_POST 标签，确保不会显示在前端
+            String cleanedContent = removeSuggestPostTags(content);
+            System.out.println("[Markdown解析] 清理后内容长度=" + cleanedContent.length());
+            
+            // 2. 再在内存中构建所有 Text 节点
+            List<Text> textNodes = new ArrayList<>();
+            String processedContent = cleanedContent.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+            int length = processedContent.length();
+            
+            int index = 0;
+            int safetyCounter = 0;
+            int maxIterations = length * 3; // 更宽松的安全保护
+            
+            while (index < length && safetyCounter < maxIterations) {
+                safetyCounter++;
+                
+                boolean matched = false;
+                
+                // System.out.println("[Markdown解析] 当前索引：" + index + "，字符：" + 
+                //     (index < length ? "'" + processedContent.charAt(index) + "'" : "END"));
+                
+                // 检查标题（必须在行首或换行后）
+                if (index == 0 || (index > 0 && processedContent.charAt(index - 1) == '\n')) {
+                    // 检查 #### Heading 4
+                    if (index + 4 <= length && processedContent.startsWith("####", index) && 
+                        (index + 4 == length || processedContent.charAt(index + 4) == ' ')) {
+                        int endIndex = processedContent.indexOf('\n', index + 5);
+                        if (endIndex == -1) endIndex = length;
+                        String headingText = processedContent.substring(index + 5, endIndex).trim();
+                        // System.out.println("[Markdown解析] 找到H4标题：" + headingText);
+                        if (!headingText.isEmpty()) {
+                            textNodes.add(createStyledText(headingText + "\n", 
+                                "-fx-font-weight: bold; -fx-font-size: 15px; -fx-line-spacing: 8px;"));
+                        }
+                        index = endIndex;
+                        matched = true;
+                    }
+                    // 检查 ### Heading 3
+                    else if (!matched && index + 3 <= length && processedContent.startsWith("###", index) && 
+                        (index + 3 == length || processedContent.charAt(index + 3) == ' ')) {
+                        int endIndex = processedContent.indexOf('\n', index + 4);
+                        if (endIndex == -1) endIndex = length;
+                        String headingText = processedContent.substring(index + 4, endIndex).trim();
+                        // System.out.println("[Markdown解析] 找到H3标题：" + headingText);
+                        if (!headingText.isEmpty()) {
+                            textNodes.add(createStyledText(headingText + "\n", 
+                                "-fx-font-weight: bold; -fx-font-size: 17px; -fx-line-spacing: 8px;"));
+                        }
+                        index = endIndex;
+                        matched = true;
+                    }
+                    // 检查 ## Heading 2
+                    else if (!matched && index + 2 <= length && processedContent.startsWith("##", index) && 
+                        (index + 2 == length || processedContent.charAt(index + 2) == ' ')) {
+                        int endIndex = processedContent.indexOf('\n', index + 3);
+                        if (endIndex == -1) endIndex = length;
+                        String headingText = processedContent.substring(index + 3, endIndex).trim();
+                        // System.out.println("[Markdown解析] 找到H2标题：" + headingText);
+                        if (!headingText.isEmpty()) {
+                            textNodes.add(createStyledText(headingText + "\n", 
+                                "-fx-font-weight: bold; -fx-font-size: 19px; -fx-line-spacing: 8px;"));
+                        }
+                        index = endIndex;
+                        matched = true;
+                    }
+                    // 检查 # Heading 1
+                    else if (!matched && index + 1 <= length && processedContent.startsWith("#", index) && 
+                        (index + 1 == length || processedContent.charAt(index + 1) == ' ')) {
+                        int endIndex = processedContent.indexOf('\n', index + 2);
+                        if (endIndex == -1) endIndex = length;
+                        String headingText = processedContent.substring(index + 2, endIndex).trim();
+                        // System.out.println("[Markdown解析] 找到H1标题：" + headingText);
+                        if (!headingText.isEmpty()) {
+                            textNodes.add(createStyledText(headingText + "\n", 
+                                "-fx-font-weight: bold; -fx-font-size: 21px; -fx-line-spacing: 8px;"));
+                        }
+                        index = endIndex;
+                        matched = true;
+                    }
+                }
+                
+                if (matched) {
                     continue;
                 }
-            }
-            
-            // 检查其他标签
-            char currentChar = content.charAt(index);
-            
-            if (index + 1 < length && currentChar == '*' && content.charAt(index + 1) == '*') {
+                
+                // 检查红色标签 [红色]text[/红色]
+                if (index + 4 <= length && processedContent.startsWith("[红色]", index)) {
+                    int redEnd = processedContent.indexOf("[/红色]", index + 4);
+                    if (redEnd != -1) {
+                        String redText = processedContent.substring(index + 4, redEnd);
+                        // System.out.println("[Markdown解析] 找到红色文本：" + redText);
+                        textNodes.add(createStyledText(redText, "-fx-fill: #ff4444; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        index = redEnd + 5;
+                        continue;
+                    }
+                }
+                
+                char currentChar = processedContent.charAt(index);
+                
                 // 加粗 **text**
-                int endIndex = content.indexOf("**", index + 2);
-                if (endIndex != -1) {
-                    String boldText = content.substring(index + 2, endIndex);
-                    addStyledText(boldText, "-fx-font-weight: bold; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = endIndex + 2;
-                    continue;
+                if (index + 1 < length && currentChar == '*' && processedContent.charAt(index + 1) == '*') {
+                    int endIndex = processedContent.indexOf("**", index + 2);
+                    if (endIndex != -1) {
+                        String boldText = processedContent.substring(index + 2, endIndex);
+                        // System.out.println("[Markdown解析] 找到粗体：" + boldText);
+                        textNodes.add(createStyledText(boldText, "-fx-font-weight: bold; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        index = endIndex + 2;
+                        continue;
+                    }
                 }
-            }
-            
-            if (index + 1 < length && currentChar == '_' && content.charAt(index + 1) == '_') {
-                // 加粗 __text__
-                int endIndex = content.indexOf("__", index + 2);
-                if (endIndex != -1) {
-                    String boldText = content.substring(index + 2, endIndex);
-                    addStyledText(boldText, "-fx-font-weight: bold; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = endIndex + 2;
-                    continue;
-                }
-            }
-            
-            if (currentChar == '*') {
-                // 斜体 *text*
-                int endIndex = content.indexOf('*', index + 1);
-                if (endIndex != -1) {
-                    String italicText = content.substring(index + 1, endIndex);
-                    addStyledText(italicText, "-fx-font-style: italic; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = endIndex + 1;
-                    continue;
-                }
-            }
-            
-            if (currentChar == '_') {
-                // 斜体 _text_
-                int endIndex = content.indexOf('_', index + 1);
-                if (endIndex != -1) {
-                    String italicText = content.substring(index + 1, endIndex);
-                    addStyledText(italicText, "-fx-font-style: italic; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = endIndex + 1;
-                    continue;
-                }
-            }
-            
-            if (index + 2 < length && currentChar == '~' && content.charAt(index + 1) == '~') {
+                
                 // 删除线 ~~text~~
-                int endIndex = content.indexOf("~~", index + 2);
-                if (endIndex != -1) {
-                    String strikeText = content.substring(index + 2, endIndex);
-                    addStyledText(strikeText, "-fx-strikethrough: true; -fx-font-size: 13px; -fx-line-spacing: 5px;");
-                    index = endIndex + 2;
-                    continue;
+                if (index + 1 < length && currentChar == '~' && processedContent.charAt(index + 1) == '~') {
+                    int endIndex = processedContent.indexOf("~~", index + 2);
+                    if (endIndex != -1) {
+                        String strikeText = processedContent.substring(index + 2, endIndex);
+                        // System.out.println("[Markdown解析] 找到删除线：" + strikeText);
+                        textNodes.add(createStyledText(strikeText, "-fx-strikethrough: true; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        index = endIndex + 2;
+                        continue;
+                    }
                 }
-            }
-            
-            if (currentChar == '\n') {
-                // 换行
-                addStyledText("\n", "-fx-font-size: 13px; -fx-line-spacing: 5px;");
+                
+                // 斜体 *text*
+                if (currentChar == '*') {
+                    int endIndex = processedContent.indexOf('*', index + 1);
+                    if (endIndex != -1) {
+                        String italicText = processedContent.substring(index + 1, endIndex);
+                        // System.out.println("[Markdown解析] 找到斜体：" + italicText);
+                        textNodes.add(createStyledText(italicText, "-fx-font-style: italic; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        index = endIndex + 1;
+                        continue;
+                    }
+                }
+                
+                // 普通文本处理 - 一次只处理一个字符，确保不跳过标记
+                textNodes.add(createStyledText(String.valueOf(currentChar), "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
                 index++;
-                continue;
             }
             
-            // 普通文本
-            int nextSpecial = findNextSpecialIndex(content, index);
-            String plainText = content.substring(index, nextSpecial);
-            if (!plainText.isEmpty()) {
-                addStyledText(plainText, "-fx-font-size: 13px; -fx-line-spacing: 5px;");
+            if (safetyCounter >= maxIterations) {
+                // System.err.println("[Markdown解析] 警告：达到安全迭代限制，可能有解析错误");
             }
-            index = nextSpecial;
+            
+            // 验证节点完整性
+            StringBuilder nodeContent = new StringBuilder();
+            for (Text node : textNodes) {
+                nodeContent.append(node.getText());
+            }
+            // System.out.println("[Markdown解析] 节点构建完成，共 " + textNodes.size() + " 个节点");
+            // System.out.println("[Markdown解析] 合并后内容长度：" + nodeContent.length());
+            
+            // 2. 一次性更新 UI
+            aiAnswerTextFlow.getChildren().clear();
+            aiAnswerTextFlow.getChildren().addAll(textNodes);
+            // System.out.println("[Markdown解析] UI更新完成，总耗时=" + (System.currentTimeMillis() - startTime) + "ms");
+            
+        } catch (Exception e) {
+            // System.err.println("[Markdown解析] 解析出错：" + e.getMessage());
+            // e.printStackTrace();
+            // 出错时降级显示纯文本
+            aiAnswerTextFlow.getChildren().clear();
+            Text t = new Text(content);
+            t.setStyle("-fx-font-size: 13px; -fx-line-spacing: 5px;");
+            aiAnswerTextFlow.getChildren().add(t);
+        }
+    }
+    
+    /**
+     * 创建带样式的 Text 对象（不在 UI 线程也可以创建）
+     */
+    private Text createStyledText(String text, String style) {
+        if (text == null || text.isEmpty()) {
+            return new Text("");
+        }
+        Text t = new Text(text);
+        t.setStyle(style);
+        return t;
+    }
+    
+    /**
+     * 从内容中移除 SUGGEST_POST 标签及其包裹的内容
+     */
+    private String removeSuggestPostTags(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        try {
+            // 移除 [SUGGEST_POST] ... [/SUGGEST_POST] 标签及其内容
+            String pattern = "\\[SUGGEST_POST\\]\\s*标题：.*?\\s*内容：.*?\\s*\\[/SUGGEST_POST\\]";
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(content);
+            String result = m.replaceAll("");
+            
+            // 如果替换后只剩余空白字符，返回空字符串
+            if (result.trim().isEmpty()) {
+                return "";
+            }
+            
+            return result;
+        } catch (Exception e) {
+            System.err.println("[Markdown解析] 移除 SUGGEST_POST 标签失败: " + e.getMessage());
+            return content;
         }
     }
     
@@ -824,26 +1077,25 @@ private void aiSearch() {
      */
     private int findNextSpecialIndex(String content, int startIndex) {
         int length = content.length();
-        for (int i = startIndex; i < length; i++) {
-            char c = content.charAt(i);
-            if (c == '*' || c == '_' || c == '~' || c == '[' || c == '\n') {
-                return i;
-            }
-        }
-        return length;
+        int nextIndex = length;
+        
+        // 查找各种标记
+        int nextStar = content.indexOf('*', startIndex);
+        int nextTilde = content.indexOf('~', startIndex);
+        int nextBracket = content.indexOf('[', startIndex);
+        int nextNewLine = content.indexOf('\n', startIndex);
+        
+        // 找最小的那个
+        if (nextStar != -1 && nextStar < nextIndex) nextIndex = nextStar;
+        if (nextTilde != -1 && nextTilde < nextIndex) nextIndex = nextTilde;
+        if (nextBracket != -1 && nextBracket < nextIndex) nextIndex = nextBracket;
+        if (nextNewLine != -1 && nextNewLine < nextIndex) nextIndex = nextNewLine;
+        
+        // System.out.println("[Markdown解析] findNextSpecialIndex(" + startIndex + ") → " + nextIndex);
+        return nextIndex;
     }
     
-    /**
-     * 添加带样式的文本到 TextFlow
-     */
-    private void addStyledText(String text, String style) {
-        if (text == null || text.isEmpty()) {
-            return;
-        }
-        Text t = new Text(text);
-        t.setStyle(style);
-        aiAnswerTextFlow.getChildren().add(t);
-    }
+
 
     private void displayRelatedPosts(List<Post> posts) {
         relatedPostsTable.getItems().clear();
@@ -857,5 +1109,56 @@ private void aiSearch() {
         relatedPostsBox.setManaged(false);
         normalSearchBox.setVisible(true);
         normalSearchBox.setManaged(true);
+        emptyResultBox.setVisible(false);
+        emptyResultBox.setManaged(false);
+        hideProgressLabel();
+    }
+    
+    private void showProgressLabel(String text) {
+        progressLabel.setText(text);
+        progressLabel.setVisible(true);
+        progressLabel.setManaged(true);
+    }
+    
+    private void hideProgressLabel() {
+        progressLabel.setVisible(false);
+        progressLabel.setManaged(false);
+    }
+    
+    private void showEmptyResultBox() {
+        // 根据是否有相关帖子显示不同文案
+        if (hasRelatedPosts) {
+            emptyTitleLabel.setText("🤔 对搜索结果不满意？");
+            emptyTitleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1890ff;");
+            emptyDescLabel.setText("直接发帖问大家，获得更多人帮助！");
+        } else {
+            emptyTitleLabel.setText("😮 未找到相关帖子");
+            emptyTitleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #d46b08;");
+            emptyDescLabel.setText("要不要发布一个问题，让大家来帮你解答？");
+        }
+        emptyResultBox.setVisible(true);
+        emptyResultBox.setManaged(true);
+    }
+    
+    private void openQuickPostPage() {
+        if (AppStore.getMainFrameController() != null) {
+            try {
+                javafx.fxml.FXMLLoader fxmlLoader = new javafx.fxml.FXMLLoader(MainApplication.class.getResource("post-publish.fxml"));
+                javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
+                com.teach.javafx.controller.PostPublishController controller = fxmlLoader.getController();
+                
+                // 优先使用 AI 推荐的标题和内容
+                if (suggestedPostTitle != null && !suggestedPostTitle.isBlank()) {
+                    controller.prefillPost(suggestedPostTitle, suggestedPostContent);
+                } else if (currentKeyword != null && !currentKeyword.isBlank()) {
+                    controller.prefillTitle(currentKeyword);
+                }
+                
+                AppStore.getMainFrameController().changeContentWithScene("quick-post", "发布帖子", scene, controller);
+            } catch (Exception e) {
+                e.printStackTrace();
+                showError("打开发帖页面失败");
+            }
+        }
     }
 }

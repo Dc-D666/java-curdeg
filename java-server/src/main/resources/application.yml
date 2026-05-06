@@ -63,8 +63,8 @@ moderation:
   api:
     url: https://xplt.sdu.edu.cn:4000/v1/chat/completions
     key: sk-oXWyxru5nwdf-iDN6a8sJw
-    model: Ali-dashscope/DeepSeek-V3.2
-    timeout: 30000
+    model: SDU-AI/DeepSeek-V4-Flash
+    timeout: 60000
 # AI图片生成配置
 ai-image:
   enabled: true
@@ -73,6 +73,14 @@ ai-image:
     key: 68c1b48b1b0448fdb7e11e25e8ff107d.JyhwtU9wuCB1aAE5
     model: cogview-3-flash
     timeout: 30000
+# AI搜索优化配置
+ai-search:
+  keyword-refactor:
+    enabled: true
+    keyword-count: 5
+    result-count: 8
+    timeout: 30000
+
 logging:
   config: classpath:loggback.xml
 #logging:

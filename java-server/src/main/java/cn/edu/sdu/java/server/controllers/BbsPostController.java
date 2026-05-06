@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -175,25 +178,25 @@ public class BbsPostController {
 
     @GetMapping(value = "/ai-search-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter aiSearchStream(@RequestParam String keyword) {
-        log.info("===== 收到AI流式搜索请求，keyword={} =====", keyword);
+        log.info("收到AI流式搜索请求，keyword={}", keyword);
         
         // 超时时间设置为120秒
         SseEmitter emitter = new SseEmitter(120000L);
         
         // 注册回调处理连接关闭
-        emitter.onCompletion(() -> log.info("SSE连接已完成"));
+        emitter.onCompletion(() -> log.debug("SSE连接已完成"));
         emitter.onTimeout(() -> log.warn("SSE连接超时"));
         emitter.onError((ex) -> log.warn("SSE连接出错: {}", ex.getMessage()));
         
         executorService.execute(() -> {
             try {
                 // 1. 先搜索相关帖子
-                log.info("1/4: 开始搜索相关帖子...");
+                log.debug("开始搜索相关帖子...");
                 List<BbsPost> posts = aiSearchService.searchPostsOnly(keyword);
-                log.info("2/4: 搜索到 {} 个相关帖子", posts.size());
+                log.debug("搜索到 {} 个相关帖子", posts.size());
                 
                 // 2. 发送帖子事件
-                log.info("3/4: 发送帖子列表事件...");
+                log.debug("发送帖子列表事件...");
                 Map<String, Object> postsEvent = Map.of(
                     "type", "posts",
                     "data", posts
@@ -212,43 +215,117 @@ public class BbsPostController {
                 }
 
                 // 4. 流式调用AI API
-                log.info("4/4: 开始流式调用AI API...");
+                log.debug("开始流式调用AI API...");
                 long sseStartTime = System.currentTimeMillis();
                 int[] sseCounter = {0};
+                
+                // 内容缓冲机制相关变量
+                StringBuilder contentBuffer = new StringBuilder();
+                StringBuilder fullContentBuffer = new StringBuilder(); // 保存完整内容
+                ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(1);
+                final boolean[] flushScheduled = {false};
+                final Runnable[] flushTask = new Runnable[1];
+                
+                // 刷新缓冲内容的方法
+                Runnable flushBuffer = () -> {
+                    synchronized (contentBuffer) {
+                        if (contentBuffer.length() > 0) {
+                            try {
+                                long timeSinceStart = System.currentTimeMillis() - sseStartTime;
+                                sseCounter[0]++;
+                                String bufferedContent = contentBuffer.toString();
+                                // 在发送前移除 SUGGEST_POST 标签及其内容
+                                String cleanedContent = removeSuggestPostTags(bufferedContent);
+                                log.debug("[SSE {}ms] #{} 准备发送缓冲内容 (原始长度={}, 清理后长度={})", 
+                                    timeSinceStart, sseCounter[0], bufferedContent.length(), cleanedContent.length());
+                                // 只有清理后还有内容才发送
+                                if (!cleanedContent.isEmpty()) {
+                                    Map<String, Object> contentEvent = Map.of(
+                                        "type", "content",
+                                        "data", cleanedContent
+                                    );
+                                    String contentJson = objectMapper.writeValueAsString(contentEvent);
+                                    sendSseEvent(emitter, contentJson);
+                                    log.debug("[SSE {}ms] #{} 发送缓冲内容成功！", timeSinceStart, sseCounter[0]);
+                                } else {
+                                    log.debug("[SSE {}ms] #{} 清理后无内容，跳过发送", timeSinceStart, sseCounter[0]);
+                                }
+                                contentBuffer.setLength(0);
+                            } catch (Exception e) {
+                                log.warn("发送SSE内容事件失败: {}", e.getMessage(), e);
+                            }
+                        }
+                        flushScheduled[0] = false;
+                    }
+                };
+                
                 aiSearchService.callAiApiStream(
                     prompt,
                     content -> {
-                        try {
-                            long timeSinceStart = System.currentTimeMillis() - sseStartTime;
-                            sseCounter[0]++;
-                            log.info("[SSE {}ms] #{} 准备发送内容: '{}'", timeSinceStart, sseCounter[0], content);
-                            Map<String, Object> contentEvent = Map.of(
-                                "type", "content",
-                                "data", content
-                            );
-                            String contentJson = objectMapper.writeValueAsString(contentEvent);
-                            sendSseEvent(emitter, contentJson);
-                            log.info("[SSE {}ms] #{} 发送成功！", timeSinceStart, sseCounter[0]);
-                        } catch (Exception e) {
-                            log.warn("发送SSE内容事件失败: {}", e.getMessage(), e);
+                        synchronized (contentBuffer) {
+                            contentBuffer.append(content);
+                            fullContentBuffer.append(content); // 同时保存完整内容
+                            log.trace("[Buffer] 收到新内容: '{}', 当前缓冲长度: {}", content, contentBuffer.length());
+                            
+                            // 如果没有安排刷新任务，则安排一个
+                            if (!flushScheduled[0]) {
+                                flushScheduled[0] = true;
+                                scheduler.schedule(flushBuffer, 80, TimeUnit.MILLISECONDS);
+                                log.trace("[Buffer] 安排80ms后刷新缓冲");
+                            }
                         }
                     },
                     () -> {
                         try {
-                            log.info("[SSE {}ms] 准备发送done事件", System.currentTimeMillis() - sseStartTime);
+                            // 先刷新剩余的缓冲内容
+                            synchronized (contentBuffer) {
+                                if (contentBuffer.length() > 0) {
+                                    log.debug("[Buffer] done事件前刷新剩余缓冲内容");
+                                    flushBuffer.run();
+                                }
+                            }
+                            
+                            // 检查完整内容是否包含发帖建议 - 总是发送
+                            String fullContent = fullContentBuffer.toString();
+                            Map<String, String> suggestPostData = parseSuggestPost(fullContent);
+                            
+                            if (suggestPostData != null) {
+                                log.info("检测到发帖建议，发送suggest_post事件");
+                                Map<String, Object> suggestPostEvent = Map.of(
+                                    "type", "suggest_post",
+                                    "title", suggestPostData.get("title"),
+                                    "content", suggestPostData.get("content"),
+                                    "hasRelatedPosts", !posts.isEmpty()  // 新增：标记是否有相关帖子
+                                );
+                                String suggestPostJson = objectMapper.writeValueAsString(suggestPostEvent);
+                                sendSseEvent(emitter, suggestPostJson);
+                            }
+                            
+                            scheduler.shutdown();
+                            log.debug("[SSE {}ms] 准备发送done事件", System.currentTimeMillis() - sseStartTime);
                             Map<String, Object> doneEvent = Map.of("type", "done");
                             String doneJson = objectMapper.writeValueAsString(doneEvent);
                             sendSseEvent(emitter, doneJson);
                             emitter.complete();
-                            log.info("[SSE {}ms] done事件发送并完成！共发送{}个SSE", System.currentTimeMillis() - sseStartTime, sseCounter[0]);
+                            log.info("AI流式搜索完成！共发送{}个内容块，耗时{}ms", sseCounter[0], System.currentTimeMillis() - sseStartTime);
                         } catch (Exception e) {
                             log.warn("发送SSE完成事件失败: {}", e.getMessage(), e);
+                            scheduler.shutdown();
                             try { emitter.completeWithError(e); } catch (Exception ignored) {}
                         }
                     },
                     ex -> {
                         log.error("AI流式搜索出错: {}", ex.getMessage(), ex);
                         try {
+                            // 先刷新剩余的缓冲内容
+                            synchronized (contentBuffer) {
+                                if (contentBuffer.length() > 0) {
+                                    log.debug("[Buffer] error事件前刷新剩余缓冲内容");
+                                    flushBuffer.run();
+                                }
+                            }
+                            
+                            scheduler.shutdown();
                             Map<String, Object> errorEvent = Map.of(
                                 "type", "error",
                                 "message", "搜索出错: " + ex.getMessage()
@@ -258,6 +335,7 @@ public class BbsPostController {
                         } catch (Exception ioException) {
                             log.warn("发送SSE错误事件失败: {}", ioException.getMessage());
                         } finally {
+                            scheduler.shutdown();
                             try { emitter.completeWithError(ex); } catch (Exception ignored) {}
                         }
                     }
@@ -280,6 +358,51 @@ public class BbsPostController {
         });
 
         return emitter;
+    }
+    
+    /**
+     * 解析 AI 回复中的发帖建议
+     */
+    private Map<String, String> parseSuggestPost(String content) {
+        try {
+            String pattern = "\\[SUGGEST_POST\\]\\s*标题：(.*?)\\s*内容：(.*?)\\s*\\[/SUGGEST_POST\\]";
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(content);
+            if (m.find()) {
+                String title = m.group(1).trim();
+                String postContent = m.group(2).trim();
+                return java.util.Map.of(
+                    "title", title,
+                    "content", postContent
+                );
+            }
+        } catch (Exception e) {
+            log.warn("解析发帖建议失败: {}", e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * 从内容中移除 SUGGEST_POST 标签及其包裹的内容
+     */
+    private String removeSuggestPostTags(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        try {
+            String pattern = "\\[SUGGEST_POST\\]\\s*标题：.*?\\s*内容：.*?\\s*\\[/SUGGEST_POST\\]";
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(pattern, java.util.regex.Pattern.DOTALL);
+            java.util.regex.Matcher m = p.matcher(content);
+            String result = m.replaceAll("");
+            // 如果替换后只剩余空白字符，返回空字符串
+            if (result.trim().isEmpty()) {
+                return "";
+            }
+            return result;
+        } catch (Exception e) {
+            log.warn("移除 SUGGEST_POST 标签失败: {}", e.getMessage());
+            return content;
+        }
     }
     
     /**
@@ -320,5 +443,12 @@ public class BbsPostController {
             log.error("AI写作请求处理失败", e);
             return CommonMethod.getReturnMessageError("AI写作失败：" + e.getMessage());
         }
+    }
+
+    @GetMapping("/user/{userId}")
+    public DataResponse getUserPosts(@PathVariable Long userId, @RequestParam Map<String, String> params) {
+        DataRequest dataRequest = new DataRequest();
+        params.forEach(dataRequest::add);
+        return bbsPostService.getUserPosts(userId, dataRequest);
     }
 }

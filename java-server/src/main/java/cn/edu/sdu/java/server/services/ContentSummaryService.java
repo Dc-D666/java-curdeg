@@ -27,6 +27,9 @@ public class ContentSummaryService {
 身份：学生论坛内容摘要生成器，仅输出指定JSON，无任何额外文字/注释/换行。
 
 任务：对帖子和评论进行智能摘要，突出重点，语言简洁。
+特殊规则：
+1. 如果没有评论，commentHotspots字段必须填"暂无评论"，绝对不能编造评论！
+2. 如果帖子内容过短，如实总结即可。
 
 输出格式：
 {"postSummary":"帖子摘要","commentHotspots":"评论热点摘要"}
@@ -64,7 +67,7 @@ public class ContentSummaryService {
             String fullContent = post.getTitle() + "\n" + post.getContent();
             if (fullContent.length() < MIN_CONTENT_LENGTH) {
                 log.info("帖子内容过短，无需AI总结，长度={}", fullContent.length());
-                return ContentSummaryResponse.info("帖子内容过短，无需AI总结");
+                return ContentSummaryResponse.info("帖子内容较短，无需AI总结");
             }
 
             String prompt = buildPostSummaryPrompt(post);
@@ -89,13 +92,23 @@ public class ContentSummaryService {
 
             List<BbsComment> comments = selectComments(postId);
             String fullContent = post.getTitle() + "\n" + post.getContent();
-            if (fullContent.length() < MIN_CONTENT_LENGTH && comments.isEmpty()) {
-                log.info("帖子和评论内容过短，无需AI总结");
-                return ContentSummaryResponse.info("帖子和评论内容过短，无需AI总结");
+            
+            // 如果帖子内容过短，提示文本较短，无需总结
+            if (fullContent.length() < MIN_CONTENT_LENGTH) {
+                log.info("帖子内容过短，无需AI总结，长度={}", fullContent.length());
+                return ContentSummaryResponse.info("帖子内容较短，无需AI总结");
             }
 
             String prompt = buildPostWithCommentsPrompt(post, comments);
             ContentSummaryResponse result = callAiForSummary(prompt);
+            
+            // 保险起见：如果没有评论，强制设置commentHotspots为"暂无评论"
+            if (comments.isEmpty() && (result.getCommentHotspots() == null || 
+                !"暂无评论".equals(result.getCommentHotspots()))) {
+                log.info("没有评论，强制设置commentHotspots为\"暂无评论\"");
+                result.setCommentHotspots("暂无评论");
+            }
+            
             log.info("帖子和评论总结完成，postId={}, 评论数={}", postId, comments.size());
             return result;
 
@@ -130,11 +143,15 @@ public class ContentSummaryService {
         sb.append("请对以下帖子和评论进行摘要：\n");
         sb.append("标题：").append(post.getTitle()).append("\n");
         sb.append("内容：").append(post.getContent()).append("\n");
-        sb.append("评论：\n");
-        for (int i = 0; i < comments.size(); i++) {
-            BbsComment comment = comments.get(i);
-            sb.append(String.format("[%d] 点赞数:%d - %s\n",
-                    i + 1, comment.getLikeCount(), comment.getContent()));
+        if (comments.isEmpty()) {
+            sb.append("评论：没有评论\n");
+        } else {
+            sb.append("评论：\n");
+            for (int i = 0; i < comments.size(); i++) {
+                BbsComment comment = comments.get(i);
+                sb.append(String.format("[%d] 点赞数:%d - %s\n",
+                        i + 1, comment.getLikeCount(), comment.getContent()));
+            }
         }
         return sb.toString();
     }

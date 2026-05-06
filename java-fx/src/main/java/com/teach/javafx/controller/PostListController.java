@@ -82,9 +82,11 @@ public class PostListController extends ToolController {
             private Long currentUserId = null;
             
             {
-                imageView.setFitWidth(32);
-                imageView.setFitHeight(32);
+                imageView.setFitWidth(24);
+                imageView.setFitHeight(24);
                 imageView.setPreserveRatio(true);
+                imageView.setSmooth(true);
+                imageView.setCache(true);
             }
             
             @Override
@@ -104,7 +106,9 @@ public class PostListController extends ToolController {
                     
                     if (avatarUrl != null && !avatarUrl.isBlank()) {
                         try {
-                            Image image = new Image(avatarUrl, true);
+                            String fullAvatarUrl = avatarUrl.startsWith("/") ? 
+                                HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                            Image image = new Image(fullAvatarUrl, true);
                             imageView.setImage(image);
                         } catch (Exception e) {
                             imageView.setImage(null);
@@ -215,6 +219,9 @@ public class PostListController extends ToolController {
 
         postTableView.setRowFactory(tv -> {
             TableRow<Post> row = new TableRow<>();
+            row.setPrefHeight(36);
+            row.setMinHeight(36);
+            row.setMaxHeight(36);
             row.setOnMouseClicked(event -> {
                 if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
                     Post post = row.getItem();

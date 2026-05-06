@@ -119,7 +119,7 @@ public class PersonalProfileController extends ToolController {
     // 正则表达式
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^1[3-9]\\d{9}$");
-    private static final Pattern URL_PATTERN = Pattern.compile("^(https?|ftp)://.*$");
+    private static final Pattern URL_PATTERN = Pattern.compile("^(https?|ftp)://.*$|^/.*$");
 
     // 隐私选项的简化显示
     private static final ObservableList<String> PRIVACY_OPTIONS = FXCollections.observableArrayList("公开", "仅关注可见", "私密");
@@ -270,7 +270,9 @@ public class PersonalProfileController extends ToolController {
         
         if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
             try {
-                Image avatarImage = new Image(user.getAvatarUrl(), true);
+                String fullAvatarUrl = user.getAvatarUrl().startsWith("/") ? 
+                    HttpRequestUtil.serverUrl + user.getAvatarUrl() : user.getAvatarUrl();
+                Image avatarImage = new Image(fullAvatarUrl, true);
                 avatarImageView.setImage(avatarImage);
             } catch (Exception e) {
             }
@@ -569,7 +571,9 @@ public class PersonalProfileController extends ToolController {
         
         if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
             try {
-                Image avatarImage = new Image(originalAvatarUrl, true);
+                String fullOriginalUrl = originalAvatarUrl.startsWith("/") ? 
+                    HttpRequestUtil.serverUrl + originalAvatarUrl : originalAvatarUrl;
+                Image avatarImage = new Image(fullOriginalUrl, true);
                 avatarImageView.setImage(avatarImage);
             } catch (Exception e) {
             }
@@ -615,17 +619,20 @@ public class PersonalProfileController extends ToolController {
                 String avatarUrl = task.getValue();
                 if (avatarUrl != null && !avatarUrl.isBlank()) {
                     avatarUrlTextField.setText(avatarUrl);
+                    String fullAvatarUrl = HttpRequestUtil.serverUrl + avatarUrl;
                     try {
-                        Image avatarImage = new Image(avatarUrl, true);
+                        Image avatarImage = new Image(fullAvatarUrl, true);
                         avatarImageView.setImage(avatarImage);
                     } catch (Exception e) {
                     }
-                    showSuccess("头像上传成功");
+                    saveProfileAfterAvatarUpload(avatarUrl);
                 } else {
                     showError("头像上传失败");
                     if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
                         try {
-                            Image avatarImage = new Image(originalAvatarUrl, true);
+                            String fullOriginalUrl = originalAvatarUrl.startsWith("/") ? 
+                                HttpRequestUtil.serverUrl + originalAvatarUrl : originalAvatarUrl;
+                            Image avatarImage = new Image(fullOriginalUrl, true);
                             avatarImageView.setImage(avatarImage);
                         } catch (Exception e) {
                         }
@@ -641,7 +648,9 @@ public class PersonalProfileController extends ToolController {
                 showError("头像上传失败");
                 if (originalAvatarUrl != null && !originalAvatarUrl.isEmpty()) {
                     try {
-                        Image avatarImage = new Image(originalAvatarUrl, true);
+                        String fullOriginalUrl = originalAvatarUrl.startsWith("/") ? 
+                            HttpRequestUtil.serverUrl + originalAvatarUrl : originalAvatarUrl;
+                        Image avatarImage = new Image(fullOriginalUrl, true);
                         avatarImageView.setImage(avatarImage);
                     } catch (Exception e) {
                     }
@@ -651,6 +660,65 @@ public class PersonalProfileController extends ToolController {
             });
         });
         
+        new Thread(task).start();
+    }
+    
+    private void saveProfileAfterAvatarUpload(String avatarUrl) {
+        final String nickname = nicknameTextField.getText() != null ? nicknameTextField.getText() : "";
+        final String signature = signatureTextArea.getText() != null ? signatureTextArea.getText() : "";
+        final String personName = personNameTextField.getText() != null ? personNameTextField.getText() : "";
+        final String personDept = personDeptTextField.getText() != null ? personDeptTextField.getText() : "";
+        final String personGender = personGenderComboBox.getValue();
+        final String personBirthday;
+        if (personBirthdayPicker.getValue() != null) {
+            personBirthday = personBirthdayPicker.getValue().format(DATE_FORMATTER);
+        } else {
+            personBirthday = null;
+        }
+        final String personEmail = personEmailTextField.getText() != null ? personEmailTextField.getText() : "";
+        final String personPhone = personPhoneTextField.getText() != null ? personPhoneTextField.getText() : "";
+        final String personAddress = personAddressTextField.getText() != null ? personAddressTextField.getText() : "";
+        final String personIntroduce = personIntroduceTextArea.getText() != null ? personIntroduceTextArea.getText() : "";
+        final String namePrivacy = getPrivacyValue(namePrivacyComboBox.getValue());
+        final String deptPrivacy = getPrivacyValue(deptPrivacyComboBox.getValue());
+        final String genderPrivacy = getPrivacyValue(genderPrivacyComboBox.getValue());
+        final String birthdayPrivacy = getPrivacyValue(birthdayPrivacyComboBox.getValue());
+        final String emailPrivacy = getPrivacyValue(emailPrivacyComboBox.getValue());
+        final String phonePrivacy = getPrivacyValue(phonePrivacyComboBox.getValue());
+        final String addressPrivacy = getPrivacyValue(addressPrivacyComboBox.getValue());
+        final String introducePrivacy = getPrivacyValue(introducePrivacyComboBox.getValue());
+
+        Task<User> task = new Task<User>() {
+            @Override
+            protected User call() {
+                return HttpRequestUtil.updateUserProfile(nickname, signature, avatarUrl, 
+                                                         personName, personDept, personGender, 
+                                                         personBirthday, personEmail, personPhone, 
+                                                         personAddress, personIntroduce,
+                                                         namePrivacy, deptPrivacy, genderPrivacy,
+                                                         birthdayPrivacy, emailPrivacy, phonePrivacy,
+                                                         addressPrivacy, introducePrivacy);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                User updatedUser = task.getValue();
+                if (updatedUser != null) {
+                    currentUser = updatedUser;
+                    originalAvatarUrl = avatarUrl;
+                    updateUI(updatedUser);
+                    showSuccess("头像上传并保存成功");
+                } else {
+                    showError("头像上传成功，但保存信息失败");
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> showError("头像上传成功，但保存信息失败"));
+        });
+
         new Thread(task).start();
     }
 

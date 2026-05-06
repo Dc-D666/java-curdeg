@@ -67,12 +67,22 @@ public class CommentItemController {
         String avatarUrl = comment.getAuthorAvatarUrl();
         if (avatarUrl != null && !avatarUrl.isBlank()) {
             try {
-                Image image = new Image(avatarUrl, true);
+                String fullAvatarUrl = avatarUrl.startsWith("/") ? 
+                    HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                Image image = new Image(fullAvatarUrl, true);
                 avatarImageView.setImage(image);
             } catch (Exception e) {
                 avatarImageView.setImage(null);
             }
         }
+        
+        // 头像点击事件
+        avatarImageView.setStyle("-fx-cursor: hand;");
+        avatarImageView.setOnMouseClicked(event -> {
+            if (comment.getAuthorId() != null) {
+                openUserHome(comment.getAuthorId().intValue(), comment.getAuthorNickname());
+            }
+        });
 
         String authorText;
         if (comment.getReplyToUserNickname() != null && !comment.getReplyToUserNickname().isBlank()) {
@@ -504,5 +514,11 @@ public class CommentItemController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    
+    private void openUserHome(Integer userId, String nickname) {
+        if (com.teach.javafx.AppStore.getMainFrameController() != null) {
+            com.teach.javafx.AppStore.getMainFrameController().openUserHome(userId, nickname);
+        }
     }
 }

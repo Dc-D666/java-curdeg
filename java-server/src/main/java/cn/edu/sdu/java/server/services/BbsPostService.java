@@ -686,4 +686,29 @@ public class BbsPostService {
         }
         return cleanContent.substring(0, 200) + "...";
     }
+
+    public DataResponse getUserPosts(Long userId, DataRequest dataRequest) {
+        Integer pageNum = dataRequest.getInteger("pageNum");
+        Integer pageSize = dataRequest.getInteger("pageSize");
+
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 50) {
+            pageSize = 10;
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Page<BbsPost> postPage = bbsPostRepository.findUserPostsWithModeration(
+                userId, currentUserIdLong, isAdmin, pageable);
+
+        postPage.getContent().forEach(this::fillPostAuthorInfo);
+
+        return CommonMethod.getReturnData(postPage);
+    }
 }
