@@ -9,12 +9,15 @@ import javafx.concurrent.Task;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 import java.util.Map;
 
 public class UserHomeController extends ToolController {
+    @javafx.fxml.FXML
+    private ScrollPane mainScrollPane;
     @javafx.fxml.FXML
     private Button backButton;
     @javafx.fxml.FXML
@@ -64,6 +67,7 @@ public class UserHomeController extends ToolController {
     
     @javafx.fxml.FXML
     public void initialize() {
+        setupPageScroll();
         backButton.setOnAction(event -> handleBack());
         refreshButton.setOnAction(event -> loadUserPosts());
         followButton.setOnAction(event -> toggleFollow());
@@ -80,6 +84,34 @@ public class UserHomeController extends ToolController {
                 loadUserPosts();
             }
         });
+    }
+
+    private void setupPageScroll() {
+        mainScrollPane.setFitToWidth(true);
+        mainScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        mainScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        mainScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            double contentHeight = mainScrollPane.getContent().getBoundsInLocal().getHeight();
+            double viewportHeight = mainScrollPane.getViewportBounds().getHeight();
+            double scrollableHeight = contentHeight - viewportHeight;
+            if (scrollableHeight <= 0) {
+                return;
+            }
+
+            double delta = event.getDeltaY() / scrollableHeight;
+            mainScrollPane.setVvalue(clamp(mainScrollPane.getVvalue() - delta));
+            event.consume();
+        });
+    }
+
+    private double clamp(double value) {
+        if (value < 0) {
+            return 0;
+        }
+        if (value > 1) {
+            return 1;
+        }
+        return value;
     }
     
     public void setUserId(Integer userId) {
@@ -380,7 +412,8 @@ public class UserHomeController extends ToolController {
     
     private void addPostToView(Map<String, Object> postData) {
         VBox postBox = new VBox(8);
-        postBox.setStyle("-fx-background-color: #f9f9f9; -fx-padding: 15; -fx-background-radius: 8; -fx-border-color: #e8e8e8; -fx-border-width: 1; -fx-border-radius: 8; -fx-cursor: hand;");
+        postBox.getStyleClass().add("profile-card");
+        postBox.setStyle("-fx-padding: 16; -fx-cursor: hand;");
         
         // 帖子标题
         String title = (String) postData.get("title");

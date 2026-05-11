@@ -47,6 +47,12 @@ public class BbsUserController {
         return bbsUserService.getUserStatistics();
     }
 
+    @GetMapping("/me/statistics/detail")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse getUserStatisticsDetail() {
+        return bbsUserService.getUserStatisticsDetail();
+    }
+
     @GetMapping("/me/posts")
     @PreAuthorize("isAuthenticated()")
     public DataResponse getMyPosts(@Valid DataRequest dataRequest) {
@@ -63,6 +69,12 @@ public class BbsUserController {
     @PreAuthorize("isAuthenticated()")
     public DataResponse changePassword(@Valid @RequestBody DataRequest dataRequest) {
         return bbsUserService.changePassword(dataRequest);
+    }
+
+    @PostMapping("/me/password/code")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse sendChangePasswordCode() {
+        return bbsUserService.sendChangePasswordCode();
     }
 
     @GetMapping("/{userId}")

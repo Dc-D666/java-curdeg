@@ -2,7 +2,6 @@ package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.EmailVerification;
 import cn.edu.sdu.java.server.repositorys.EmailVerificationRepository;
-import cn.edu.sdu.java.server.util.CommonMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +47,11 @@ public class EmailVerificationService {
         }
 
         String code = generateCode();
+        String sendError = emailService.sendVerificationCodeWithError(email, code, type);
+        if (sendError != null) {
+            log.warn("验证码邮件发送失败，未保存验证码，邮箱：{}，类型：{}，原因：{}", email, type, sendError);
+            return sendError;
+        }
 
         EmailVerification verification;
         if (existingOp.isPresent()) {
@@ -66,12 +70,6 @@ public class EmailVerificationService {
         }
 
         verificationRepository.save(verification);
-
-        boolean sent = emailService.sendVerificationCode(email, code);
-        if (!sent) {
-            return "邮件发送失败，请稍后重试";
-        }
-
         return null;
     }
 
@@ -101,7 +99,6 @@ public class EmailVerificationService {
 
         verification.setIsVerified(true);
         verificationRepository.save(verification);
-
         return null;
     }
 

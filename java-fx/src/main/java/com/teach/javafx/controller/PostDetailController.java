@@ -1,6 +1,7 @@
 package com.teach.javafx.controller;
 
 import com.teach.javafx.AppStore;
+import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.Post;
@@ -13,9 +14,14 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +107,16 @@ public class PostDetailController extends ToolController {
     @FXML
     private Button addImageButton;
     @FXML
+    private ScrollPane commentImagePreviewScrollPane;
+    @FXML
+    private FlowPane commentImagePreviewPane;
+    @FXML
+    private HBox replyTargetBox;
+    @FXML
+    private Label replyTargetLabel;
+    @FXML
+    private Button cancelReplyButton;
+    @FXML
     private Button followButton;
     @FXML
     private TitledPane aiSummaryPane;
@@ -122,6 +138,8 @@ public class PostDetailController extends ToolController {
     private boolean isLiked = false;
     private boolean isFollowed = false;
     private boolean isFavorited = false;
+    private final List<Path> selectedCommentImages = new ArrayList<>();
+    private Comment replyingToComment;
 
     @FXML
     public void initialize() {
@@ -144,6 +162,7 @@ public class PostDetailController extends ToolController {
         reportButton.setOnAction(event -> openReportDialog());
         shareButton.setOnAction(event -> handleShare());
         addImageButton.setOnAction(event -> handleAddImage());
+        cancelReplyButton.setOnAction(event -> clearReplyTarget());
         editViolationButton.setOnAction(event -> openEditDialog());
         
         editMenuItem.setOnAction(event -> openEditDialog());
@@ -160,6 +179,7 @@ public class PostDetailController extends ToolController {
         followButton.setVisible(false);
         addImageButton.setVisible(false);
         moreButton.setVisible(false);
+        refreshCommentImagePreview();
     }
 
     public void setPostId(Long postId) {
@@ -382,6 +402,10 @@ public class PostDetailController extends ToolController {
     }
 
     private void openReplyDialog(Comment parentComment) {
+        if (parentComment != null) {
+            setReplyTarget(parentComment);
+            return;
+        }
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("回复评论");
         dialog.setHeaderText("回复 @" + (parentComment.getAuthorNickname() != null ? parentComment.getAuthorNickname() : "未知"));
@@ -649,44 +673,163 @@ public class PostDetailController extends ToolController {
 
         dialog.showAndWait();
     }
-    
-    private void handleAddImage() {
-        showInfo("图片添加功能开发中...");
-    }
 
-    private void publishComment() {
-        String content = commentTextArea.getText().trim();
-        if (content.isEmpty()) {
-            showError("评论内容不能为空");
+    private void selectCommentImages() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择评论图片");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("图片文件", "*.jpg", "*.jpeg", "*.png", "*.gif"),
+            new FileChooser.ExtensionFilter("所有文件", "*.*")
+        );
+
+        List<File> files = fileChooser.showOpenMultipleDialog(MainApplication.getMainStage());
+        if (files == null || files.isEmpty()) {
             return;
         }
-        
+
+        for (File file : files) {
+            if (file == null) {
+                continue;
+            }
+            String fileName = file.getName().toLowerCase();
+            if (!(fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") || fileName.endsWith(".gif"))) {
+                showError("只能选择 jpg、jpeg、png 或 gif 图片");
+                continue;
+            }
+            if (file.length() > 10 * 1024 * 1024) {
+                showError("单张图片不能超过 10MB");
+                continue;
+            }
+            Path imagePath = file.toPath();
+            if (selectedCommentImages.contains(imagePath)) {
+                continue;
+            }
+            if (selectedCommentImages.size() >= 9) {
+                showInfo("评论最多添加 9 张图片");
+                break;
+            }
+            selectedCommentImages.add(imagePath);
+        }
+        refreshCommentImagePreview();
+    }
+
+    private void refreshCommentImagePreview() {
+        if (commentImagePreviewPane == null) {
+            return;
+        }
+
+        commentImagePreviewPane.getChildren().clear();
+        boolean hasImages = !selectedCommentImages.isEmpty();
+        commentImagePreviewScrollPane.setVisible(hasImages);
+        commentImagePreviewScrollPane.setManaged(hasImages);
+
+        for (Path path : selectedCommentImages) {
+            VBox tile = new VBox(6);
+            tile.getStyleClass().add("preview-tile");
+            tile.setPrefWidth(68);
+            tile.setMaxWidth(68);
+
+            ImageView imageView = new ImageView();
+            imageView.setFitWidth(56);
+            imageView.setFitHeight(44);
+            imageView.setPreserveRatio(true);
+            imageView.setSmooth(true);
+            imageView.setImage(new Image(path.toUri().toString(), true));
+
+            Button removeButton = new Button("删除");
+            removeButton.getStyleClass().add("text-button");
+            removeButton.setOnAction(event -> {
+                selectedCommentImages.remove(path);
+                refreshCommentImagePreview();
+            });
+
+            tile.getChildren().addAll(imageView, removeButton);
+            commentImagePreviewPane.getChildren().add(tile);
+        }
+    }
+
+    private void clearSelectedCommentImages() {
+        selectedCommentImages.clear();
+        refreshCommentImagePreview();
+    }
+
+    private void setReplyTarget(Comment comment) {
+        replyingToComment = comment;
+        String nickname = comment.getAuthorNickname() != null ? comment.getAuthorNickname() : "未知用户";
+        replyTargetLabel.setText("正在回复 @" + nickname);
+        replyTargetBox.setVisible(true);
+        replyTargetBox.setManaged(true);
+        commentTextArea.setPromptText("回复 @" + nickname + "，支持添加图片...");
+        submitCommentButton.setText("发布回复");
+        commentTextArea.requestFocus();
+    }
+
+    private void clearReplyTarget() {
+        replyingToComment = null;
+        replyTargetBox.setVisible(false);
+        replyTargetBox.setManaged(false);
+        commentTextArea.setPromptText("发表评论，支持添加图片...");
+        submitCommentButton.setText("发布评论");
+    }
+
+    private void publishCommentWithImages() {
+        String content = commentTextArea.getText().trim();
+        if (content.isEmpty() && selectedCommentImages.isEmpty()) {
+            showError("评论内容或图片不能为空");
+            return;
+        }
+
+        List<Path> imageFiles = new ArrayList<>(selectedCommentImages);
+        Long parentId = replyingToComment != null ? replyingToComment.getId() : null;
+        submitCommentButton.setDisable(true);
+        addImageButton.setDisable(true);
+        submitCommentButton.setText("发布中...");
+
         Task<Comment> task = new Task<Comment>() {
             @Override
             protected Comment call() {
-                return HttpRequestUtil.publishComment(postId, content);
+                List<String> uploadedUrls = HttpRequestUtil.uploadImages(imageFiles);
+                if (uploadedUrls.size() != imageFiles.size()) {
+                    throw new IllegalStateException("图片上传失败");
+                }
+                String imageUrls = String.join(",", uploadedUrls);
+                String safeContent = content.isEmpty() ? "分享图片" : content;
+                return HttpRequestUtil.publishComment(postId, safeContent, parentId, imageUrls);
             }
         };
-        
-        task.setOnSucceeded(event -> {
-            Platform.runLater(() -> {
-                Comment result = task.getValue();
-                if (result != null) {
-                    showInfo("评论发表成功！");
-                    commentTextArea.clear();
-                    loadCommentList();
-                    loadPostDetail();
-                } else {
-                    showError("评论发表失败，请稍后重试");
-                }
-            });
-        });
-        
-        task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("评论发表失败，请稍后重试"));
-        });
-        
+
+        task.setOnSucceeded(event -> Platform.runLater(() -> {
+            Comment result = task.getValue();
+            if (result != null) {
+                showInfo(parentId == null ? "评论发表成功！" : "回复成功！");
+                commentTextArea.clear();
+                clearSelectedCommentImages();
+                clearReplyTarget();
+                loadCommentList();
+                loadPostDetail();
+            } else {
+                showError("评论发表失败，请稍后重试");
+            }
+            submitCommentButton.setDisable(false);
+            addImageButton.setDisable(false);
+        }));
+
+        task.setOnFailed(event -> Platform.runLater(() -> {
+            showError("评论发表失败，请检查图片大小或稍后重试");
+            submitCommentButton.setDisable(false);
+            addImageButton.setDisable(false);
+            submitCommentButton.setText(parentId == null ? "发布评论" : "发布回复");
+        }));
+
         new Thread(task).start();
+    }
+
+    private void handleAddImage() {
+        selectCommentImages();
+    }
+
+    private void publishComment() {
+        publishCommentWithImages();
     }
     
     private void deletePost() {

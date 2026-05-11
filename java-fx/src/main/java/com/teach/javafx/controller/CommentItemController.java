@@ -13,6 +13,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
@@ -42,7 +43,7 @@ public class CommentItemController {
     @FXML
     private VBox replyVBox;
     @FXML
-    private VBox commentImagesVBox;
+    private FlowPane commentImagesVBox;
 
     private Comment comment;
     private User currentUser;
@@ -94,9 +95,7 @@ public class CommentItemController {
 
         contentLabel.setText(comment.getContent());
 
-        if (comment.getCreateTime() != null) {
-            timeLabel.setText("时间：" + dateFormat.format(comment.getCreateTime()));
-        }
+        timeLabel.setText(comment.getCreateTime() != null ? dateFormat.format(comment.getCreateTime()) : "");
 
         boolean isLoggedIn = currentUser != null;
         boolean isBanned = isLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
@@ -123,18 +122,8 @@ public class CommentItemController {
         if (isReplyItem) {
             avatarImageView.setFitWidth(20);
             avatarImageView.setFitHeight(20);
-            authorLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
-            timeLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
-            replyButton.setStyle("-fx-font-size: 10px;");
-            reportButton.setStyle("-fx-font-size: 10px;");
-            likeButton.setStyle("-fx-font-size: 10px;");
-            followButton.setStyle("-fx-font-size: 10px;");
+            ((VBox) authorBox.getParent()).getStyleClass().add("reply-comment-card");
         }
-
-        String bgColor = isReplyItem ? "#e8e8e8" : "#f5f5f5";
-        String radius = isReplyItem ? "3" : "5";
-        String padding = isReplyItem ? "8" : "10";
-        ((VBox) authorBox.getParent()).setStyle("-fx-background-color: " + bgColor + "; -fx-padding: " + padding + "; -fx-background-radius: " + radius + ";");
 
         displayCommentImages();
 
@@ -174,15 +163,15 @@ public class CommentItemController {
             fullUrlList.add(fullUrl);
         }
 
-        double imageWidth = isReplyItem ? 200 : 400;
-
         for (int i = 0; i < fullUrlList.size(); i++) {
             final int index = i;
             String fullUrl = fullUrlList.get(i);
 
             try {
                 ImageView imageView = new ImageView();
-                imageView.setFitWidth(imageWidth);
+                imageView.getStyleClass().add("comment-image");
+                imageView.setFitWidth(isReplyItem ? 120 : 150);
+                imageView.setFitHeight(isReplyItem ? 120 : 150);
                 imageView.setPreserveRatio(true);
                 imageView.setSmooth(true);
                 imageView.setStyle("-fx-cursor: hand;");
@@ -491,10 +480,10 @@ public class CommentItemController {
             int count = comment.getLikeCount() != null ? comment.getLikeCount() : 0;
             String fontSize = isReplyItem ? "10px" : "11px";
             if (isLiked) {
-                likeButton.setText("👍 已赞 (" + count + ")");
+                likeButton.setText("已赞 (" + count + ")");
                 likeButton.setStyle("-fx-font-size: " + fontSize + "; -fx-background-color: #4CAF50; -fx-text-fill: white;");
             } else {
-                likeButton.setText("👍 点赞 (" + count + ")");
+                likeButton.setText("点赞 (" + count + ")");
                 likeButton.setStyle("-fx-font-size: " + fontSize + ";");
             }
         }

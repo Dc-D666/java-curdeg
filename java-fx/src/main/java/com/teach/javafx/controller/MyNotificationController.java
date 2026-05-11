@@ -12,9 +12,13 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MyNotificationController extends ToolController {
     @FXML
@@ -38,7 +42,8 @@ public class MyNotificationController extends ToolController {
     @FXML
     private ComboBox<String> typeComboBox;
 
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+    private static final Pattern POST_ID_PATTERN = Pattern.compile("(?:帖子ID|帖子 ID|postId|post_id|帖子)[:：]?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern CONTENT_ID_PATTERN = Pattern.compile("(?:内容ID|内容 ID|ID)[:：]?\\s*(\\d+)");
     private Integer currentType = null;
 
     @FXML
@@ -230,7 +235,9 @@ public class MyNotificationController extends ToolController {
         notificationTableView.setRowFactory(tv -> {
             TableRow<Notification> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1 && !row.isEmpty()) {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
+                    openNotificationDetail(row.getItem());
+                } else if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1 && !row.isEmpty()) {
                     Notification notification = row.getItem();
                     if (notification.getIsRead() == null || notification.getIsRead() == 0) {
                         markAsRead(notification);
@@ -239,6 +246,126 @@ public class MyNotificationController extends ToolController {
             });
             return row;
         });
+    }
+
+    private void openNotificationDetail(Notification notification) {
+        if (notification == null) {
+            return;
+        }
+
+        if (notification.getIsRead() == null || notification.getIsRead() == 0) {
+            markAsRead(notification);
+        }
+
+        Long postId = extractPostId(notification);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("通知详情");
+        dialog.setHeaderText(notification.getTitle() != null && !notification.getTitle().isBlank()
+                ? notification.getTitle()
+                : getTypeText(notification.getType()));
+
+        ButtonType openPostButton = new ButtonType("查看原帖", ButtonBar.ButtonData.OK_DONE);
+        ButtonType closeButton = new ButtonType("关闭", ButtonBar.ButtonData.CANCEL_CLOSE);
+        if (postId != null) {
+            dialog.getDialogPane().getButtonTypes().addAll(openPostButton, closeButton);
+        } else {
+            dialog.getDialogPane().getButtonTypes().add(closeButton);
+        }
+
+        GridPane metaGrid = new GridPane();
+        metaGrid.setHgap(12);
+        metaGrid.setVgap(8);
+        addMetaRow(metaGrid, 0, "类型", getTypeText(notification.getType()));
+        addMetaRow(metaGrid, 1, "状态", notification.getIsRead() != null && notification.getIsRead() == 1 ? "已读" : "未读");
+        addMetaRow(metaGrid, 2, "时间", notification.getCreateTime() != null ? notification.getCreateTime() : "");
+        if (postId != null) {
+            addMetaRow(metaGrid, 3, "关联帖子", String.valueOf(postId));
+        }
+
+        TextArea contentArea = new TextArea(notification.getContent() != null ? notification.getContent() : "");
+        contentArea.setEditable(false);
+        contentArea.setWrapText(true);
+        contentArea.setPrefRowCount(8);
+        contentArea.setPrefColumnCount(52);
+
+        VBox content = new VBox(12, metaGrid, contentArea);
+        content.setPadding(new javafx.geometry.Insets(10));
+        dialog.getDialogPane().setContent(content);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == openPostButton) {
+            openPostDetail(postId);
+        }
+    }
+
+    private void addMetaRow(GridPane grid, int row, String label, String value) {
+        Label labelNode = new Label(label + "：");
+        labelNode.setStyle("-fx-font-weight: bold;");
+        Label valueNode = new Label(value != null ? value : "");
+        valueNode.setWrapText(true);
+        grid.add(labelNode, 0, row);
+        grid.add(valueNode, 1, row);
+    }
+
+    private Long extractPostId(Notification notification) {
+        if (notification == null) {
+            return null;
+        }
+
+        String source = ((notification.getTitle() != null ? notification.getTitle() : "") + " " +
+                (notification.getContent() != null ? notification.getContent() : ""));
+        Matcher postMatcher = POST_ID_PATTERN.matcher(source);
+        if (postMatcher.find()) {
+            return parseLong(postMatcher.group(1));
+        }
+
+        if (notification.getType() != null && (notification.getType() == 3 || notification.getType() == 4 || notification.getType() == 6)) {
+            Matcher contentMatcher = CONTENT_ID_PATTERN.matcher(source);
+            if (contentMatcher.find()) {
+                return parseLong(contentMatcher.group(1));
+            }
+        }
+        return null;
+    }
+
+    private Long parseLong(String value) {
+        try {
+            return value != null ? Long.parseLong(value) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private String getTypeText(Integer type) {
+        if (type == null) {
+            return "未知";
+        }
+        switch (type) {
+            case 1:
+                return "系统通知";
+            case 2:
+                return "举报处理通知";
+            case 3:
+                return "帖子审核通知";
+            case 4:
+                return "评论回复通知";
+            case 5:
+                return "新增粉丝通知";
+            case 6:
+                return "关注用户发帖通知";
+            default:
+                return "未知";
+        }
+    }
+
+    private void openPostDetail(Long postId) {
+        if (postId == null) {
+            showInfo("这条通知没有关联帖子");
+            return;
+        }
+        if (AppStore.getMainFrameController() != null) {
+            AppStore.getMainFrameController().openPostDetail(postId);
+        }
     }
 
     private void loadUnreadCount() {

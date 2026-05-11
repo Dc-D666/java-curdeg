@@ -16,11 +16,14 @@ import javafx.collections.FXCollections;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.Node;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.teach.javafx.request.HttpRequestUtil;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
@@ -101,6 +104,10 @@ public class PostSearchController extends ToolController {
     private VBox normalSearchBox;
     @FXML
     private Button copyAnswerBtn;
+    @FXML
+    private ScrollPane mainScrollPane;
+    @FXML
+    private VBox searchContentBox;
 
     private String currentAnswerText = ""; // 保存原始答案用于复制
     private int currentPageNum = 1;
@@ -122,12 +129,14 @@ public class PostSearchController extends ToolController {
     private final AtomicLong lastFlushTime = new AtomicLong(0);
     private ScheduledExecutorService flushExecutor;
     private final Object bufferLock = new Object();
+    private static final double PAGE_SCROLL_STEP = 120.0;
     private static final long BUFFER_FLUSH_INTERVAL_MS = 100; // 100ms 刷新窗口
 
     @FXML
     public void initialize() {
         // 启动缓冲刷新定时器
         startBufferFlushTimer();
+        setupPageScroll();
         
         // 设置表格行高
         postTableView.setFixedCellSize(50.0);
@@ -423,6 +432,56 @@ public class PostSearchController extends ToolController {
     }
 
     // 解析 HTML 高亮标签，构建 TextFlow
+    private void setupPageScroll() {
+        if (mainScrollPane == null) {
+            return;
+        }
+
+        mainScrollPane.setFitToWidth(true);
+        mainScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        mainScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+
+        if (searchContentBox != null) {
+            searchContentBox.prefWidthProperty().bind(mainScrollPane.viewportBoundsProperty().map(bounds -> bounds.getWidth()));
+        } else if (mainScrollPane.getContent() instanceof Region contentRegion) {
+            contentRegion.prefWidthProperty().bind(mainScrollPane.viewportBoundsProperty().map(bounds -> bounds.getWidth()));
+        }
+
+        mainScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            if (isFromResultTable(event.getTarget())) {
+                return;
+            }
+
+            double scrollableHeight = mainScrollPane.getContent().getBoundsInLocal().getHeight()
+                    - mainScrollPane.getViewportBounds().getHeight();
+            if (scrollableHeight <= 0) {
+                return;
+            }
+
+            double delta = event.getDeltaY() == 0 ? event.getTextDeltaY() * PAGE_SCROLL_STEP : event.getDeltaY();
+            double nextPixel = mainScrollPane.getVvalue() * scrollableHeight - delta;
+            mainScrollPane.setVvalue(clamp(nextPixel / scrollableHeight, 0, 1));
+            event.consume();
+        });
+    }
+
+    private boolean isFromResultTable(Object target) {
+        if (!(target instanceof Node node)) {
+            return false;
+        }
+        while (node != null) {
+            if (node == postTableView || node == relatedPostsTable) {
+                return true;
+            }
+            node = node.getParent();
+        }
+        return false;
+    }
+
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
     private void buildHighlightTextFlow(TextFlow textFlow, String htmlContent) {
         if (htmlContent == null) {
             return;

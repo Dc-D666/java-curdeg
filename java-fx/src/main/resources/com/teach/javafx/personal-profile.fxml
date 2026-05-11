@@ -5,98 +5,157 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.Tooltip?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox fx:controller="com.teach.javafx.controller.PersonalProfileController" spacing="20.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-    <padding>
-        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
-    </padding>
-    <children>
-        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="个人资料"/>
-        <VBox spacing="15.0" alignment="CENTER">
+<ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="profile-scroll-pane" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.PersonalProfileController">
+    <content>
+        <VBox maxWidth="980.0" spacing="18.0" styleClass="profile-page">
+            <padding>
+                <Insets bottom="28.0" left="28.0" right="28.0" top="24.0" />
+            </padding>
             <children>
-                <ImageView fx:id="avatarImageView" fitHeight="120.0" fitWidth="120.0" preserveRatio="true" style="-fx-border-radius: 60; -fx-background-radius: 60; -fx-cursor: hand;"/>
-                <Button fx:id="uploadAvatarButton" mnemonicParsing="false" style="-fx-background-color: #4a90e2; -fx-text-fill: white; -fx-padding: 6 20;" text="上传头像"/>
+                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="profile-title-row">
+                    <children>
+                        <VBox spacing="4.0">
+                            <children>
+                                <Label styleClass="profile-title" text="个人资料" />
+                                <Label styleClass="profile-subtitle" text="管理你的社区身份、联系方式和资料可见范围" />
+                            </children>
+                        </VBox>
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="editButton" mnemonicParsing="false" styleClass="btn-edit" text="编辑" />
+                        <Button fx:id="saveButton" mnemonicParsing="false" styleClass="btn-save" text="保存" visible="false" />
+                        <Button fx:id="cancelButton" mnemonicParsing="false" styleClass="btn-cancel" text="取消" visible="false" />
+                    </children>
+                </HBox>
+
+                <GridPane fx:id="statsGrid" hgap="14.0" vgap="14.0" styleClass="stats-grid">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="33.33" />
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="33.33" />
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="33.33" />
+                    </columnConstraints>
+                    <children>
+                        <VBox fx:id="postCountBox" alignment="CENTER" spacing="6.0" styleClass="stats-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="postCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="发帖数" />
+                            </children>
+                        </VBox>
+                        <VBox fx:id="followingCountBox" alignment="CENTER" spacing="6.0" styleClass="stats-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="followingCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="关注数" />
+                            </children>
+                        </VBox>
+                        <VBox fx:id="followerCountBox" alignment="CENTER" spacing="6.0" styleClass="stats-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="followerCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="粉丝数" />
+                            </children>
+                        </VBox>
+                    </children>
+                </GridPane>
+
+                <VBox spacing="18.0" styleClass="profile-card">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <children>
+                                <Label styleClass="section-title" text="基本信息" />
+                                <Label styleClass="section-hint" text="昵称、头像和个性签名会展示在社区中" />
+                            </children>
+                        </HBox>
+                        <HBox alignment="TOP_LEFT" spacing="26.0" styleClass="basic-info-row">
+                            <children>
+                                <VBox alignment="CENTER" spacing="12.0" styleClass="avatar-panel">
+                                    <children>
+                                        <ImageView fx:id="avatarImageView" fitHeight="120.0" fitWidth="120.0" preserveRatio="true" styleClass="avatar-circle" />
+                                        <Button fx:id="uploadAvatarButton" mnemonicParsing="false" styleClass="btn-secondary" text="上传头像" />
+                                    </children>
+                                </VBox>
+                                <GridPane hgap="14.0" vgap="12.0" HBox.hgrow="ALWAYS">
+                                    <columnConstraints>
+                                        <ColumnConstraints halignment="RIGHT" minWidth="78.0" />
+                                        <ColumnConstraints hgrow="ALWAYS" minWidth="320.0" />
+                                    </columnConstraints>
+                                    <children>
+                                        <Label styleClass="form-label" text="学号" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                        <Label fx:id="studentIdLabel" styleClass="readonly-value" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                        <Label styleClass="form-label" text="昵称" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                        <TextField fx:id="nicknameTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                        <Label styleClass="form-label" text="个性签名" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                        <TextArea fx:id="signatureTextArea" editable="false" maxWidth="1.7976931348623157E308" prefHeight="72.0" styleClass="form-input" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                        <Label styleClass="form-label" text="头像 URL" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                        <TextField fx:id="avatarUrlTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                                    </children>
+                                </GridPane>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <VBox spacing="18.0" styleClass="profile-card">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <children>
+                                <Label styleClass="section-title" text="详细资料" />
+                                <Label styleClass="section-hint" text="右侧可设置每项资料的可见范围" />
+                            </children>
+                        </HBox>
+                        <GridPane hgap="14.0" vgap="12.0" styleClass="profile-form-grid">
+                            <columnConstraints>
+                                <ColumnConstraints halignment="RIGHT" minWidth="78.0" />
+                                <ColumnConstraints hgrow="ALWAYS" minWidth="320.0" />
+                                <ColumnConstraints minWidth="136.0" />
+                            </columnConstraints>
+                            <children>
+                                <Label styleClass="form-label" text="姓名" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <TextField fx:id="personNameTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+                                <ComboBox fx:id="namePrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="0" />
+
+                                <Label styleClass="form-label" text="学院" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <TextField fx:id="personDeptTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                <ComboBox fx:id="deptPrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+
+                                <Label styleClass="form-label" text="性别" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                <ComboBox fx:id="personGenderComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                                <ComboBox fx:id="genderPrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+
+                                <Label styleClass="form-label" text="生日" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                <DatePicker fx:id="personBirthdayPicker" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+                                <ComboBox fx:id="birthdayPrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="3" />
+
+                                <Label styleClass="form-label" text="邮箱" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                                <TextField fx:id="personEmailTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                                <ComboBox fx:id="emailPrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="4" />
+
+                                <Label styleClass="form-label" text="电话" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+                                <TextField fx:id="personPhoneTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                                <ComboBox fx:id="phonePrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="5" />
+
+                                <Label styleClass="form-label" text="地址" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+                                <TextField fx:id="personAddressTextField" editable="false" maxWidth="1.7976931348623157E308" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="6" />
+                                <ComboBox fx:id="addressPrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="6" />
+
+                                <Label styleClass="form-label" text="个人简介" GridPane.columnIndex="0" GridPane.rowIndex="7" />
+                                <TextArea fx:id="personIntroduceTextArea" editable="false" maxWidth="1.7976931348623157E308" prefHeight="82.0" styleClass="form-input" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="7" />
+                                <ComboBox fx:id="introducePrivacyComboBox" maxWidth="1.7976931348623157E308" styleClass="form-select" GridPane.columnIndex="2" GridPane.rowIndex="7" />
+                            </children>
+                        </GridPane>
+                    </children>
+                </VBox>
             </children>
         </VBox>
-        <GridPane hgap="10.0" vgap="10.0">
-            <children>
-                <Label text="学号:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                <Label fx:id="studentIdLabel" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                <Label text="昵称:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                <TextField fx:id="nicknameTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                <Label text="个性签名:" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                <TextArea fx:id="signatureTextArea" prefWidth="300.0" prefHeight="80.0" editable="false" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-                <Label text="头像URL:" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-                <TextField fx:id="avatarUrlTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
-                
-                <Label text="姓名:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-                <TextField fx:id="personNameTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
-                <ComboBox fx:id="namePrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="4"/>
-                
-                <Label text="学院:" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-                <TextField fx:id="personDeptTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
-                <ComboBox fx:id="deptPrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="5"/>
-                
-                <Label text="性别:" GridPane.columnIndex="0" GridPane.rowIndex="6"/>
-                <ComboBox fx:id="personGenderComboBox" prefWidth="300.0" GridPane.columnIndex="1" GridPane.rowIndex="6"/>
-                <ComboBox fx:id="genderPrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="6"/>
-                
-                <Label text="生日:" GridPane.columnIndex="0" GridPane.rowIndex="7"/>
-                <DatePicker fx:id="personBirthdayPicker" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="7"/>
-                <ComboBox fx:id="birthdayPrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="7"/>
-                
-                <Label text="邮箱:" GridPane.columnIndex="0" GridPane.rowIndex="8"/>
-                <TextField fx:id="personEmailTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="8"/>
-                <ComboBox fx:id="emailPrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="8"/>
-                
-                <Label text="电话:" GridPane.columnIndex="0" GridPane.rowIndex="9"/>
-                <TextField fx:id="personPhoneTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="9"/>
-                <ComboBox fx:id="phonePrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="9"/>
-                
-                <Label text="地址:" GridPane.columnIndex="0" GridPane.rowIndex="10"/>
-                <TextField fx:id="personAddressTextField" prefWidth="300.0" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="10"/>
-                <ComboBox fx:id="addressPrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="10"/>
-                
-                <Label text="个人简介:" GridPane.columnIndex="0" GridPane.rowIndex="11"/>
-                <TextArea fx:id="personIntroduceTextArea" prefWidth="300.0" prefHeight="80.0" editable="false" wrapText="true" GridPane.columnIndex="1" GridPane.rowIndex="11"/>
-                <ComboBox fx:id="introducePrivacyComboBox" prefWidth="150.0" GridPane.columnIndex="2" GridPane.rowIndex="11"/>
-            </children>
-        </GridPane>
-        <GridPane fx:id="statsGrid" hgap="20.0" vgap="10.0" style="-fx-background-color: #f5f5f5; -fx-padding: 15; -fx-border-radius: 10; -fx-background-radius: 10;">
-            <children>
-                <VBox fx:id="postCountBox" spacing="5.0" alignment="CENTER" style="-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand;" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                    <children>
-                        <Label fx:id="postCountLabel" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #4a90e2;" text="0"/>
-                        <Label text="发帖数"/>
-                    </children>
-                </VBox>
-                <VBox fx:id="followingCountBox" spacing="5.0" alignment="CENTER" style="-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand;" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                    <children>
-                        <Label fx:id="followingCountLabel" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #4a90e2;" text="0"/>
-                        <Label text="关注数"/>
-                    </children>
-                </VBox>
-                <VBox fx:id="followerCountBox" spacing="5.0" alignment="CENTER" style="-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand;" GridPane.columnIndex="2" GridPane.rowIndex="0">
-                    <children>
-                        <Label fx:id="followerCountLabel" style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #4a90e2;" text="0"/>
-                        <Label text="粉丝数"/>
-                    </children>
-                </VBox>
-            </children>
-        </GridPane>
-        <HBox spacing="10.0" alignment="CENTER_RIGHT">
-            <children>
-                <Button fx:id="editButton" mnemonicParsing="false" style="-fx-background-color: #4a90e2; -fx-text-fill: white; -fx-padding: 8 20;" text="编辑"/>
-                <Button fx:id="saveButton" mnemonicParsing="false" style="-fx-background-color: #5cb85c; -fx-text-fill: white; -fx-padding: 8 20;" text="保存" visible="false"/>
-                <Button fx:id="cancelButton" mnemonicParsing="false" style="-fx-background-color: #f0ad4e; -fx-text-fill: white; -fx-padding: 8 20;" text="取消" visible="false"/>
-            </children>
-        </HBox>
-    </children>
-</VBox>
+    </content>
+</ScrollPane>

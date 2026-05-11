@@ -1,6 +1,8 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
 import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.PageResult;
 import com.teach.javafx.models.Report;
 import com.teach.javafx.request.HttpRequestUtil;
@@ -9,6 +11,11 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.input.MouseButton;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
+
+import java.util.Optional;
 
 public class MyReportController extends ToolController {
     @FXML
@@ -105,7 +112,20 @@ public class MyReportController extends ToolController {
             loadReportList(refreshButton);
         });
 
+        setupRowFactory();
         loadReportList();
+    }
+
+    private void setupRowFactory() {
+        reportTableView.setRowFactory(tv -> {
+            TableRow<Report> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
+                    openReportDetail(row.getItem());
+                }
+            });
+            return row;
+        });
     }
 
     public void loadReportList() {
@@ -166,5 +186,132 @@ public class MyReportController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void openReportDetail(Report report) {
+        if (report == null) {
+            return;
+        }
+
+        Long postId = resolvePostId(report);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("举报详情");
+        dialog.setHeaderText(getTargetTypeText(report.getTargetType()) + "举报 #" + report.getId());
+
+        ButtonType openPostButton = new ButtonType("查看原帖", ButtonBar.ButtonData.OK_DONE);
+        ButtonType closeButton = new ButtonType("关闭", ButtonBar.ButtonData.CANCEL_CLOSE);
+        if (postId != null) {
+            dialog.getDialogPane().getButtonTypes().addAll(openPostButton, closeButton);
+        } else {
+            dialog.getDialogPane().getButtonTypes().add(closeButton);
+        }
+
+        GridPane metaGrid = new GridPane();
+        metaGrid.setHgap(12);
+        metaGrid.setVgap(8);
+        addMetaRow(metaGrid, 0, "举报类型", getTargetTypeText(report.getTargetType()));
+        addMetaRow(metaGrid, 1, "目标ID", report.getTargetId() != null ? String.valueOf(report.getTargetId()) : "");
+        addMetaRow(metaGrid, 2, "状态", getStatusText(report.getStatus()));
+        addMetaRow(metaGrid, 3, "举报时间", report.getCreateTime());
+        addMetaRow(metaGrid, 4, "处理时间", report.getHandleTime());
+        addMetaRow(metaGrid, 5, "处理方式", getHandleTypeText(report.getHandleType()));
+        if (postId != null) {
+            addMetaRow(metaGrid, 6, "关联帖子", String.valueOf(postId));
+        }
+
+        TextArea reasonArea = new TextArea("举报原因：\n" + safeText(report.getReason()) +
+                "\n\n处理备注：\n" + safeText(report.getHandleRemark()));
+        reasonArea.setEditable(false);
+        reasonArea.setWrapText(true);
+        reasonArea.setPrefRowCount(8);
+        reasonArea.setPrefColumnCount(52);
+
+        VBox content = new VBox(12, metaGrid, reasonArea);
+        content.setPadding(new javafx.geometry.Insets(10));
+        dialog.getDialogPane().setContent(content);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == openPostButton) {
+            openPostDetail(postId);
+        }
+    }
+
+    private Long resolvePostId(Report report) {
+        if (report == null || report.getTargetId() == null || report.getTargetType() == null) {
+            return null;
+        }
+        if (report.getTargetType() == 1) {
+            return report.getTargetId();
+        }
+        if (report.getTargetType() == 2) {
+            Comment comment = HttpRequestUtil.getCommentDetail(report.getTargetId());
+            return comment != null ? comment.getPostId() : null;
+        }
+        return null;
+    }
+
+    private void openPostDetail(Long postId) {
+        if (postId == null) {
+            showError("没有找到关联帖子");
+            return;
+        }
+        if (AppStore.getMainFrameController() != null) {
+            AppStore.getMainFrameController().openPostDetail(postId);
+        }
+    }
+
+    private void addMetaRow(GridPane grid, int row, String label, String value) {
+        Label labelNode = new Label(label + "：");
+        labelNode.setStyle("-fx-font-weight: bold;");
+        Label valueNode = new Label(value != null ? value : "");
+        valueNode.setWrapText(true);
+        grid.add(labelNode, 0, row);
+        grid.add(valueNode, 1, row);
+    }
+
+    private String getTargetTypeText(Integer type) {
+        if (type == null) {
+            return "未知";
+        }
+        switch (type) {
+            case 1:
+                return "帖子";
+            case 2:
+                return "评论";
+            default:
+                return "未知";
+        }
+    }
+
+    private String getStatusText(Integer status) {
+        if (status == null) {
+            return "未知";
+        }
+        switch (status) {
+            case 0:
+                return "待处理";
+            case 1:
+                return "已处理";
+            default:
+                return "未知";
+        }
+    }
+
+    private String getHandleTypeText(Integer handleType) {
+        if (handleType == null) {
+            return "未处理";
+        }
+        switch (handleType) {
+            case 1:
+                return "删除内容";
+            case 2:
+                return "驳回举报";
+            default:
+                return "未知";
+        }
+    }
+
+    private String safeText(String value) {
+        return value != null && !value.isBlank() ? value : "无";
     }
 }

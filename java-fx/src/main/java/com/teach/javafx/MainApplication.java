@@ -1,6 +1,5 @@
 package com.teach.javafx;
 
-import com.teach.javafx.request.HttpRequestUtil;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -8,18 +7,12 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
-/**
- * 应用的主程序 MainApplication 按照编程规范，需继承Application 重写start 方法 主方法调用Application的launch() 启动程序
- */
 public class MainApplication extends Application {
-    /**
-     * 加载登录对话框，设置登录Scene到Stage,显示该场景
-     */
     private static Stage mainStage;
     private static double stageWidth = -1;
     private static double stageHeight = -1;
 
-    private static boolean canClose=true;
+    private static boolean canClose = true;
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -30,32 +23,21 @@ public class MainApplication extends Application {
         stage.setScene(scene);
         stage.show();
         stage.setOnCloseRequest(event -> {
-            if(canClose) {
-               HttpRequestUtil.close();
-           }else {
-               event.consume();
-           }
+            if (canClose) {
+                closeHttpRequestUtil();
+            } else {
+                event.consume();
+            }
         });
         mainStage = stage;
     }
 
-    /**
-     * 给舞台设置新的Scene，默认全屏
-     * @param name 标题
-     * @param scene 新的场景对象
-     */
     public static void resetStage(String name, Scene scene) {
         resetStage(name, scene, true);
     }
 
-    /**
-     * 给舞台设置新的Scene，可以选择是否全屏
-     * @param name 标题
-     * @param scene 新的场景对象
-     * @param maximize 是否全屏
-     */
     public static void resetStage(String name, Scene scene, boolean maximize) {
-        if(stageWidth > 0) {
+        if (stageWidth > 0) {
             mainStage.setWidth(stageWidth);
             mainStage.setHeight(stageHeight);
             mainStage.setX(0);
@@ -66,10 +48,8 @@ public class MainApplication extends Application {
         if (maximize) {
             mainStage.setMaximized(true);
         } else {
-            // 注册界面保持小窗口尺寸
             mainStage.setWidth(500);
             mainStage.setHeight(600);
-            // 居中显示
             javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
             javafx.geometry.Rectangle2D bounds = screen.getVisualBounds();
             double x = (bounds.getWidth() - 500) / 2;
@@ -85,8 +65,8 @@ public class MainApplication extends Application {
         stageHeight = mainStage.getHeight();
         mainStage.setTitle(name);
         mainStage.setScene(scene);
-        double x = (stageWidth-320)/2;
-        double y = (stageHeight-240)/2;
+        double x = (stageWidth - 320) / 2;
+        double y = (stageHeight - 240) / 2;
         mainStage.setX(x);
         mainStage.setY(y);
         mainStage.setWidth(320);
@@ -104,5 +84,14 @@ public class MainApplication extends Application {
 
     public static void setCanClose(boolean canClose) {
         MainApplication.canClose = canClose;
+    }
+
+    private static void closeHttpRequestUtil() {
+        try {
+            Class<?> requestUtilClass = Class.forName("com.teach.javafx.request.HttpRequestUtil");
+            requestUtilClass.getMethod("close").invoke(null);
+        } catch (ReflectiveOperationException e) {
+            System.err.println("HttpRequestUtil close skipped: " + e.getMessage());
+        }
     }
 }
