@@ -16,8 +16,10 @@ import javafx.scene.control.cell.ComboBoxListCell;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Circle;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import javafx.util.StringConverter;
@@ -28,6 +30,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.regex.Pattern;
 
 public class PersonalProfileController extends ToolController {
+    @FXML
+    private ScrollPane mainScrollPane;
     @FXML
     private ImageView avatarImageView;
     @FXML
@@ -125,8 +129,31 @@ public class PersonalProfileController extends ToolController {
     private static final ObservableList<String> PRIVACY_OPTIONS = FXCollections.observableArrayList("公开", "仅关注可见", "私密");
     private static final ObservableList<String> PRIVACY_VALUES = FXCollections.observableArrayList("PUBLIC", "FOLLOWING", "PRIVATE");
 
+    private void setupCircleAvatar() {
+        // 创建圆形裁剪
+        double radius = 60.0; // 头像半径为 fitWidth/2
+        Circle clip = new Circle(radius, radius, radius);
+        avatarImageView.setClip(clip);
+        
+        // 监听尺寸变化，保持圆形裁剪
+        avatarImageView.fitWidthProperty().addListener((obs, oldVal, newVal) -> {
+            double r = newVal.doubleValue() / 2;
+            Circle newClip = new Circle(r, r, r);
+            avatarImageView.setClip(newClip);
+        });
+        avatarImageView.fitHeightProperty().addListener((obs, oldVal, newVal) -> {
+            double r = newVal.doubleValue() / 2;
+            Circle newClip = new Circle(r, r, r);
+            avatarImageView.setClip(newClip);
+        });
+    }
+
     @FXML
     public void initialize() {
+        setupPageScroll();
+        // 设置头像圆形裁剪
+        setupCircleAvatar();
+        
         ObservableList<String> genderOptions = FXCollections.observableArrayList("", "男", "女");
         personGenderComboBox.setItems(genderOptions);
         
@@ -151,6 +178,34 @@ public class PersonalProfileController extends ToolController {
         
         // 设置统计卡片的点击事件
         setupStatsCardEvents();
+    }
+
+    private void setupPageScroll() {
+        mainScrollPane.setFitToWidth(true);
+        mainScrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        mainScrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        mainScrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
+            double contentHeight = mainScrollPane.getContent().getBoundsInLocal().getHeight();
+            double viewportHeight = mainScrollPane.getViewportBounds().getHeight();
+            double scrollableHeight = contentHeight - viewportHeight;
+            if (scrollableHeight <= 0) {
+                return;
+            }
+
+            double delta = event.getDeltaY() / scrollableHeight;
+            mainScrollPane.setVvalue(clamp(mainScrollPane.getVvalue() - delta));
+            event.consume();
+        });
+    }
+
+    private double clamp(double value) {
+        if (value < 0) {
+            return 0;
+        }
+        if (value > 1) {
+            return 1;
+        }
+        return value;
     }
 
     private void setupPrivacyComboBox(ComboBox<String> comboBox) {
@@ -188,19 +243,6 @@ public class PersonalProfileController extends ToolController {
             AppStore.getMainFrameController().changeContent("myFollowers", "我的粉丝");
         });
         
-        // 添加悬停效果
-        addHoverEffect(postCountBox);
-        addHoverEffect(followingCountBox);
-        addHoverEffect(followerCountBox);
-    }
-
-    private void addHoverEffect(VBox box) {
-        box.addEventHandler(MouseEvent.MOUSE_ENTERED, event -> {
-            box.setStyle("-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand; -fx-background-color: #e0e0e0;");
-        });
-        box.addEventHandler(MouseEvent.MOUSE_EXITED, event -> {
-            box.setStyle("-fx-padding: 10; -fx-border-radius: 5; -fx-background-radius: 5; -fx-cursor: hand;");
-        });
     }
 
     private void loadUserData() {

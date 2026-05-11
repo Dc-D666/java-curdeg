@@ -30,12 +30,14 @@ public class BbsUserService {
     private final BbsCommentRepository bbsCommentRepository;
     private final BbsFollowRepository bbsFollowRepository;
     private final BbsBoardRepository bbsBoardRepository;
+    private final EmailVerificationService emailVerificationService;
 
     public BbsUserService(UserRepository userRepository, PersonRepository personRepository,
                           UserTypeRepository userTypeRepository, PasswordEncoder passwordEncoder,
                           BbsPostRepository bbsPostRepository, BbsFavoriteRepository bbsFavoriteRepository,
                           BbsLikeRepository bbsLikeRepository, BbsCommentRepository bbsCommentRepository,
-                          BbsFollowRepository bbsFollowRepository, BbsBoardRepository bbsBoardRepository) {
+                          BbsFollowRepository bbsFollowRepository, BbsBoardRepository bbsBoardRepository,
+                          EmailVerificationService emailVerificationService) {
         this.userRepository = userRepository;
         this.personRepository = personRepository;
         this.userTypeRepository = userTypeRepository;
@@ -46,12 +48,14 @@ public class BbsUserService {
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsFollowRepository = bbsFollowRepository;
         this.bbsBoardRepository = bbsBoardRepository;
+        this.emailVerificationService = emailVerificationService;
     }
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]{6,20}$");
     private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-zA-Z])(?=.*\\d).{8,20}$");
     private static final Pattern STUDENT_ID_PATTERN = Pattern.compile("^\\d{10,20}$");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    private static final String CHANGE_PASSWORD_VERIFICATION_TYPE = "CHANGE_PASSWORD";
 
     @Transactional
     public DataResponse register(DataRequest dataRequest) {
@@ -434,6 +438,153 @@ public class BbsUserService {
         return CommonMethod.getReturnData(statistics);
     }
 
+    public DataResponse getUserStatisticsDetail() {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<User> userOptional = userRepository.findById(currentUserId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        User user = userOptional.get();
+        Long authorId = currentUserId.longValue();
+        int days = 30;
+
+        Map<String, Object> overview = buildUserOverview(user, currentUserId);
+
+        Map<String, Object> trends = new LinkedHashMap<>();
+        trends.put("postTrend", toTrendList(bbsPostRepository.countDailyPostTrendByAuthor(authorId, days)));
+        trends.put("commentTrend", toTrendList(bbsCommentRepository.countDailyCommentTrendByAuthor(authorId, days)));
+        trends.put("receivedLikeTrend", toTrendList(bbsLikeRepository.countDailyReceivedLikeTrendByAuthor(authorId, days)));
+        trends.put("favoriteTrend", toTrendList(bbsFavoriteRepository.countDailyReceivedFavoriteTrendByAuthor(authorId, days)));
+        trends.put("followTrend", toTrendList(bbsFollowRepository.countDailyFollowerTrendByUser(currentUserId, days)));
+        trends.put("followingTrend", toTrendList(bbsFollowRepository.countDailyFollowingTrendByUser(currentUserId, days)));
+
+        Map<String, Object> distribution = new LinkedHashMap<>();
+        distribution.put("postStatus", toPostStatusDistribution(bbsPostRepository.countPostsByStatusAndAuthor(authorId)));
+        distribution.put("interaction", buildInteractionDistribution(overview));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("overview", overview);
+        result.put("trends", trends);
+        result.put("distribution", distribution);
+        result.put("topPosts", buildTopPostList(bbsPostRepository.findTopPostsByAuthorHeat(authorId, 10)));
+
+        return CommonMethod.getReturnData(result);
+    }
+
+    private Map<String, Object> buildUserOverview(User user, Integer currentUserId) {
+        Map<String, Object> overview = new LinkedHashMap<>();
+        overview.put("postCount", safeInteger(user.getPostCount()));
+        overview.put("commentCount", safeInteger(user.getCommentCount()));
+
+        Integer postLikeCount = bbsPostRepository.sumLikeCountByAuthorId(currentUserId.longValue());
+        Integer commentLikeCount = bbsCommentRepository.sumLikeCountByAuthorId(currentUserId.longValue());
+        overview.put("totalLikeCount", safeInteger(postLikeCount) + safeInteger(commentLikeCount));
+
+        long totalFavoriteCount = bbsFavoriteRepository.countByUserId(currentUserId);
+        overview.put("totalFavoriteCount", totalFavoriteCount);
+
+        Integer totalViewCount = bbsPostRepository.sumViewCountByAuthorId(currentUserId.longValue());
+        overview.put("totalViewCount", safeInteger(totalViewCount));
+
+        overview.put("followingCount", safeInteger(user.getFollowingCount()));
+        overview.put("followerCount", safeInteger(user.getFollowerCount()));
+        return overview;
+    }
+
+    private List<Map<String, Object>> toTrendList(List<Object[]> rows) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (rows == null) {
+            return result;
+        }
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("date", row[0] != null ? row[0].toString() : "");
+            item.put("count", row[1] instanceof Number ? ((Number) row[1]).longValue() : 0);
+            result.add(item);
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> toPostStatusDistribution(List<Object[]> rows) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (rows == null) {
+            return result;
+        }
+        for (Object[] row : rows) {
+            if (row == null || row.length < 2) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", getPostStatusName(row[0]));
+            item.put("count", row[1] instanceof Number ? ((Number) row[1]).longValue() : 0);
+            result.add(item);
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> buildInteractionDistribution(Map<String, Object> overview) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        result.add(distributionItem("浏览", overview.get("totalViewCount")));
+        result.add(distributionItem("获赞", overview.get("totalLikeCount")));
+        result.add(distributionItem("被收藏", overview.get("totalFavoriteCount")));
+        result.add(distributionItem("评论", overview.get("commentCount")));
+        result.add(distributionItem("粉丝", overview.get("followerCount")));
+        return result;
+    }
+
+    private Map<String, Object> distributionItem(String name, Object value) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("name", name);
+        item.put("count", value instanceof Number ? ((Number) value).longValue() : 0);
+        return item;
+    }
+
+    private List<Map<String, Object>> buildTopPostList(List<BbsPost> posts) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (posts == null) {
+            return result;
+        }
+        for (BbsPost post : posts) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", post.getId());
+            item.put("title", post.getTitle());
+            item.put("viewCount", safeInteger(post.getViewCount()));
+            item.put("likeCount", safeInteger(post.getLikeCount()));
+            item.put("commentCount", safeInteger(post.getCommentCount()));
+            item.put("favoriteCount", safeInteger(post.getFavoriteCount()));
+            item.put("createTime", post.getCreateTime());
+            item.put("heat", safeInteger(post.getViewCount()) + safeInteger(post.getLikeCount()) * 5
+                    + safeInteger(post.getCommentCount()) * 3 + safeInteger(post.getFavoriteCount()) * 4);
+            result.add(item);
+        }
+        return result;
+    }
+
+    private int safeInteger(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private String getPostStatusName(Object statusObj) {
+        if (statusObj == null) {
+            return "未知";
+        }
+        String status = statusObj.toString();
+        return switch (status) {
+            case "1" -> "正常";
+            case "0" -> "待审核";
+            case "-1" -> "已删除";
+            default -> "状态" + status;
+        };
+    }
+
     public DataResponse getMyPosts(DataRequest dataRequest) {
         Integer currentUserId = CommonMethod.getPersonId();
         if (currentUserId == null) {
@@ -523,6 +674,30 @@ public class BbsUserService {
         return CommonMethod.getReturnData(result);
     }
 
+    public DataResponse sendChangePasswordCode() {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<User> userOptional = userRepository.findById(currentUserId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        String email = getBoundEmail(currentUserId);
+        if (email == null) {
+            return CommonMethod.getReturnMessageError("当前账号未绑定邮箱，请先在个人资料中绑定邮箱");
+        }
+
+        String error = emailVerificationService.sendVerificationCode(email, CHANGE_PASSWORD_VERIFICATION_TYPE);
+        if (error != null) {
+            return CommonMethod.getReturnMessageError(error);
+        }
+
+        return CommonMethod.getReturnMessageOK("验证码已发送至绑定邮箱，请在5分钟内完成验证");
+    }
+
     @Transactional
     public DataResponse changePassword(DataRequest dataRequest) {
         Integer currentUserId = CommonMethod.getPersonId();
@@ -536,9 +711,14 @@ public class BbsUserService {
         }
 
         User user = userOptional.get();
+        String email = getBoundEmail(currentUserId);
+        if (email == null) {
+            return CommonMethod.getReturnMessageError("当前账号未绑定邮箱，请先在个人资料中绑定邮箱");
+        }
 
         String oldPassword = dataRequest.getString("oldPassword");
         String newPassword = dataRequest.getString("newPassword");
+        String emailCode = dataRequest.getString("emailCode");
 
         if (oldPassword == null || oldPassword.isBlank()) {
             return CommonMethod.getReturnMessageError("参数错误：原密码不能为空");
@@ -546,6 +726,10 @@ public class BbsUserService {
 
         if (newPassword == null || newPassword.isBlank()) {
             return CommonMethod.getReturnMessageError("参数错误：新密码不能为空");
+        }
+
+        if (emailCode == null || emailCode.isBlank()) {
+            return CommonMethod.getReturnMessageError("参数错误：邮箱验证码不能为空");
         }
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
@@ -560,10 +744,24 @@ public class BbsUserService {
             return CommonMethod.getReturnMessageError("新密码不能与原密码相同");
         }
 
+        String verifyError = emailVerificationService.verifyCode(email, emailCode, CHANGE_PASSWORD_VERIFICATION_TYPE);
+        if (verifyError != null) {
+            return CommonMethod.getReturnMessageError(verifyError);
+        }
+
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.saveAndFlush(user);
 
         return CommonMethod.getReturnMessageOK("密码修改成功");
+    }
+
+    private String getBoundEmail(Integer currentUserId) {
+        Optional<Person> personOptional = personRepository.findById(currentUserId);
+        if (personOptional.isEmpty()) {
+            return null;
+        }
+        String email = personOptional.get().getEmail();
+        return email == null || email.isBlank() ? null : email.trim();
     }
 
     private boolean isMutuallyFollowing(Integer userId1, Integer userId2) {

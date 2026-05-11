@@ -41,6 +41,7 @@ public class MainFrameController {
     }
     private Map<String,Tab> tabMap = new HashMap<String,Tab>();
     private Map<String,Scene> sceneMap = new HashMap<String,Scene>();
+    private Map<String,Node> contentMap = new HashMap<String,Node>();
     private Map<String,ToolController> controlMap =new HashMap<String,ToolController>();
     
     private com.teach.javafx.controller.PostListController postListController;
@@ -324,11 +325,11 @@ public class MainFrameController {
         if(actualName == null || actualName.length() == 0)
             return;
         Tab tab = tabMap.get(actualName);
-        Scene scene;
+        Node content;
         Object c;
         if(tab == null) {
-            scene = sceneMap.get(actualName);
-            if(scene == null) {
+            content = contentMap.get(actualName);
+            if(content == null) {
                 java.net.URL resource = MainApplication.class.getResource(actualName + ".fxml");
                 System.out.println("Resource found: " + resource);
                 if (resource == null) {
@@ -337,8 +338,8 @@ public class MainFrameController {
                 }
                 FXMLLoader fxmlLoader = new FXMLLoader(resource);
                 try {
-                    scene = new Scene(fxmlLoader.load(), 1024, 768);
-                    sceneMap.put(actualName, scene);
+                    content = fxmlLoader.load();
+                    contentMap.put(actualName, content);
                 } catch (IOException e) {
                     e.printStackTrace();
                     return;
@@ -358,7 +359,7 @@ public class MainFrameController {
             tab.setId(actualName);
             tab.setOnSelectionChanged(this::tabSelectedChanged);
             tab.setOnClosed(this::tabOnClosed);
-            tab.setContent(scene.getRoot());
+            tab.setContent(content);
             contentTabPane.getTabs().add(tab);
             tabMap.put(actualName, tab);
         }
@@ -391,6 +392,7 @@ public class MainFrameController {
         Tab tab = tabMap.get(name);
         if(tab == null) {
             sceneMap.put(name, scene);
+            contentMap.put(name, scene.getRoot());
             if(controller instanceof ToolController) {
                 controlMap.put(name,(ToolController)controller);
             }
@@ -398,11 +400,36 @@ public class MainFrameController {
             tab.setId(name);
             tab.setOnSelectionChanged(this::tabSelectedChanged);
             tab.setOnClosed(this::tabOnClosed);
-            tab.setContent(scene.getRoot());
+            tab.setContent(contentMap.get(name));
             contentTabPane.getTabs().add(tab);
             tabMap.put(name, tab);
         }
         contentTabPane.getSelectionModel().select(tab);
+    }
+
+    public void openPostDetail(Long postId) {
+        if (postId == null) {
+            return;
+        }
+
+        String tabName = "post-detail-" + postId;
+        Tab existingTab = tabMap.get(tabName);
+        if (existingTab != null) {
+            contentTabPane.getSelectionModel().select(existingTab);
+            return;
+        }
+
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("post-detail.fxml"));
+            Scene scene = new Scene(fxmlLoader.load(), 1024, 768);
+            Object controller = fxmlLoader.getController();
+            if (controller instanceof com.teach.javafx.controller.PostDetailController) {
+                ((com.teach.javafx.controller.PostDetailController) controller).setPostId(postId);
+            }
+            changeContentWithScene(tabName, "帖子详情", scene, controller);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void tabSelectedChanged(Event e) {
@@ -427,6 +454,7 @@ public class MainFrameController {
         contentTabPane.getTabs().remove(tab);
         tabMap.remove(name);
         sceneMap.remove(name);
+        contentMap.remove(name);
         controlMap.remove(name);
         if ("post-list".equals(name)) {
             postListController = null;
@@ -529,6 +557,7 @@ public class MainFrameController {
             contentTabPane.getTabs().remove(currentTab);
             tabMap.remove(name);
             sceneMap.remove(name);
+            contentMap.remove(name);
             controlMap.remove(name);
             if ("post-list".equals(name)) {
                 postListController = null;
@@ -554,7 +583,7 @@ public class MainFrameController {
             }
             
             FXMLLoader fxmlLoader = new FXMLLoader(resource);
-            Scene scene = new Scene(fxmlLoader.load(), 1024, 768);
+            Node content = fxmlLoader.load();
             
             Object controller = fxmlLoader.getController();
             if (controller instanceof com.teach.javafx.controller.UserHomeController) {
@@ -565,11 +594,11 @@ public class MainFrameController {
             tab.setId(tabId);
             tab.setOnSelectionChanged(this::tabSelectedChanged);
             tab.setOnClosed(this::tabOnClosed);
-            tab.setContent(scene.getRoot());
+            tab.setContent(content);
             
             contentTabPane.getTabs().add(tab);
             tabMap.put(tabId, tab);
-            sceneMap.put(tabId, scene);
+            contentMap.put(tabId, content);
             if (controller instanceof ToolController) {
                 controlMap.put(tabId, (ToolController) controller);
             }
@@ -652,6 +681,7 @@ public class MainFrameController {
             return;
         }
         sceneMap.clear();
+        contentMap.clear();
         tabMap.clear();
         controlMap.clear();
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/main-frame.fxml"));

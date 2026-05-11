@@ -38,4 +38,14 @@ public interface BbsFollowRepository extends JpaRepository<BbsFollow, Long> {
            "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
            "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
     List<Object[]> countDailyFollowTrend(@Param("days") Integer days);
+
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_follow " +
+           "WHERE follower_id = :userId AND create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyFollowingTrendByUser(@Param("userId") Integer userId, @Param("days") Integer days);
+
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_follow " +
+           "WHERE following_id = :userId AND create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyFollowerTrendByUser(@Param("userId") Integer userId, @Param("days") Integer days);
 }

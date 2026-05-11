@@ -31,4 +31,10 @@ public interface BbsLikeRepository extends JpaRepository<BbsLike, Long> {
            "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
            "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
     List<Object[]> countDailyLikeTrend(@Param("days") Integer days);
+
+    @Query(value = "SELECT DATE(l.create_time) as date, COUNT(*) as count FROM bbs_like l " +
+           "JOIN bbs_post p ON l.post_id = p.id " +
+           "WHERE p.author_id = :authorId AND l.create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(l.create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyReceivedLikeTrendByAuthor(@Param("authorId") Long authorId, @Param("days") Integer days);
 }

@@ -35,6 +35,11 @@ public interface BbsCommentRepository extends JpaRepository<BbsComment, Long> {
            "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
     List<Object[]> countDailyCommentTrend(@Param("days") Integer days);
 
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_comment " +
+           "WHERE author_id = :authorId AND create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyCommentTrendByAuthor(@Param("authorId") Long authorId, @Param("days") Integer days);
+
     List<BbsComment> findTop10ByStatusOrderByLikeCountDesc(Integer status);
 
     List<BbsComment> findTop5ByPostIdAndStatusOrderByLikeCountDesc(Long postId, Integer status);

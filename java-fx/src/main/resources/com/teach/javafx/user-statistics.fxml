@@ -1,71 +1,186 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.UserStatisticsController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-   <top>
-      <VBox alignment="CENTER_LEFT" spacing="10.0" BorderPane.alignment="CENTER">
-         <padding>
-            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
-         </padding>
-         <children>
-            <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="我的数据统计" />
-         </children>
-      </VBox>
-   </top>
-   <center>
-      <GridPane alignment="CENTER" hgap="20.0" vgap="20.0" BorderPane.alignment="CENTER">
-         <padding>
-            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
-         </padding>
-         <children>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #e3f2fd; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="0" GridPane.rowIndex="0">
-               <children>
-                  <Label fx:id="postCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #1976d2;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="发帖数" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #f3e5f5; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="1" GridPane.rowIndex="0">
-               <children>
-                  <Label fx:id="commentCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #7b1fa2;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="评论数" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #e8f5e9; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="2" GridPane.rowIndex="0">
-               <children>
-                  <Label fx:id="likeCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #388e3c;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="获赞总数" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #fff3e0; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="0" GridPane.rowIndex="1">
-               <children>
-                  <Label fx:id="favoriteCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #f57c00;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="被收藏数" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #ffebee; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="1" GridPane.rowIndex="1">
-               <children>
-                  <Label fx:id="viewCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #d32f2f;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="总浏览量" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #e0f7fa; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="2" GridPane.rowIndex="1">
-               <children>
-                  <Label fx:id="followingCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #0097a7;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="关注数" />
-               </children>
-            </VBox>
-            <VBox alignment="CENTER" prefHeight="120.0" prefWidth="180.0" spacing="10.0" style="-fx-background-color: #fce4ec; -fx-background-radius: 10; -fx-padding: 20;" GridPane.columnIndex="1" GridPane.rowIndex="2">
-               <children>
-                  <Label fx:id="followerCountLabel" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #c2185b;" text="0" />
-                  <Label style="-fx-font-size: 14px; -fx-text-fill: #424242;" text="粉丝数" />
-               </children>
-            </VBox>
-         </children>
-      </GridPane>
-   </center>
-</BorderPane>
+<ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="profile-scroll-pane" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.UserStatisticsController">
+    <content>
+        <VBox maxWidth="1.7976931348623157E308" minWidth="0.0" spacing="18.0" styleClass="profile-page">
+            <padding>
+                <Insets bottom="28.0" left="28.0" right="28.0" top="26.0" />
+            </padding>
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="profile-title-row">
+                    <children>
+                        <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label styleClass="profile-title" text="数据统计" />
+                                <Label styleClass="profile-subtitle" text="查看你的内容产出、互动反馈和社区影响力" />
+                            </children>
+                        </VBox>
+                        <Label fx:id="statusLabel" styleClass="stats-status" text="正在加载..." />
+                        <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefresh" styleClass="btn-edit" text="刷新" />
+                    </children>
+                </HBox>
+
+                <GridPane hgap="14.0" vgap="14.0" styleClass="stats-grid">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
+                        <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints minHeight="106.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="106.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                    <children>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-blue" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="postCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="发帖数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-green" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="commentCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="评论数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-red" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="likeCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="获赞总数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-amber" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                            <children>
+                                <Label fx:id="favoriteCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="被收藏数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-violet" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                            <children>
+                                <Label fx:id="viewCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="总浏览量" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-cyan" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                            <children>
+                                <Label fx:id="followingCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="关注数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-rose" GridPane.columnIndex="2" GridPane.rowIndex="1">
+                            <children>
+                                <Label fx:id="followerCountLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="粉丝数" />
+                            </children>
+                        </VBox>
+                        <VBox alignment="CENTER_LEFT" spacing="8.0" styleClass="stats-card stats-card-slate" GridPane.columnIndex="3" GridPane.rowIndex="1">
+                            <children>
+                                <Label fx:id="heatScoreLabel" styleClass="stats-value" text="0" />
+                                <Label styleClass="stats-label" text="热度指数" />
+                            </children>
+                        </VBox>
+                    </children>
+                </GridPane>
+
+                <GridPane hgap="16.0" vgap="16.0">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                        <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                    </columnConstraints>
+                    <children>
+                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                            <children>
+                                <Label styleClass="section-title" text="近30天内容趋势" />
+                                <LineChart fx:id="contentTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="stats-chart">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="contentTrendXAxis" label="日期" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="contentTrendYAxis" label="数量" />
+                                    </yAxis>
+                                </LineChart>
+                            </children>
+                        </VBox>
+                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                            <children>
+                                <Label styleClass="section-title" text="近30天互动反馈" />
+                                <LineChart fx:id="interactionTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="stats-chart">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="interactionTrendXAxis" label="日期" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="interactionTrendYAxis" label="数量" />
+                                    </yAxis>
+                                </LineChart>
+                            </children>
+                        </VBox>
+                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                            <children>
+                                <Label styleClass="section-title" text="互动结构" />
+                                <PieChart fx:id="interactionPieChart" animated="false" legendVisible="true" prefHeight="286.0" styleClass="stats-chart" />
+                            </children>
+                        </VBox>
+                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                            <children>
+                                <Label styleClass="section-title" text="帖子状态" />
+                                <BarChart fx:id="postStatusChart" animated="false" legendVisible="false" prefHeight="286.0" styleClass="stats-chart">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="postStatusXAxis" label="状态" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="postStatusYAxis" label="帖子数" />
+                                    </yAxis>
+                                </BarChart>
+                            </children>
+                        </VBox>
+                    </children>
+                </GridPane>
+
+                <VBox spacing="12.0" styleClass="profile-card">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <children>
+                                <Label styleClass="section-title" text="热门内容 Top 10" HBox.hgrow="ALWAYS" />
+                                <Label styleClass="section-hint" text="按浏览、点赞、评论、收藏综合热度排序" />
+                            </children>
+                        </HBox>
+                        <TableView fx:id="topPostTableView" prefHeight="320.0" styleClass="stats-table" VBox.vgrow="ALWAYS">
+                            <columns>
+                                <TableColumn fx:id="rankColumn" prefWidth="64.0" text="排名" />
+                                <TableColumn fx:id="titleColumn" prefWidth="320.0" text="标题" />
+                                <TableColumn fx:id="viewColumn" prefWidth="92.0" text="浏览" />
+                                <TableColumn fx:id="likeColumn" prefWidth="92.0" text="点赞" />
+                                <TableColumn fx:id="commentColumn" prefWidth="92.0" text="评论" />
+                                <TableColumn fx:id="favoriteColumn" prefWidth="92.0" text="收藏" />
+                                <TableColumn fx:id="heatColumn" prefWidth="92.0" text="热度" />
+                                <TableColumn fx:id="createTimeColumn" prefWidth="170.0" text="发布时间" />
+                            </columns>
+                            <placeholder>
+                                <Label styleClass="profile-subtitle" text="暂无热门内容数据" />
+                            </placeholder>
+                        </TableView>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+    </content>
+</ScrollPane>

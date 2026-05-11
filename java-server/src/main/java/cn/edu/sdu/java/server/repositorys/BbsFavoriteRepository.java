@@ -34,4 +34,10 @@ public interface BbsFavoriteRepository extends JpaRepository<BbsFavorite, Long> 
            "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
            "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
     List<Object[]> countDailyFavoriteTrend(@Param("days") Integer days);
+
+    @Query(value = "SELECT DATE(f.create_time) as date, COUNT(*) as count FROM bbs_favorite f " +
+           "JOIN bbs_post p ON f.post_id = p.id " +
+           "WHERE p.author_id = :authorId AND f.create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(f.create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyReceivedFavoriteTrendByAuthor(@Param("authorId") Long authorId, @Param("days") Integer days);
 }

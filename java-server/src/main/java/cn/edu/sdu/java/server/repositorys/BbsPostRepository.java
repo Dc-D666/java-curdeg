@@ -90,6 +90,19 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
            "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
     List<Object[]> countDailyPostTrend(@Param("days") Integer days);
 
+    @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_post " +
+           "WHERE author_id = :authorId AND create_time >= DATE_SUB(CURDATE(), INTERVAL :days DAY) " +
+           "GROUP BY DATE(create_time) ORDER BY date", nativeQuery = true)
+    List<Object[]> countDailyPostTrendByAuthor(@Param("authorId") Long authorId, @Param("days") Integer days);
+
+    @Query(value = "SELECT status, COUNT(*) as count FROM bbs_post WHERE author_id = :authorId GROUP BY status", nativeQuery = true)
+    List<Object[]> countPostsByStatusAndAuthor(@Param("authorId") Long authorId);
+
+    @Query(value = "SELECT * FROM bbs_post WHERE author_id = :authorId " +
+           "ORDER BY (COALESCE(view_count, 0) + COALESCE(like_count, 0) * 5 + COALESCE(comment_count, 0) * 3 + COALESCE(favorite_count, 0) * 4) DESC, create_time DESC " +
+           "LIMIT :limit", nativeQuery = true)
+    List<BbsPost> findTopPostsByAuthorHeat(@Param("authorId") Long authorId, @Param("limit") int limit);
+
     List<BbsPost> findTop20ByStatusOrderByLikeCountDesc(Integer status);
     List<BbsPost> findTop20ByStatusOrderByCommentCountDesc(Integer status);
     List<BbsPost> findTop20ByStatusOrderByViewCountDesc(Integer status);

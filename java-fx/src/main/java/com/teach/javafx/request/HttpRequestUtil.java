@@ -540,14 +540,21 @@ public class HttpRequestUtil {
     }
     
     public static Comment publishComment(Long postId, String content) {
-        return publishComment(postId, content, null);
+        return publishComment(postId, content, null, null);
     }
 
     public static Comment publishComment(Long postId, String content, Long parentId) {
+        return publishComment(postId, content, parentId, null);
+    }
+
+    public static Comment publishComment(Long postId, String content, Long parentId, String imageUrls) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("content", content);
         if (parentId != null) {
             dataRequest.add("parentId", parentId);
+        }
+        if (imageUrls != null && !imageUrls.isBlank()) {
+            dataRequest.add("imageUrls", imageUrls);
         }
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -564,10 +571,17 @@ public class HttpRequestUtil {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             System.out.println("publishComment response: " + response.body());
             if (response.statusCode() == 200) {
-                Type responseType = new TypeToken<DataResponse<Comment>>(){}.getType();
-                DataResponse<Comment> dataResponse = gson.fromJson(response.body(), responseType);
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
                 if (dataResponse.getCode() == 0) {
-                    return dataResponse.getData();
+                    Map<String, Object> data = dataResponse.getData();
+                    Object commentData = data != null ? data.get("comment") : null;
+                    if (commentData != null) {
+                        return gson.fromJson(gson.toJson(commentData), Comment.class);
+                    }
+                    if (data != null && data.get("id") != null) {
+                        return gson.fromJson(gson.toJson(data), Comment.class);
+                    }
                 }
             }
         } catch (IOException | InterruptedException e) {
@@ -1555,6 +1569,55 @@ public class HttpRequestUtil {
         return null;
     }
 
+    public static List<String> uploadImages(List<Path> files) {
+        List<String> uploadedUrls = new ArrayList<>();
+        if (files == null || files.isEmpty()) {
+            return uploadedUrls;
+        }
+
+        for (Path file : files) {
+            if (file == null) {
+                continue;
+            }
+
+            String url = uploadImage(file.toString());
+            if (url != null && !url.isBlank()) {
+                uploadedUrls.add(url);
+            }
+        }
+
+        return uploadedUrls;
+    }
+
+    public static Map<String, Object> getUserStatisticsDetail() {
+        String url = serverUrl + "/api/bbs/user/me/statistics/detail";
+
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getUserStatisticsDetail response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 public static PageResult<Post> getMyPosts(int page, int size) {
     String url = serverUrl + "/api/bbs/user/me/posts?pageNum=" + page + "&pageSize=" + size;
 
@@ -1613,10 +1676,39 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
     return null;
 }
 
-    public static String changePassword(String oldPassword, String newPassword) {
+    public static String sendChangePasswordCode() {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/user/me/password/code"))
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        try {
+            HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            System.out.println("sendChangePasswordCode response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return null;
+                }
+                return dataResponse.getMsg() != null ? dataResponse.getMsg() : "发送验证码失败";
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+        }
+        return "发送验证码失败";
+    }
+
+    public static String changePassword(String oldPassword, String newPassword, String emailCode) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("oldPassword", oldPassword);
         dataRequest.add("newPassword", newPassword);
+        dataRequest.add("emailCode", emailCode);
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/user/me/password"))
