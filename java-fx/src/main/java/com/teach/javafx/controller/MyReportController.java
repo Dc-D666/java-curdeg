@@ -6,6 +6,8 @@ import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.PageResult;
 import com.teach.javafx.models.Report;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -15,9 +17,14 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 
+import java.lang.reflect.Type;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class MyReportController extends ToolController {
+    private static final Gson GSON = new Gson();
+
     @FXML
     private TableView<Report> reportTableView;
     @FXML
@@ -56,6 +63,9 @@ public class MyReportController extends ToolController {
                         break;
                     case 2:
                         typeText = "评论";
+                        break;
+                    case 3:
+                        typeText = "个人主页资料卡";
                         break;
                     default:
                         typeText = "未知";
@@ -219,14 +229,16 @@ public class MyReportController extends ToolController {
             addMetaRow(metaGrid, 6, "关联帖子", String.valueOf(postId));
         }
 
-        TextArea reasonArea = new TextArea("举报原因：\n" + safeText(report.getReason()) +
-                "\n\n处理备注：\n" + safeText(report.getHandleRemark()));
-        reasonArea.setEditable(false);
-        reasonArea.setWrapText(true);
-        reasonArea.setPrefRowCount(8);
-        reasonArea.setPrefColumnCount(52);
+        TextArea reasonArea = createReadOnlyTextArea("举报原因：\n" + safeText(report.getReason()) +
+                "\n\n处理备注：\n" + safeText(report.getHandleRemark()), 8);
 
-        VBox content = new VBox(12, metaGrid, reasonArea);
+        VBox content;
+        if (report.getTargetType() != null && report.getTargetType() == 3) {
+            TextArea snapshotArea = createReadOnlyTextArea("举报快照：\n" + formatProfileCardData(parseSnapshot(report.getTargetSnapshot())), 7);
+            content = new VBox(12, metaGrid, reasonArea, snapshotArea);
+        } else {
+            content = new VBox(12, metaGrid, reasonArea);
+        }
         content.setPadding(new javafx.geometry.Insets(10));
         dialog.getDialogPane().setContent(content);
 
@@ -278,6 +290,8 @@ public class MyReportController extends ToolController {
                 return "帖子";
             case 2:
                 return "评论";
+            case 3:
+                return "个人主页资料卡";
             default:
                 return "未知";
         }
@@ -306,9 +320,53 @@ public class MyReportController extends ToolController {
                 return "删除内容";
             case 2:
                 return "驳回举报";
+            case 3:
+                return "清空违规资料";
             default:
                 return "未知";
         }
+    }
+
+    private TextArea createReadOnlyTextArea(String value, int rowCount) {
+        TextArea area = new TextArea(value);
+        area.setEditable(false);
+        area.setWrapText(true);
+        area.setPrefRowCount(rowCount);
+        area.setPrefColumnCount(52);
+        return area;
+    }
+
+    private Map<String, Object> parseSnapshot(String targetSnapshot) {
+        if (targetSnapshot == null || targetSnapshot.isBlank()) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            Type mapType = new TypeToken<Map<String, Object>>() {}.getType();
+            Map<String, Object> snapshot = GSON.fromJson(targetSnapshot, mapType);
+            return snapshot != null ? snapshot : new LinkedHashMap<>();
+        } catch (Exception e) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private String formatProfileCardData(Map<String, Object> data) {
+        if (data == null || data.isEmpty()) {
+            return "无";
+        }
+        String nickname = data.get("nickname") != null ? String.valueOf(data.get("nickname")) : "无";
+        String avatarUrl = data.get("avatarUrl") != null ? String.valueOf(data.get("avatarUrl")) : "无";
+        String signature = data.get("signature") != null && !String.valueOf(data.get("signature")).isBlank()
+            ? String.valueOf(data.get("signature")) : "无";
+        String capturedAt = data.get("capturedAt") != null ? String.valueOf(data.get("capturedAt")) : null;
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("昵称：").append(nickname)
+            .append("\n头像：").append(avatarUrl)
+            .append("\n个性签名：").append(signature);
+        if (capturedAt != null && !capturedAt.isBlank()) {
+            builder.append("\n快照时间：").append(capturedAt);
+        }
+        return builder.toString();
     }
 
     private String safeText(String value) {

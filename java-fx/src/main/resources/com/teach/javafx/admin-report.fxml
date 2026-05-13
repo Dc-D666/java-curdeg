@@ -8,8 +8,9 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.AdminReportController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:controller="com.teach.javafx.controller.AdminReportController" stylesheets="@css/bbs-comments.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
    <top>
       <HBox alignment="CENTER_LEFT" spacing="10.0" BorderPane.alignment="CENTER">
          <padding>
@@ -24,19 +25,35 @@
       </HBox>
    </top>
    <center>
-      <TableView fx:id="reportTableView" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
-        <columns>
-          <TableColumn fx:id="targetTypeColumn" prefWidth="80.0" text="举报类型" />
-          <TableColumn fx:id="reasonColumn" prefWidth="200.0" text="举报原因" />
-          <TableColumn fx:id="statusColumn" prefWidth="80.0" text="状态" />
-          <TableColumn fx:id="reporterColumn" prefWidth="100.0" text="举报人" />
-          <TableColumn fx:id="createTimeColumn" prefWidth="150.0" text="举报时间" />
-          <TableColumn fx:id="handlerColumn" prefWidth="100.0" text="处理人" />
-          <TableColumn fx:id="handleTimeColumn" prefWidth="150.0" text="处理时间" />
-          <TableColumn fx:id="handleRemarkColumn" prefWidth="150.0" text="处理备注" />
-          <TableColumn fx:id="actionColumn" prefWidth="180.0" text="操作" />
-        </columns>
-      </TableView>
+      <VBox spacing="10.0" BorderPane.alignment="CENTER">
+         <children>
+            <TableView fx:id="reportTableView" prefHeight="200.0" prefWidth="200.0">
+              <columns>
+                <TableColumn fx:id="targetTypeColumn" prefWidth="80.0" text="举报类型" />
+                <TableColumn fx:id="reasonColumn" prefWidth="200.0" text="举报原因" />
+                <TableColumn fx:id="statusColumn" prefWidth="80.0" text="状态" />
+                <TableColumn fx:id="reporterColumn" prefWidth="100.0" text="举报人" />
+                <TableColumn fx:id="createTimeColumn" prefWidth="150.0" text="举报时间" />
+                <TableColumn fx:id="handlerColumn" prefWidth="100.0" text="处理人" />
+                <TableColumn fx:id="handleTimeColumn" prefWidth="150.0" text="处理时间" />
+                <TableColumn fx:id="handleRemarkColumn" prefWidth="150.0" text="处理备注" />
+                <TableColumn fx:id="actionColumn" prefWidth="240.0" text="操作" />
+              </columns>
+            </TableView>
+            <VBox fx:id="reportFlowCard" spacing="12.0" styleClass="moderation-flow-card moderation-flow-card-compact">
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <Label styleClass="moderation-flow-title moderation-flow-title-compact" text="举报流程" />
+                        <Label styleClass="moderation-flow-badge" text="处理视角" />
+                     </children>
+                  </HBox>
+                  <HBox fx:id="reportFlowStepsBox" alignment="CENTER_LEFT" spacing="0.0" />
+                  <Label fx:id="reportFlowSummaryLabel" styleClass="moderation-flow-summary moderation-flow-summary-compact" text="选择举报记录后显示当前流转" wrapText="true" />
+               </children>
+            </VBox>
+         </children>
+      </VBox>
    </center>
    <bottom>
       <HBox alignment="CENTER" spacing="10.0" BorderPane.alignment="CENTER">

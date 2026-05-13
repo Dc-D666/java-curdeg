@@ -1,6 +1,7 @@
 package com.teach.javafx.request;
 
 import com.teach.javafx.AppStore;
+import com.teach.javafx.models.AttachmentInfo;
 import com.teach.javafx.models.Board;
 import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.PageResult;
@@ -512,6 +513,9 @@ public class HttpRequestUtil {
         if (post.getImages() != null && !post.getImages().isEmpty()) {
             dataRequest.add("imageUrls", post.getImages());
         }
+        if (post.getAttachmentInfos() != null && !post.getAttachmentInfos().isBlank()) {
+            dataRequest.add("attachmentInfos", post.getAttachmentInfos());
+        }
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/post"))
@@ -548,6 +552,10 @@ public class HttpRequestUtil {
     }
 
     public static Comment publishComment(Long postId, String content, Long parentId, String imageUrls) {
+        return publishComment(postId, content, parentId, imageUrls, null);
+    }
+
+    public static Comment publishComment(Long postId, String content, Long parentId, String imageUrls, String attachmentInfos) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("content", content);
         if (parentId != null) {
@@ -555,6 +563,9 @@ public class HttpRequestUtil {
         }
         if (imageUrls != null && !imageUrls.isBlank()) {
             dataRequest.add("imageUrls", imageUrls);
+        }
+        if (attachmentInfos != null && !attachmentInfos.isBlank()) {
+            dataRequest.add("attachmentInfos", attachmentInfos);
         }
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -591,6 +602,10 @@ public class HttpRequestUtil {
     }
     
     public static Post updatePost(Long postId, String title, String content, String imageUrls) {
+        return updatePost(postId, title, content, imageUrls, null);
+    }
+
+    public static Post updatePost(Long postId, String title, String content, String imageUrls, String attachmentInfos) {
         DataRequest dataRequest = new DataRequest();
         if (title != null) {
             dataRequest.add("title", title);
@@ -600,6 +615,9 @@ public class HttpRequestUtil {
         }
         if (imageUrls != null) {
             dataRequest.add("imageUrls", imageUrls);
+        }
+        if (attachmentInfos != null) {
+            dataRequest.add("attachmentInfos", attachmentInfos);
         }
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -1477,6 +1495,54 @@ public class HttpRequestUtil {
         return null;
     }
 
+    public static AttachmentInfo uploadAttachment(Path file) {
+        try {
+            String boundary = "---" + UUID.randomUUID();
+            String newline = "\r\n";
+
+            byte[] fileBytes = Files.readAllBytes(file);
+            String fileName = file.getFileName().toString();
+            String contentType = Files.probeContentType(file);
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
+
+            java.io.ByteArrayOutputStream outputStream = new java.io.ByteArrayOutputStream();
+
+            outputStream.write(("--" + boundary + newline).getBytes());
+            outputStream.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"" + newline).getBytes());
+            outputStream.write(("Content-Type: " + contentType + newline + newline).getBytes());
+            outputStream.write(fileBytes);
+            outputStream.write(newline.getBytes());
+            outputStream.write(("--" + boundary + "--" + newline).getBytes());
+
+            byte[] requestBody = outputStream.toByteArray();
+
+            HttpRequest.Builder builder = HttpRequest.newBuilder()
+                    .uri(URI.create(serverUrl + "/api/bbs/file/upload-attachment"))
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
+                    .headers("Content-Type", "multipart/form-data; boundary=" + boundary);
+
+            if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+                builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+            }
+
+            HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+
+            System.out.println("uploadAttachment response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<AttachmentInfo>>() {}.getType();
+                DataResponse<AttachmentInfo> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public static String registerUser(String studentId, String nickname, String email, String password, String emailCode) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("username", studentId);
@@ -1587,6 +1653,26 @@ public class HttpRequestUtil {
         }
 
         return uploadedUrls;
+    }
+
+    public static List<AttachmentInfo> uploadAttachments(List<Path> files) {
+        List<AttachmentInfo> uploadedAttachments = new ArrayList<>();
+        if (files == null || files.isEmpty()) {
+            return uploadedAttachments;
+        }
+
+        for (Path file : files) {
+            if (file == null) {
+                continue;
+            }
+
+            AttachmentInfo attachmentInfo = uploadAttachment(file);
+            if (attachmentInfo != null && attachmentInfo.getUrl() != null && !attachmentInfo.getUrl().isBlank()) {
+                uploadedAttachments.add(attachmentInfo);
+            }
+        }
+
+        return uploadedAttachments;
     }
 
     public static Map<String, Object> getUserStatisticsDetail() {

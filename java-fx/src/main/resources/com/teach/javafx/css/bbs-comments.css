@@ -101,6 +101,26 @@
     -fx-padding: 4;
 }
 
+.attachment-row,
+.attachment-chip {
+    -fx-alignment: center-left;
+    -fx-background-color: #f8fafc;
+    -fx-background-radius: 8;
+    -fx-border-color: #dfe6f1;
+    -fx-border-radius: 8;
+    -fx-padding: 6 8;
+}
+
+.attachment-name {
+    -fx-text-fill: #1d4ed8;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.attachment-name:hover {
+    -fx-underline: true;
+}
+
 .primary-button {
     -fx-background-color: #2563eb;
     -fx-background-radius: 6;
@@ -136,4 +156,161 @@
 .text-button {
     -fx-font-size: 11px;
     -fx-padding: 3 8;
+}
+
+.moderation-flow-card {
+    -fx-background-color: linear-gradient(to right, #f8fbff, #f1f7ff);
+    -fx-background-radius: 14;
+    -fx-border-color: #dbeafe;
+    -fx-border-radius: 14;
+    -fx-padding: 16;
+}
+
+.moderation-flow-card-compact {
+    -fx-padding: 14;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+}
+
+.moderation-flow-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #172033;
+}
+
+.moderation-flow-title-compact {
+    -fx-font-size: 14px;
+}
+
+.moderation-flow-badge {
+    -fx-background-color: #dbeafe;
+    -fx-background-radius: 999;
+    -fx-padding: 4 10;
+    -fx-text-fill: #1d4ed8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.moderation-flow-step {
+    -fx-min-width: 92;
+    -fx-pref-width: 92;
+    -fx-max-width: 92;
+}
+
+.moderation-flow-step-compact {
+    -fx-min-width: 82;
+    -fx-pref-width: 82;
+    -fx-max-width: 82;
+}
+
+.moderation-flow-index {
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-pref-width: 34;
+    -fx-pref-height: 34;
+    -fx-alignment: center;
+    -fx-background-radius: 17;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.moderation-flow-index-compact {
+    -fx-min-width: 28;
+    -fx-min-height: 28;
+    -fx-pref-width: 28;
+    -fx-pref-height: 28;
+    -fx-font-size: 12px;
+}
+
+.moderation-flow-index-completed {
+    -fx-background-color: #22c55e;
+    -fx-text-fill: white;
+}
+
+.moderation-flow-index-active {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+}
+
+.moderation-flow-index-warning {
+    -fx-background-color: #f59e0b;
+    -fx-text-fill: white;
+}
+
+.moderation-flow-index-danger {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+}
+
+.moderation-flow-index-inactive {
+    -fx-background-color: #e2e8f0;
+    -fx-text-fill: #64748b;
+}
+
+.moderation-flow-step-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #172033;
+}
+
+.moderation-flow-step-title-compact {
+    -fx-font-size: 12px;
+}
+
+.moderation-flow-step-state {
+    -fx-font-size: 12px;
+}
+
+.moderation-flow-step-state-compact {
+    -fx-font-size: 11px;
+}
+
+.moderation-flow-state-completed {
+    -fx-text-fill: #15803d;
+}
+
+.moderation-flow-state-active {
+    -fx-text-fill: #2563eb;
+}
+
+.moderation-flow-state-warning {
+    -fx-text-fill: #b45309;
+}
+
+.moderation-flow-state-danger {
+    -fx-text-fill: #dc2626;
+}
+
+.moderation-flow-state-inactive {
+    -fx-text-fill: #94a3b8;
+}
+
+.moderation-flow-connector {
+    -fx-pref-height: 4;
+    -fx-min-height: 4;
+    -fx-max-height: 4;
+    -fx-background-radius: 999;
+    -fx-min-width: 28;
+}
+
+.moderation-flow-connector-compact {
+    -fx-min-width: 20;
+}
+
+.moderation-flow-connector-active {
+    -fx-background-color: #93c5fd;
+}
+
+.moderation-flow-connector-inactive {
+    -fx-background-color: #e2e8f0;
+}
+
+.moderation-flow-summary {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e293b;
+}
+
+.moderation-flow-summary-compact {
+    -fx-font-size: 12px;
 }

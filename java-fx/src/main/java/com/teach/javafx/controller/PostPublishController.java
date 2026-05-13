@@ -2,9 +2,11 @@ package com.teach.javafx.controller;
 
 import com.teach.javafx.AppStore;
 import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.models.AttachmentInfo;
 import com.teach.javafx.models.Board;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.AttachmentUtil;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -47,6 +49,12 @@ public class PostPublishController extends ToolController {
     private Label imageUploadStatusLabel;
     @FXML
     private FlowPane imagePreviewPane;
+    @FXML
+    private Button selectAttachmentButton;
+    @FXML
+    private Label attachmentStatusLabel;
+    @FXML
+    private FlowPane attachmentPreviewPane;
     @FXML
     private Button publishButton;
     @FXML
@@ -92,6 +100,7 @@ public class PostPublishController extends ToolController {
     
     // 存储的图片URL列表
     private List<String> imageUrls = new ArrayList<>();
+    private final List<Path> selectedAttachments = new ArrayList<>();
     
     // 草稿相关
     private static final String DRAFT_FILE_NAME = "post_draft.txt";
@@ -116,6 +125,7 @@ public class PostPublishController extends ToolController {
         publishButton.setOnAction(event -> publishPost());
         cancelButton.setOnAction(event -> closeTab());
         selectImageButton.setOnAction(event -> selectAndUploadImage());
+        selectAttachmentButton.setOnAction(event -> selectAttachments());
         aiImageButton.setOnAction(event -> openAiImageDialog());
         previewButton.setOnAction(event -> showPreview());
         saveDraftButton.setOnAction(event -> saveDraftManually());
@@ -433,10 +443,21 @@ public class PostPublishController extends ToolController {
         if (!imageUrlsStr.isEmpty()) {
             post.setImages(imageUrlsStr);
         }
+        List<Path> attachmentFiles = new ArrayList<>(selectedAttachments);
 
+        publishButton.setDisable(true);
+        publishButton.setText("发布中...");
+        selectAttachmentButton.setDisable(true);
         Task<Post> task = new Task<Post>() {
             @Override
             protected Post call() {
+                if (!attachmentFiles.isEmpty()) {
+                    List<AttachmentInfo> uploadedAttachments = HttpRequestUtil.uploadAttachments(attachmentFiles);
+                    if (uploadedAttachments.size() != attachmentFiles.size()) {
+                        throw new IllegalStateException("附件上传失败");
+                    }
+                    post.setAttachmentInfos(AttachmentUtil.toJson(uploadedAttachments));
+                }
                 return HttpRequestUtil.publishPost(post);
             }
         };
@@ -459,11 +480,19 @@ public class PostPublishController extends ToolController {
                 } else {
                     showError("发布失败，请稍后重试");
                 }
+                publishButton.setDisable(false);
+                publishButton.setText("发布");
+                selectAttachmentButton.setDisable(false);
             });
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> showError("发布失败，请稍后重试"));
+            Platform.runLater(() -> {
+                showError("发布失败，请检查附件大小或稍后重试");
+                publishButton.setDisable(false);
+                publishButton.setText("发布");
+                selectAttachmentButton.setDisable(false);
+            });
         });
 
         new Thread(task).start();
@@ -490,6 +519,9 @@ public class PostPublishController extends ToolController {
         
         if (!imageUrls.isEmpty()) {
             contentText += "\n\n图片数量: " + imageUrls.size();
+        }
+        if (!selectedAttachments.isEmpty()) {
+            contentText += "\n附件数量: " + selectedAttachments.size();
         }
         
         alert.setContentText(contentText);
@@ -561,6 +593,88 @@ public class PostPublishController extends ToolController {
         });
         
         new Thread(task).start();
+    }
+
+    private void selectAttachments() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择附件");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("所有文件", "*.*"));
+
+        List<File> files = fileChooser.showOpenMultipleDialog(null);
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        for (File file : files) {
+            if (file == null) {
+                continue;
+            }
+            String validationError = validateAttachmentFile(file);
+            if (validationError != null) {
+                showError(validationError);
+                continue;
+            }
+            Path path = file.toPath();
+            if (selectedAttachments.contains(path)) {
+                continue;
+            }
+            if (selectedAttachments.size() >= 5) {
+                showInfo("附件最多添加 5 个");
+                break;
+            }
+            selectedAttachments.add(path);
+        }
+        refreshAttachmentPreview();
+    }
+
+    private String validateAttachmentFile(File file) {
+        if (!file.exists() || !file.isFile()) {
+            return "附件不存在或不是普通文件";
+        }
+        if (file.length() <= 0) {
+            return "附件不能为空";
+        }
+        if (file.length() > 20L * 1024 * 1024) {
+            return "单个附件不能超过 20MB：" + file.getName();
+        }
+        String name = file.getName();
+        int dotIndex = name.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == name.length() - 1) {
+            return "附件必须包含文件扩展名：" + name;
+        }
+        String ext = name.substring(dotIndex + 1).toLowerCase();
+        if (List.of("exe", "bat", "cmd", "msi", "dll", "scr", "com", "jar", "class", "sh", "ps1", "vbs", "reg").contains(ext)) {
+            return "不支持上传可执行或高风险附件：" + name;
+        }
+        return null;
+    }
+
+    private void refreshAttachmentPreview() {
+        attachmentPreviewPane.getChildren().clear();
+        if (selectedAttachments.isEmpty()) {
+            attachmentStatusLabel.setText("最多 5 个附件，单个不超过 20MB");
+            return;
+        }
+        attachmentStatusLabel.setText("已选择 " + selectedAttachments.size() + " 个附件，发布时上传");
+
+        for (Path path : selectedAttachments) {
+            HBox item = new HBox(8);
+            item.setStyle("-fx-alignment: center-left; -fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #d9e2ef; -fx-border-radius: 6; -fx-padding: 6 8;");
+
+            File file = path.toFile();
+            Label nameLabel = new Label(file.getName() + " (" + AttachmentUtil.formatSize(file.length()) + ")");
+            nameLabel.setStyle("-fx-text-fill: #334155;");
+
+            Button removeButton = new Button("删除");
+            removeButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #dc2626;");
+            removeButton.setOnAction(event -> {
+                selectedAttachments.remove(path);
+                refreshAttachmentPreview();
+            });
+
+            item.getChildren().addAll(nameLabel, removeButton);
+            attachmentPreviewPane.getChildren().add(item);
+        }
     }
     
     private void openAiImageDialog() {

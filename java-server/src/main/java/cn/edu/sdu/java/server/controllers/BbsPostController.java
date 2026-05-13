@@ -235,7 +235,7 @@ public class BbsPostController {
                                 sseCounter[0]++;
                                 String bufferedContent = contentBuffer.toString();
                                 // 在发送前移除 SUGGEST_POST 标签及其内容
-                                String cleanedContent = removeSuggestPostTags(bufferedContent);
+                                String cleanedContent = aiSearchService.sanitizeAiOutput(removeSuggestPostTags(bufferedContent));
                                 log.debug("[SSE {}ms] #{} 准备发送缓冲内容 (原始长度={}, 清理后长度={})", 
                                     timeSinceStart, sseCounter[0], bufferedContent.length(), cleanedContent.length());
                                 // 只有清理后还有内容才发送
@@ -286,7 +286,7 @@ public class BbsPostController {
                             }
                             
                             // 检查完整内容是否包含发帖建议 - 总是发送
-                            String fullContent = fullContentBuffer.toString();
+                            String fullContent = aiSearchService.sanitizeAiOutput(fullContentBuffer.toString());
                             Map<String, String> suggestPostData = parseSuggestPost(fullContent);
                             
                             if (suggestPostData != null) {

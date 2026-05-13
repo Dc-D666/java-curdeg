@@ -22,6 +22,7 @@
       </HBox>
       <Label fx:id="contentLabel" wrapText="true" styleClass="comment-content" text="评论内容" />
       <FlowPane fx:id="commentImagesVBox" hgap="8.0" vgap="8.0" />
+      <VBox fx:id="commentAttachmentsVBox" spacing="6.0" />
       <HBox fx:id="bottomBox" spacing="10.0" alignment="CENTER_LEFT" styleClass="comment-actions">
          <children>
             <Label fx:id="timeLabel" styleClass="comment-time" text="时间" />

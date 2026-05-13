@@ -3,10 +3,12 @@ package com.teach.javafx.controller;
 import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.models.AttachmentInfo;
 import com.teach.javafx.models.Comment;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.AttachmentUtil;
 import com.teach.javafx.util.FollowStateManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -14,12 +16,17 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.geometry.Pos;
 import javafx.stage.FileChooser;
 
+import java.awt.Desktop;
 import java.io.File;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.text.SimpleDateFormat;
@@ -59,6 +66,12 @@ public class PostDetailController extends ToolController {
     @FXML
     private Label moderationStatusLabel;
     @FXML
+    private VBox moderationFlowCard;
+    @FXML
+    private HBox moderationFlowStepsBox;
+    @FXML
+    private Label moderationFlowSummaryLabel;
+    @FXML
     private VBox violationInfoVBox;
     @FXML
     private Label violationTypeLabel;
@@ -74,6 +87,8 @@ public class PostDetailController extends ToolController {
     private Label contentLabel;
     @FXML
     private VBox postImagesVBox;
+    @FXML
+    private VBox postAttachmentsVBox;
     @FXML
     private ScrollPane mainScrollPane;
     @FXML
@@ -107,9 +122,15 @@ public class PostDetailController extends ToolController {
     @FXML
     private Button addImageButton;
     @FXML
+    private Button addAttachmentButton;
+    @FXML
     private ScrollPane commentImagePreviewScrollPane;
     @FXML
     private FlowPane commentImagePreviewPane;
+    @FXML
+    private ScrollPane commentAttachmentPreviewScrollPane;
+    @FXML
+    private FlowPane commentAttachmentPreviewPane;
     @FXML
     private HBox replyTargetBox;
     @FXML
@@ -139,6 +160,7 @@ public class PostDetailController extends ToolController {
     private boolean isFollowed = false;
     private boolean isFavorited = false;
     private final List<Path> selectedCommentImages = new ArrayList<>();
+    private final List<Path> selectedCommentAttachments = new ArrayList<>();
     private Comment replyingToComment;
 
     @FXML
@@ -162,6 +184,7 @@ public class PostDetailController extends ToolController {
         reportButton.setOnAction(event -> openReportDialog());
         shareButton.setOnAction(event -> handleShare());
         addImageButton.setOnAction(event -> handleAddImage());
+        addAttachmentButton.setOnAction(event -> handleAddAttachment());
         cancelReplyButton.setOnAction(event -> clearReplyTarget());
         editViolationButton.setOnAction(event -> openEditDialog());
         
@@ -178,8 +201,10 @@ public class PostDetailController extends ToolController {
         reportButton.setVisible(false);
         followButton.setVisible(false);
         addImageButton.setVisible(false);
+        addAttachmentButton.setVisible(false);
         moreButton.setVisible(false);
         refreshCommentImagePreview();
+        refreshCommentAttachmentPreview();
     }
 
     public void setPostId(Long postId) {
@@ -259,20 +284,12 @@ public class PostDetailController extends ToolController {
                     String moderationStatusText = currentPost.getModerationStatusText();
                     if (moderationStatusText != null && !moderationStatusText.isEmpty()) {
                         moderationStatusLabel.setText(moderationStatusText);
-                        String moderationStatus = currentPost.getModerationStatus();
-                        if ("pending".equals(moderationStatus)) {
-                            moderationStatusLabel.setStyle("-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px; -fx-background-color: #fa8c16; -fx-text-fill: white;");
-                        } else if ("manual".equals(moderationStatus)) {
-                            moderationStatusLabel.setStyle("-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px; -fx-background-color: #fadb14; -fx-text-fill: #333;");
-                        } else if ("pass".equals(moderationStatus)) {
-                            moderationStatusLabel.setStyle("-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px; -fx-background-color: #52c41a; -fx-text-fill: white;");
-                        } else if ("reject".equals(moderationStatus)) {
-                            moderationStatusLabel.setStyle("-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px; -fx-background-color: #f5222d; -fx-text-fill: white;");
-                        }
+                        moderationStatusLabel.setStyle(currentPost.getModerationStatusStyle());
                     } else {
                         moderationStatusLabel.setText("");
                         moderationStatusLabel.setStyle("");
                     }
+                    renderModerationFlow(currentPost);
                     
                     // 显示违规信息
                     boolean isRejected = "reject".equals(currentPost.getModerationStatus());
@@ -323,6 +340,7 @@ public class PostDetailController extends ToolController {
                     contentLabel.setText(currentPost.getContent());
                     
                     displayPostImages();
+                    displayPostAttachments();
                     
                     updateButtonVisibility();
                     loadLikeStatus();
@@ -465,6 +483,7 @@ public class PostDetailController extends ToolController {
         reportButton.setVisible(false);
         followButton.setVisible(false);
         addImageButton.setVisible(false);
+        addAttachmentButton.setVisible(false);
         moreButton.setVisible(false);
         editMenuItem.setVisible(false);
         deleteMenuItem.setVisible(false);
@@ -489,6 +508,7 @@ public class PostDetailController extends ToolController {
             reportButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
             followButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
             addImageButton.setVisible(isLoggedIn && !isBanned);
+            addAttachmentButton.setVisible(isLoggedIn && !isBanned);
             
             boolean hasMoreOptions = false;
             boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
@@ -753,13 +773,100 @@ public class PostDetailController extends ToolController {
         refreshCommentImagePreview();
     }
 
+    private void selectCommentAttachments() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择评论附件");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("所有文件", "*.*"));
+
+        List<File> files = fileChooser.showOpenMultipleDialog(MainApplication.getMainStage());
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        for (File file : files) {
+            if (file == null) {
+                continue;
+            }
+            String error = validateAttachmentFile(file);
+            if (error != null) {
+                showError(error);
+                continue;
+            }
+            Path path = file.toPath();
+            if (selectedCommentAttachments.contains(path)) {
+                continue;
+            }
+            if (selectedCommentAttachments.size() >= 5) {
+                showInfo("评论最多添加 5 个附件");
+                break;
+            }
+            selectedCommentAttachments.add(path);
+        }
+        refreshCommentAttachmentPreview();
+    }
+
+    private String validateAttachmentFile(File file) {
+        if (!file.exists() || !file.isFile()) {
+            return "附件不存在或不是普通文件";
+        }
+        if (file.length() <= 0) {
+            return "附件不能为空";
+        }
+        if (file.length() > 20L * 1024 * 1024) {
+            return "单个附件不能超过 20MB：" + file.getName();
+        }
+        String name = file.getName();
+        int dotIndex = name.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == name.length() - 1) {
+            return "附件必须包含文件扩展名：" + name;
+        }
+        String ext = name.substring(dotIndex + 1).toLowerCase();
+        if (List.of("exe", "bat", "cmd", "msi", "dll", "scr", "com", "jar", "class", "sh", "ps1", "vbs", "reg").contains(ext)) {
+            return "不支持上传可执行或高风险附件：" + name;
+        }
+        return null;
+    }
+
+    private void refreshCommentAttachmentPreview() {
+        if (commentAttachmentPreviewPane == null) {
+            return;
+        }
+
+        commentAttachmentPreviewPane.getChildren().clear();
+        boolean hasAttachments = !selectedCommentAttachments.isEmpty();
+        commentAttachmentPreviewScrollPane.setVisible(hasAttachments);
+        commentAttachmentPreviewScrollPane.setManaged(hasAttachments);
+
+        for (Path path : selectedCommentAttachments) {
+            HBox item = new HBox(6);
+            item.getStyleClass().add("attachment-chip");
+
+            File file = path.toFile();
+            Label label = new Label(file.getName() + " (" + AttachmentUtil.formatSize(file.length()) + ")");
+            Button removeButton = new Button("删除");
+            removeButton.getStyleClass().add("text-button");
+            removeButton.setOnAction(event -> {
+                selectedCommentAttachments.remove(path);
+                refreshCommentAttachmentPreview();
+            });
+
+            item.getChildren().addAll(label, removeButton);
+            commentAttachmentPreviewPane.getChildren().add(item);
+        }
+    }
+
+    private void clearSelectedCommentAttachments() {
+        selectedCommentAttachments.clear();
+        refreshCommentAttachmentPreview();
+    }
+
     private void setReplyTarget(Comment comment) {
         replyingToComment = comment;
         String nickname = comment.getAuthorNickname() != null ? comment.getAuthorNickname() : "未知用户";
         replyTargetLabel.setText("正在回复 @" + nickname);
         replyTargetBox.setVisible(true);
         replyTargetBox.setManaged(true);
-        commentTextArea.setPromptText("回复 @" + nickname + "，支持添加图片...");
+        commentTextArea.setPromptText("回复 @" + nickname + "，支持添加图片和附件...");
         submitCommentButton.setText("发布回复");
         commentTextArea.requestFocus();
     }
@@ -768,21 +875,23 @@ public class PostDetailController extends ToolController {
         replyingToComment = null;
         replyTargetBox.setVisible(false);
         replyTargetBox.setManaged(false);
-        commentTextArea.setPromptText("发表评论，支持添加图片...");
+        commentTextArea.setPromptText("发表评论，支持添加图片和附件...");
         submitCommentButton.setText("发布评论");
     }
 
     private void publishCommentWithImages() {
         String content = commentTextArea.getText().trim();
-        if (content.isEmpty() && selectedCommentImages.isEmpty()) {
-            showError("评论内容或图片不能为空");
+        if (content.isEmpty() && selectedCommentImages.isEmpty() && selectedCommentAttachments.isEmpty()) {
+            showError("评论内容、图片或附件不能全为空");
             return;
         }
 
         List<Path> imageFiles = new ArrayList<>(selectedCommentImages);
+        List<Path> attachmentFiles = new ArrayList<>(selectedCommentAttachments);
         Long parentId = replyingToComment != null ? replyingToComment.getId() : null;
         submitCommentButton.setDisable(true);
         addImageButton.setDisable(true);
+        addAttachmentButton.setDisable(true);
         submitCommentButton.setText("发布中...");
 
         Task<Comment> task = new Task<Comment>() {
@@ -793,8 +902,13 @@ public class PostDetailController extends ToolController {
                     throw new IllegalStateException("图片上传失败");
                 }
                 String imageUrls = String.join(",", uploadedUrls);
-                String safeContent = content.isEmpty() ? "分享图片" : content;
-                return HttpRequestUtil.publishComment(postId, safeContent, parentId, imageUrls);
+                List<AttachmentInfo> uploadedAttachments = HttpRequestUtil.uploadAttachments(attachmentFiles);
+                if (uploadedAttachments.size() != attachmentFiles.size()) {
+                    throw new IllegalStateException("附件上传失败");
+                }
+                String attachmentInfos = AttachmentUtil.toJson(uploadedAttachments);
+                String safeContent = content.isEmpty() ? (attachmentFiles.isEmpty() ? "分享图片" : "分享附件") : content;
+                return HttpRequestUtil.publishComment(postId, safeContent, parentId, imageUrls, attachmentInfos);
             }
         };
 
@@ -804,6 +918,7 @@ public class PostDetailController extends ToolController {
                 showInfo(parentId == null ? "评论发表成功！" : "回复成功！");
                 commentTextArea.clear();
                 clearSelectedCommentImages();
+                clearSelectedCommentAttachments();
                 clearReplyTarget();
                 loadCommentList();
                 loadPostDetail();
@@ -812,20 +927,124 @@ public class PostDetailController extends ToolController {
             }
             submitCommentButton.setDisable(false);
             addImageButton.setDisable(false);
+            addAttachmentButton.setDisable(false);
         }));
 
         task.setOnFailed(event -> Platform.runLater(() -> {
-            showError("评论发表失败，请检查图片大小或稍后重试");
+            showError("评论发表失败，请检查图片/附件大小或稍后重试");
             submitCommentButton.setDisable(false);
             addImageButton.setDisable(false);
+            addAttachmentButton.setDisable(false);
             submitCommentButton.setText(parentId == null ? "发布评论" : "发布回复");
         }));
 
         new Thread(task).start();
     }
 
+    private void renderModerationFlow(Post post) {
+        if (moderationFlowCard == null || moderationFlowStepsBox == null || moderationFlowSummaryLabel == null) {
+            return;
+        }
+        moderationFlowStepsBox.getChildren().clear();
+        if (post == null) {
+            moderationFlowSummaryLabel.setText("");
+            return;
+        }
+
+        Post.ModerationFlowView flowView = post.getModerationFlowView();
+        moderationFlowSummaryLabel.setText(flowView.getSummary());
+        List<Post.ModerationFlowStep> steps = flowView.getSteps();
+
+        for (int i = 0; i < steps.size(); i++) {
+            Post.ModerationFlowStep step = steps.get(i);
+            moderationFlowStepsBox.getChildren().add(createFlowStepNode(step, i + 1, false));
+            if (i < steps.size() - 1) {
+                moderationFlowStepsBox.getChildren().add(createFlowConnector(flowView.isConnectorReached(i), false));
+            }
+        }
+    }
+
+    private VBox createFlowStepNode(Post.ModerationFlowStep step, int stepNumber, boolean compact) {
+        VBox box = new VBox(6);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.getStyleClass().add("moderation-flow-step");
+        if (compact) {
+            box.getStyleClass().add("moderation-flow-step-compact");
+        }
+
+        Label indexLabel = new Label(String.valueOf(stepNumber));
+        indexLabel.getStyleClass().add("moderation-flow-index");
+        indexLabel.getStyleClass().add(resolveFlowIndexStyleClass(step.getVisualState()));
+        if (compact) {
+            indexLabel.getStyleClass().add("moderation-flow-index-compact");
+        }
+
+        Label titleLabel = new Label(step.getTitle());
+        titleLabel.getStyleClass().add("moderation-flow-step-title");
+        if (compact) {
+            titleLabel.getStyleClass().add("moderation-flow-step-title-compact");
+        }
+
+        Label stateLabel = new Label(step.getStateText());
+        stateLabel.getStyleClass().add("moderation-flow-step-state");
+        stateLabel.getStyleClass().add(resolveFlowStateStyleClass(step.getVisualState()));
+        if (compact) {
+            stateLabel.getStyleClass().add("moderation-flow-step-state-compact");
+        }
+
+        box.getChildren().addAll(indexLabel, titleLabel, stateLabel);
+        return box;
+    }
+
+    private Region createFlowConnector(boolean reached, boolean compact) {
+        Region connector = new Region();
+        connector.getStyleClass().add("moderation-flow-connector");
+        connector.getStyleClass().add(reached ? "moderation-flow-connector-active" : "moderation-flow-connector-inactive");
+        if (compact) {
+            connector.getStyleClass().add("moderation-flow-connector-compact");
+        }
+        HBox.setHgrow(connector, Priority.ALWAYS);
+        return connector;
+    }
+
+    private String resolveFlowIndexStyleClass(Post.ModerationFlowVisualState state) {
+        switch (state) {
+            case COMPLETED:
+                return "moderation-flow-index-completed";
+            case ACTIVE:
+                return "moderation-flow-index-active";
+            case WARNING:
+                return "moderation-flow-index-warning";
+            case DANGER:
+                return "moderation-flow-index-danger";
+            case INACTIVE:
+            default:
+                return "moderation-flow-index-inactive";
+        }
+    }
+
+    private String resolveFlowStateStyleClass(Post.ModerationFlowVisualState state) {
+        switch (state) {
+            case COMPLETED:
+                return "moderation-flow-state-completed";
+            case ACTIVE:
+                return "moderation-flow-state-active";
+            case WARNING:
+                return "moderation-flow-state-warning";
+            case DANGER:
+                return "moderation-flow-state-danger";
+            case INACTIVE:
+            default:
+                return "moderation-flow-state-inactive";
+        }
+    }
+
     private void handleAddImage() {
         selectCommentImages();
+    }
+
+    private void handleAddAttachment() {
+        selectCommentAttachments();
     }
 
     private void publishComment() {
@@ -1294,6 +1513,67 @@ public class PostDetailController extends ToolController {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void displayPostAttachments() {
+        postAttachmentsVBox.getChildren().clear();
+
+        if (currentPost == null) {
+            return;
+        }
+
+        List<AttachmentInfo> attachments = AttachmentUtil.parse(currentPost.getAttachmentInfos());
+        if (attachments.isEmpty()) {
+            postAttachmentsVBox.setVisible(false);
+            postAttachmentsVBox.setManaged(false);
+            return;
+        }
+
+        postAttachmentsVBox.setVisible(true);
+        postAttachmentsVBox.setManaged(true);
+
+        Label title = new Label("附件");
+        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #172033;");
+        postAttachmentsVBox.getChildren().add(title);
+
+        for (AttachmentInfo attachment : attachments) {
+            postAttachmentsVBox.getChildren().add(createAttachmentRow(attachment));
+        }
+    }
+
+    private HBox createAttachmentRow(AttachmentInfo attachment) {
+        HBox row = new HBox(10);
+        row.getStyleClass().add("attachment-row");
+
+        String name = attachment.getName() != null ? attachment.getName() : "未命名附件";
+        String size = AttachmentUtil.formatSize(attachment.getSize());
+        Label nameLabel = new Label(name + (size.isBlank() ? "" : " (" + size + ")"));
+        nameLabel.getStyleClass().add("attachment-name");
+        nameLabel.setOnMouseClicked(event -> openAttachment(attachment));
+
+        Button downloadButton = new Button("下载");
+        downloadButton.getStyleClass().add("text-button");
+        downloadButton.setOnAction(event -> openAttachment(attachment));
+
+        row.getChildren().addAll(nameLabel, downloadButton);
+        return row;
+    }
+
+    private void openAttachment(AttachmentInfo attachment) {
+        if (attachment == null || attachment.getUrl() == null || attachment.getUrl().isBlank()) {
+            showError("附件地址为空");
+            return;
+        }
+        try {
+            String fullUrl = AttachmentUtil.fullUrl(attachment.getUrl());
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().browse(URI.create(fullUrl));
+            } else {
+                showInfo(fullUrl);
+            }
+        } catch (Exception e) {
+            showError("打开附件失败");
         }
     }
     

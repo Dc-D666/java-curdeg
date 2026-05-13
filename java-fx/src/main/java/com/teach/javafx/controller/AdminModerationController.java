@@ -10,9 +10,12 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 import java.util.List;
@@ -66,6 +69,12 @@ public class AdminModerationController extends ToolController {
 
     @FXML
     private Label selectedPostTitleLabel;
+    @FXML
+    private VBox moderationFlowCard;
+    @FXML
+    private HBox moderationFlowStepsBox;
+    @FXML
+    private Label moderationFlowSummaryLabel;
 
     @FXML
     private TextArea postContentArea;
@@ -177,6 +186,8 @@ public class AdminModerationController extends ToolController {
         violationTypeChoiceBox.setValue("OTHER");
 
         moderationPanel.setVisible(false);
+        moderationFlowCard.setVisible(false);
+        moderationFlowCard.setManaged(false);
 
         loadPosts();
     }
@@ -271,12 +282,15 @@ public class AdminModerationController extends ToolController {
         violationLevelChoiceBox.setValue("LOW");
         violationTypeChoiceBox.setValue("OTHER");
         remarkArea.setText("");
+        renderModerationFlow(post);
         moderationPanel.setVisible(true);
     }
 
     @FXML
     private void hideModerationPanel() {
         selectedPost = null;
+        moderationFlowCard.setVisible(false);
+        moderationFlowCard.setManaged(false);
         moderationPanel.setVisible(false);
     }
 
@@ -350,5 +364,84 @@ public class AdminModerationController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void renderModerationFlow(Post post) {
+        if (moderationFlowCard == null || moderationFlowStepsBox == null || moderationFlowSummaryLabel == null || post == null) {
+            return;
+        }
+        moderationFlowCard.setVisible(true);
+        moderationFlowCard.setManaged(true);
+        moderationFlowStepsBox.getChildren().clear();
+
+        Post.ModerationFlowView flowView = post.getModerationFlowView();
+        moderationFlowSummaryLabel.setText(flowView.getSummary());
+        List<Post.ModerationFlowStep> steps = flowView.getSteps();
+
+        for (int i = 0; i < steps.size(); i++) {
+            Post.ModerationFlowStep step = steps.get(i);
+            moderationFlowStepsBox.getChildren().add(createFlowStepNode(step, i + 1));
+            if (i < steps.size() - 1) {
+                moderationFlowStepsBox.getChildren().add(createFlowConnector(flowView.isConnectorReached(i)));
+            }
+        }
+    }
+
+    private VBox createFlowStepNode(Post.ModerationFlowStep step, int stepNumber) {
+        VBox box = new VBox(4);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.getStyleClass().addAll("moderation-flow-step", "moderation-flow-step-compact");
+
+        Label indexLabel = new Label(String.valueOf(stepNumber));
+        indexLabel.getStyleClass().addAll("moderation-flow-index", "moderation-flow-index-compact", resolveFlowIndexStyleClass(step.getVisualState()));
+
+        Label titleLabel = new Label(step.getTitle());
+        titleLabel.getStyleClass().addAll("moderation-flow-step-title", "moderation-flow-step-title-compact");
+
+        Label stateLabel = new Label(step.getStateText());
+        stateLabel.getStyleClass().addAll("moderation-flow-step-state", "moderation-flow-step-state-compact", resolveFlowStateStyleClass(step.getVisualState()));
+
+        box.getChildren().addAll(indexLabel, titleLabel, stateLabel);
+        return box;
+    }
+
+    private Region createFlowConnector(boolean reached) {
+        Region connector = new Region();
+        connector.getStyleClass().addAll("moderation-flow-connector", "moderation-flow-connector-compact");
+        connector.getStyleClass().add(reached ? "moderation-flow-connector-active" : "moderation-flow-connector-inactive");
+        HBox.setHgrow(connector, Priority.ALWAYS);
+        return connector;
+    }
+
+    private String resolveFlowIndexStyleClass(Post.ModerationFlowVisualState state) {
+        switch (state) {
+            case COMPLETED:
+                return "moderation-flow-index-completed";
+            case ACTIVE:
+                return "moderation-flow-index-active";
+            case WARNING:
+                return "moderation-flow-index-warning";
+            case DANGER:
+                return "moderation-flow-index-danger";
+            case INACTIVE:
+            default:
+                return "moderation-flow-index-inactive";
+        }
+    }
+
+    private String resolveFlowStateStyleClass(Post.ModerationFlowVisualState state) {
+        switch (state) {
+            case COMPLETED:
+                return "moderation-flow-state-completed";
+            case ACTIVE:
+                return "moderation-flow-state-active";
+            case WARNING:
+                return "moderation-flow-state-warning";
+            case DANGER:
+                return "moderation-flow-state-danger";
+            case INACTIVE:
+            default:
+                return "moderation-flow-state-inactive";
+        }
     }
 }
