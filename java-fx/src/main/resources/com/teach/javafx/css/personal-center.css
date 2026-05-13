@@ -367,6 +367,42 @@
     -fx-background-color: #1f2937;
 }
 
+.post-meta-time {
+    -fx-text-fill: #8b95a7;
+    -fx-font-size: 12px;
+}
+
+.post-board-chip {
+    -fx-background-color: #e8f1ff;
+    -fx-text-fill: #2563eb;
+    -fx-padding: 3 10;
+    -fx-background-radius: 999;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.post-meta-chip {
+    -fx-padding: 3 9;
+    -fx-background-radius: 999;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.post-meta-chip-like {
+    -fx-background-color: #fff1f2;
+    -fx-text-fill: #e11d48;
+}
+
+.post-meta-chip-comment {
+    -fx-background-color: #eff6ff;
+    -fx-text-fill: #2563eb;
+}
+
+.post-meta-chip-view {
+    -fx-background-color: #f3f4f6;
+    -fx-text-fill: #4b5563;
+}
+
 TextArea.form-input {
     -fx-pref-height: 80;
 }

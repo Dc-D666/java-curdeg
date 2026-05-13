@@ -13,33 +13,50 @@ import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
 import cn.edu.sdu.java.server.repositorys.BbsReportRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 public class BbsReportService {
+    private static final int TARGET_TYPE_POST = 1;
+    private static final int TARGET_TYPE_COMMENT = 2;
+    private static final int TARGET_TYPE_PROFILE_CARD = 3;
+
+    private static final int HANDLE_TYPE_DELETE_CONTENT = 1;
+    private static final int HANDLE_TYPE_REJECT_REPORT = 2;
+    private static final int HANDLE_TYPE_CLEAR_PROFILE_CARD = 3;
+
+    private static final String PROFILE_CARD_TITLE = "个人主页资料卡";
 
     private final BbsReportRepository bbsReportRepository;
     private final BbsPostRepository bbsPostRepository;
     private final BbsCommentRepository bbsCommentRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     public BbsReportService(BbsReportRepository bbsReportRepository, 
                            BbsPostRepository bbsPostRepository,
                            BbsCommentRepository bbsCommentRepository,
                            BbsNotificationRepository bbsNotificationRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           ObjectMapper objectMapper) {
         this.bbsReportRepository = bbsReportRepository;
         this.bbsPostRepository = bbsPostRepository;
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
     }
 
     private void fillReportUserInfo(BbsReport report) {
@@ -66,8 +83,8 @@ public class BbsReportService {
         if (targetType == null) {
             return CommonMethod.getReturnMessageError("参数错误：举报对象类型不能为空");
         }
-        if (targetType != 1 && targetType != 2) {
-            return CommonMethod.getReturnMessageError("参数错误：举报对象类型只能是1或2");
+        if (targetType != TARGET_TYPE_POST && targetType != TARGET_TYPE_COMMENT && targetType != TARGET_TYPE_PROFILE_CARD) {
+            return CommonMethod.getReturnMessageError("参数错误：举报对象类型只能是1、2或3");
         }
         if (targetId == null) {
             return CommonMethod.getReturnMessageError("参数错误：举报对象ID不能为空");
@@ -94,7 +111,8 @@ public class BbsReportService {
             return CommonMethod.getReturnMessageError("您已被禁言，无法举报");
         }
 
-        if (targetType == 1) {
+        String targetSnapshot = null;
+        if (targetType == TARGET_TYPE_POST) {
             Optional<BbsPost> postOptional = bbsPostRepository.findById(targetId);
             if (postOptional.isEmpty()) {
                 return CommonMethod.getReturnMessageError("帖子不存在");
@@ -103,7 +121,7 @@ public class BbsReportService {
             if (post.getStatus() != 1) {
                 return CommonMethod.getReturnMessageError("帖子已下架");
             }
-        } else {
+        } else if (targetType == TARGET_TYPE_COMMENT) {
             Optional<BbsComment> commentOptional = bbsCommentRepository.findById(targetId);
             if (commentOptional.isEmpty()) {
                 return CommonMethod.getReturnMessageError("评论不存在");
@@ -112,12 +130,26 @@ public class BbsReportService {
             if (comment.getStatus() != 1) {
                 return CommonMethod.getReturnMessageError("评论已下架");
             }
+        } else {
+            if (currentUserId.longValue() == targetId) {
+                return CommonMethod.getReturnMessageError("不能举报自己的个人主页资料卡");
+            }
+            Optional<User> targetUserOptional = userRepository.findById(targetId.intValue());
+            if (targetUserOptional.isEmpty()) {
+                return CommonMethod.getReturnMessageError("用户不存在");
+            }
+            try {
+                targetSnapshot = buildProfileCardSnapshot(targetUserOptional.get());
+            } catch (JsonProcessingException e) {
+                return CommonMethod.getReturnMessageError("生成举报快照失败，请稍后重试");
+            }
         }
 
         BbsReport report = new BbsReport();
         report.setReporterId(currentUserId.longValue());
         report.setTargetType(targetType);
         report.setTargetId(targetId);
+        report.setTargetSnapshot(targetSnapshot);
         report.setReason(reason);
         report.setStatus(0);
 
@@ -142,7 +174,7 @@ public class BbsReportService {
             return CommonMethod.getReturnMessageError("用户未登录");
         }
 
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<BbsReport> reportPage = bbsReportRepository.findByReporterIdOrderByCreateTimeDesc(
             currentUserId.longValue(), pageable);
         
@@ -163,13 +195,13 @@ public class BbsReportService {
             pageSize = 10;
         }
 
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<BbsReport> reportPage;
         
         if (status != null) {
             reportPage = bbsReportRepository.findByStatusOrderByCreateTimeDesc(status, pageable);
         } else {
-            reportPage = bbsReportRepository.findAll(pageable);
+            reportPage = bbsReportRepository.findAllByOrderByCreateTimeDesc(pageable);
         }
         
         reportPage.getContent().forEach(this::fillReportUserInfo);
@@ -185,8 +217,9 @@ public class BbsReportService {
         if (handleType == null) {
             return CommonMethod.getReturnMessageError("参数错误：处理方式不能为空");
         }
-        if (handleType != 1 && handleType != 2) {
-            return CommonMethod.getReturnMessageError("参数错误：处理方式只能是1或2");
+        if (handleType != HANDLE_TYPE_DELETE_CONTENT && handleType != HANDLE_TYPE_REJECT_REPORT
+                && handleType != HANDLE_TYPE_CLEAR_PROFILE_CARD) {
+            return CommonMethod.getReturnMessageError("参数错误：处理方式只能是1、2或3");
         }
         if (handleRemark != null && handleRemark.length() > 200) {
             return CommonMethod.getReturnMessageError("参数错误：处理备注长度不能超过200");
@@ -206,6 +239,12 @@ public class BbsReportService {
         if (report.getStatus() != 0) {
             return CommonMethod.getReturnMessageError("举报已处理");
         }
+        if (report.getTargetType() == TARGET_TYPE_PROFILE_CARD && handleType == HANDLE_TYPE_DELETE_CONTENT) {
+            return CommonMethod.getReturnMessageError("资料卡举报不能使用删除内容处理");
+        }
+        if (report.getTargetType() != TARGET_TYPE_PROFILE_CARD && handleType == HANDLE_TYPE_CLEAR_PROFILE_CARD) {
+            return CommonMethod.getReturnMessageError("仅个人主页资料卡举报支持清空违规资料");
+        }
 
         report.setStatus(1);
         report.setHandlerId(currentUserId.longValue());
@@ -214,31 +253,16 @@ public class BbsReportService {
         report.setHandleTime(cn.edu.sdu.java.server.util.DateTimeTool.parseDateTime(new java.util.Date()));
         bbsReportRepository.saveAndFlush(report);
 
-        String postTitle = "举报处理通知";
-        if (report.getTargetType() == 1) {
-            Optional<BbsPost> postOptional = bbsPostRepository.findById(report.getTargetId());
-            if (postOptional.isPresent()) {
-                postTitle = postOptional.get().getTitle();
-            }
-        } else {
-            Optional<BbsComment> commentOptional = bbsCommentRepository.findById(report.getTargetId());
-            if (commentOptional.isPresent()) {
-                BbsComment comment = commentOptional.get();
-                if (comment.getPostId() != null) {
-                    Optional<BbsPost> postOptional = bbsPostRepository.findById(comment.getPostId());
-                    if (postOptional.isPresent()) {
-                        postTitle = postOptional.get().getTitle();
-                    }
-                }
-            }
-        }
+        String targetTitle = resolveReportTargetTitle(report);
 
-        if (handleType == 1) {
-            handleDeleteContent(report, postTitle);
+        if (handleType == HANDLE_TYPE_DELETE_CONTENT) {
+            handleDeleteContent(report, targetTitle);
+        } else if (handleType == HANDLE_TYPE_CLEAR_PROFILE_CARD) {
+            handleClearProfileCard(report, targetTitle);
         } else {
-            createNotification(report.getReporterId(), 2, postTitle, 
+            createNotification(report.getReporterId(), 2, targetTitle,
                 "您的举报（ID：" + id + "）已处理，处理方式：驳回举报，处理备注：" + 
-                (handleRemark != null ? handleRemark : "无"));
+                safeRemark(handleRemark));
         }
 
         return CommonMethod.getReturnMessageOK("处理成功");
@@ -306,7 +330,64 @@ public class BbsReportService {
 
         createNotification(report.getReporterId(), 2, postTitle, 
             "您的举报（ID：" + report.getId() + "）已处理，处理方式：删除内容，处理备注：" + 
-            (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
+            safeRemark(report.getHandleRemark()));
+    }
+
+    private void handleClearProfileCard(BbsReport report, String targetTitle) {
+        Optional<User> userOptional = userRepository.findById(report.getTargetId().intValue());
+        userOptional.ifPresent(user -> {
+            user.setNickname("用户" + user.getPersonId());
+            user.setAvatarUrl(null);
+            user.setSignature("");
+            userRepository.saveAndFlush(user);
+
+            createNotification(user.getPersonId().longValue(), 2, targetTitle,
+                "您的个人主页资料卡因违规已被清理，处理备注：" + safeRemark(report.getHandleRemark()));
+        });
+
+        createNotification(report.getReporterId(), 2, targetTitle,
+            "您的举报（ID：" + report.getId() + "）已处理，处理方式：清空违规资料，处理备注：" +
+                safeRemark(report.getHandleRemark()));
+    }
+
+    private String resolveReportTargetTitle(BbsReport report) {
+        if (report.getTargetType() == TARGET_TYPE_POST) {
+            Optional<BbsPost> postOptional = bbsPostRepository.findById(report.getTargetId());
+            if (postOptional.isPresent() && postOptional.get().getTitle() != null && !postOptional.get().getTitle().isBlank()) {
+                return postOptional.get().getTitle();
+            }
+            return "举报处理通知";
+        }
+
+        if (report.getTargetType() == TARGET_TYPE_COMMENT) {
+            Optional<BbsComment> commentOptional = bbsCommentRepository.findById(report.getTargetId());
+            if (commentOptional.isPresent()) {
+                BbsComment comment = commentOptional.get();
+                if (comment.getPostId() != null) {
+                    Optional<BbsPost> postOptional = bbsPostRepository.findById(comment.getPostId());
+                    if (postOptional.isPresent() && postOptional.get().getTitle() != null && !postOptional.get().getTitle().isBlank()) {
+                        return postOptional.get().getTitle();
+                    }
+                }
+            }
+            return "举报处理通知";
+        }
+
+        return PROFILE_CARD_TITLE;
+    }
+
+    private String buildProfileCardSnapshot(User targetUser) throws JsonProcessingException {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("userId", targetUser.getPersonId());
+        snapshot.put("nickname", targetUser.getNickname());
+        snapshot.put("avatarUrl", targetUser.getAvatarUrl());
+        snapshot.put("signature", targetUser.getSignature());
+        snapshot.put("capturedAt", cn.edu.sdu.java.server.util.DateTimeTool.parseDateTime(new java.util.Date()));
+        return objectMapper.writeValueAsString(snapshot);
+    }
+
+    private String safeRemark(String handleRemark) {
+        return handleRemark != null && !handleRemark.isBlank() ? handleRemark : "无";
     }
 
     private void createNotification(Long receiverId, Integer type, String title, String content) {

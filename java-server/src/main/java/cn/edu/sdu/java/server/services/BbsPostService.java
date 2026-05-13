@@ -49,12 +49,14 @@ public class BbsPostService {
     private final BbsFollowRepository bbsFollowRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
     private final PostModerationService postModerationService;
+    private final BbsFileService bbsFileService;
 
     public BbsPostService(BbsPostRepository bbsPostRepository, UserRepository userRepository,
                           BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
                           BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
                           SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
-                          BbsNotificationRepository bbsNotificationRepository, PostModerationService postModerationService) {
+                          BbsNotificationRepository bbsNotificationRepository, PostModerationService postModerationService,
+                          BbsFileService bbsFileService) {
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsBoardRepository = bbsBoardRepository;
@@ -65,6 +67,7 @@ public class BbsPostService {
         this.bbsFollowRepository = bbsFollowRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.postModerationService = postModerationService;
+        this.bbsFileService = bbsFileService;
     }
 
     private void fillPostAuthorInfo(BbsPost post) {
@@ -148,6 +151,7 @@ public class BbsPostService {
         String title = dataRequest.getString("title");
         String content = dataRequest.getString("content");
         String imageUrls = dataRequest.getString("imageUrls");
+        String attachmentInfos = dataRequest.getString("attachmentInfos");
         Long boardId = dataRequest.getLong("boardId");
 
         if (title == null || title.isBlank()) {
@@ -166,6 +170,11 @@ public class BbsPostService {
 
         if (imageUrls != null && imageUrls.length() > 1000) {
             return CommonMethod.getReturnMessageError("参数错误：图片URL列表长度不能超过1000");
+        }
+        try {
+            attachmentInfos = bbsFileService.normalizeAttachmentInfos(attachmentInfos);
+        } catch (IllegalArgumentException e) {
+            return CommonMethod.getReturnMessageError(e.getMessage());
         }
 
         if (boardId == null) {
@@ -205,6 +214,7 @@ public class BbsPostService {
         post.setTitle(filteredTitle);
         post.setContent(filteredContent);
         post.setImageUrls(imageUrls);
+        post.setAttachmentInfos(attachmentInfos);
         post.setBoardId(boardId);
         post.setAuthorId(currentUserId.longValue());
         post.setLikeCount(0);
@@ -334,6 +344,15 @@ public class BbsPostService {
                 return CommonMethod.getReturnMessageError("参数错误：图片URL列表长度不能超过1000");
             }
             post.setImageUrls(imageUrls);
+        }
+
+        String attachmentInfos = dataRequest.getString("attachmentInfos");
+        if (attachmentInfos != null) {
+            try {
+                post.setAttachmentInfos(bbsFileService.normalizeAttachmentInfos(attachmentInfos));
+            } catch (IllegalArgumentException e) {
+                return CommonMethod.getReturnMessageError(e.getMessage());
+            }
         }
 
         // 重置审核状态为 pending，并设置为不可见

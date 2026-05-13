@@ -16,6 +16,10 @@ import javafx.scene.layout.VBox;
 import java.util.Map;
 
 public class UserHomeController extends ToolController {
+    private static final String DEFAULT_AVATAR_URL = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+
+    @javafx.fxml.FXML
+    private ScrollPane mainScrollPane;
     @javafx.fxml.FXML
     private ScrollPane mainScrollPane;
     @javafx.fxml.FXML
@@ -42,6 +46,8 @@ public class UserHomeController extends ToolController {
     private Button followButton;
     @javafx.fxml.FXML
     private Button messageButton;
+    @javafx.fxml.FXML
+    private Button reportButton;
     
     @javafx.fxml.FXML
     private Button refreshButton;
@@ -61,6 +67,8 @@ public class UserHomeController extends ToolController {
     private Integer currentUserId;
     private boolean isCurrentUser;
     private boolean isFollowing;
+    private boolean currentUserBanned;
+    private Map<String, Object> currentProfileData;
     
     private int currentPage = 1;
     private int totalPages = 1;
@@ -72,6 +80,9 @@ public class UserHomeController extends ToolController {
         refreshButton.setOnAction(event -> loadUserPosts());
         followButton.setOnAction(event -> toggleFollow());
         messageButton.setOnAction(event -> showInfoAlert("私信功能开发中..."));
+        reportButton.setOnAction(event -> openProfileReportDialog());
+        reportButton.setVisible(false);
+        reportButton.setManaged(false);
         prevPageButton.setOnAction(event -> {
             if (currentPage > 1) {
                 currentPage--;
@@ -135,6 +146,8 @@ public class UserHomeController extends ToolController {
                     if (idObj instanceof Number) {
                         currentUserId = ((Number) idObj).intValue();
                     }
+                    Object bannedObj = userData.get("isBanned");
+                    currentUserBanned = bannedObj instanceof Boolean && (Boolean) bannedObj;
                     isCurrentUser = currentUserId != null && currentUserId.equals(userId);
                     updateButtonVisibility();
                 }
@@ -156,6 +169,9 @@ public class UserHomeController extends ToolController {
         } else {
             actionButtonsVBox.setVisible(true);
             actionButtonsVBox.setManaged(true);
+            boolean canReport = currentUserId != null && !currentUserBanned && !isCurrentUser;
+            reportButton.setVisible(canReport);
+            reportButton.setManaged(canReport);
         }
     }
     
@@ -177,6 +193,7 @@ public class UserHomeController extends ToolController {
                 
                 Map<String, Object> userData = task.getValue();
                 if (userData != null) {
+                    currentProfileData = userData;
                     displayUserProfile(userData);
                 } else {
                     showErrorAlert("加载用户信息失败");
@@ -243,8 +260,10 @@ public class UserHomeController extends ToolController {
                 Image image = new Image(fullAvatarUrl, true);
                 avatarImageView.setImage(image);
             } catch (Exception e) {
-                avatarImageView.setImage(null);
+                avatarImageView.setImage(new Image(DEFAULT_AVATAR_URL, true));
             }
+        } else {
+            avatarImageView.setImage(new Image(DEFAULT_AVATAR_URL, true));
         }
         
         if (!isCurrentUser) {
@@ -333,6 +352,46 @@ public class UserHomeController extends ToolController {
         });
         
         new Thread(task).start();
+    }
+
+    private void openProfileReportDialog() {
+        if (userId == null || isCurrentUser || currentUserBanned) {
+            return;
+        }
+
+        String nickname = currentProfileData != null && currentProfileData.get("nickname") != null
+            ? String.valueOf(currentProfileData.get("nickname")) : "该用户";
+        TextInputDialog dialog = new TextInputDialog();
+        dialog.setTitle("举报个人主页资料卡");
+        dialog.setHeaderText("举报用户主页资料卡：" + nickname);
+        dialog.setContentText("请输入举报原因：");
+
+        dialog.showAndWait().ifPresent(reason -> {
+            String trimmedReason = reason != null ? reason.trim() : "";
+            if (trimmedReason.isEmpty()) {
+                showErrorAlert("举报原因不能为空");
+                return;
+            }
+
+            Task<com.teach.javafx.models.Report> task = new Task<>() {
+                @Override
+                protected com.teach.javafx.models.Report call() {
+                    return HttpRequestUtil.submitReport(3, userId.longValue(), trimmedReason);
+                }
+            };
+
+            task.setOnSucceeded(event -> Platform.runLater(() -> {
+                if (task.getValue() != null) {
+                    showInfoAlert("举报成功！管理员会尽快处理。");
+                } else {
+                    showErrorAlert("举报失败，请稍后重试");
+                }
+            }));
+
+            task.setOnFailed(event -> Platform.runLater(() -> showErrorAlert("举报失败，请稍后重试")));
+
+            new Thread(task).start();
+        });
     }
     
     private void loadUserPosts() {
@@ -427,30 +486,27 @@ public class UserHomeController extends ToolController {
         // 创建时间
         String createTimeStr = (String) postData.get("createTime");
         Label timeLabel = new Label(createTimeStr != null ? createTimeStr : "");
-        timeLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 12;");
+        timeLabel.getStyleClass().add("post-meta-time");
         
         // 板块名称
         String boardName = (String) postData.get("boardName");
         Label boardLabel = new Label(boardName != null ? boardName : "");
-        boardLabel.setStyle("-fx-background-color: #e6f7ff; -fx-text-fill: #1890ff; -fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12;");
+        boardLabel.getStyleClass().add("post-board-chip");
         
         // 点赞数
         Object likeCountObj = postData.get("likeCount");
         int likeCount = likeCountObj instanceof Number ? ((Number) likeCountObj).intValue() : 0;
-        Label likeCountLabel = new Label("❤️ " + likeCount);
-        likeCountLabel.setStyle("-fx-text-fill: #f5222d; -fx-font-size: 12;");
+        Label likeCountLabel = createMetricChip("赞 " + likeCount, "post-meta-chip-like");
         
         // 评论数
         Object commentCountObj = postData.get("commentCount");
         int commentCount = commentCountObj instanceof Number ? ((Number) commentCountObj).intValue() : 0;
-        Label commentCountLabel = new Label("💬 " + commentCount);
-        commentCountLabel.setStyle("-fx-text-fill: #1890ff; -fx-font-size: 12;");
+        Label commentCountLabel = createMetricChip("评 " + commentCount, "post-meta-chip-comment");
         
         // 浏览数
         Object viewCountObj = postData.get("viewCount");
         int viewCount = viewCountObj instanceof Number ? ((Number) viewCountObj).intValue() : 0;
-        Label viewCountLabel = new Label("👁️ " + viewCount);
-        viewCountLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 12;");
+        Label viewCountLabel = createMetricChip("阅 " + viewCount, "post-meta-chip-view");
         
         metaHBox.getChildren().addAll(timeLabel, boardLabel, likeCountLabel, commentCountLabel, viewCountLabel);
         
@@ -473,6 +529,12 @@ public class UserHomeController extends ToolController {
         }
         
         postListVBox.getChildren().add(postBox);
+    }
+
+    private Label createMetricChip(String text, String accentClass) {
+        Label label = new Label(text);
+        label.getStyleClass().addAll("post-meta-chip", accentClass);
+        return label;
     }
     
     private void openPostDetail(Long postId) {

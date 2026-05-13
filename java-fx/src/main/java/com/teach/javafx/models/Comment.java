@@ -19,6 +19,7 @@ public class Comment {
     private String authorAvatarUrl;
     
     private String imageUrls;
+    private String attachmentInfos;
     private Integer likeCount;
     private Integer status;
     
@@ -129,6 +130,14 @@ public class Comment {
 
     public void setImageUrls(String imageUrls) {
         this.imageUrls = imageUrls;
+    }
+
+    public String getAttachmentInfos() {
+        return attachmentInfos;
+    }
+
+    public void setAttachmentInfos(String attachmentInfos) {
+        this.attachmentInfos = attachmentInfos;
     }
 
     public Integer getLikeCount() {

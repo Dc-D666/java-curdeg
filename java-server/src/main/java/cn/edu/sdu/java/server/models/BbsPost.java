@@ -28,6 +28,9 @@ public class BbsPost {
     @Column(columnDefinition = "TEXT")
     private String imageUrls;
 
+    @Column(name = "attachment_infos", columnDefinition = "TEXT")
+    private String attachmentInfos;
+
     @Column(name = "board_id", nullable = false)
     private Long boardId;
 

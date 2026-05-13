@@ -25,6 +25,10 @@ public class BbsReport {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
+    @Lob
+    @Column(name = "target_snapshot")
+    private String targetSnapshot;
+
     @NotBlank
     @Size(max = 500)
     @Column(nullable = false)

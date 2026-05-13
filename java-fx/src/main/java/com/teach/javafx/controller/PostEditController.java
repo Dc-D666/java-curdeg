@@ -18,6 +18,8 @@ public class PostEditController {
     @FXML
     private TextField imageUrlsTextField;
     @FXML
+    private TextArea attachmentInfosTextArea;
+    @FXML
     private Button cancelButton;
     @FXML
     private Button saveButton;
@@ -44,6 +46,9 @@ public class PostEditController {
         if (post.getImages() != null) {
             imageUrlsTextField.setText(post.getImages());
         }
+        if (post.getAttachmentInfos() != null) {
+            attachmentInfosTextArea.setText(post.getAttachmentInfos());
+        }
     }
 
     public void setCallback(PostEditCallback callback) {
@@ -54,6 +59,7 @@ public class PostEditController {
         String title = titleTextField.getText().trim();
         String content = contentTextArea.getText().trim();
         String imageUrls = imageUrlsTextField.getText().trim();
+        String attachmentInfos = attachmentInfosTextArea.getText().trim();
 
         if (title.isEmpty()) {
             showError("标题不能为空");
@@ -77,7 +83,7 @@ public class PostEditController {
         Task<Post> task = new Task<Post>() {
             @Override
             protected Post call() {
-                return HttpRequestUtil.updatePost(postId, title, content, imageUrls.isEmpty() ? null : imageUrls);
+                return HttpRequestUtil.updatePost(postId, title, content, imageUrls.isEmpty() ? null : imageUrls, attachmentInfos.isEmpty() ? "" : attachmentInfos);
             }
         };
 

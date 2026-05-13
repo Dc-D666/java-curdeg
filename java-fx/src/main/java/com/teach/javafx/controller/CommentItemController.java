@@ -1,8 +1,10 @@
 package com.teach.javafx.controller;
 
 import com.teach.javafx.models.Comment;
+import com.teach.javafx.models.AttachmentInfo;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.AttachmentUtil;
 import com.teach.javafx.util.FollowStateManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -17,7 +19,10 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+import java.awt.Desktop;
+import java.net.URI;
 import java.text.SimpleDateFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -44,6 +49,8 @@ public class CommentItemController {
     private VBox replyVBox;
     @FXML
     private FlowPane commentImagesVBox;
+    @FXML
+    private VBox commentAttachmentsVBox;
 
     private Comment comment;
     private User currentUser;
@@ -126,6 +133,7 @@ public class CommentItemController {
         }
 
         displayCommentImages();
+        displayCommentAttachments();
 
         if (!isReplyItem && comment.getReplyList() != null && !comment.getReplyList().isEmpty()) {
             replyVBox.setStyle("-fx-padding: 10 0 0 30;");
@@ -214,6 +222,54 @@ public class CommentItemController {
             stage.show();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void displayCommentAttachments() {
+        commentAttachmentsVBox.getChildren().clear();
+        List<AttachmentInfo> attachments = AttachmentUtil.parse(comment.getAttachmentInfos());
+        if (attachments.isEmpty()) {
+            commentAttachmentsVBox.setVisible(false);
+            commentAttachmentsVBox.setManaged(false);
+            return;
+        }
+
+        commentAttachmentsVBox.setVisible(true);
+        commentAttachmentsVBox.setManaged(true);
+
+        for (AttachmentInfo attachment : attachments) {
+            HBox row = new HBox(8);
+            row.getStyleClass().add("attachment-row");
+
+            String name = attachment.getName() != null ? attachment.getName() : "未命名附件";
+            String size = AttachmentUtil.formatSize(attachment.getSize());
+            Label nameLabel = new Label(name + (size.isBlank() ? "" : " (" + size + ")"));
+            nameLabel.getStyleClass().add("attachment-name");
+            nameLabel.setOnMouseClicked(event -> openAttachment(attachment));
+
+            Button downloadButton = new Button("下载");
+            downloadButton.getStyleClass().add("text-button");
+            downloadButton.setOnAction(event -> openAttachment(attachment));
+
+            row.getChildren().addAll(nameLabel, downloadButton);
+            commentAttachmentsVBox.getChildren().add(row);
+        }
+    }
+
+    private void openAttachment(AttachmentInfo attachment) {
+        if (attachment == null || attachment.getUrl() == null || attachment.getUrl().isBlank()) {
+            showError("附件地址为空");
+            return;
+        }
+        try {
+            String fullUrl = AttachmentUtil.fullUrl(attachment.getUrl());
+            if (Desktop.isDesktopSupported()) {
+                Desktop.getDesktop().browse(URI.create(fullUrl));
+            } else {
+                showInfo(fullUrl);
+            }
+        } catch (Exception e) {
+            showError("打开附件失败");
         }
     }
 

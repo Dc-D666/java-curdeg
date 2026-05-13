@@ -32,6 +32,12 @@
             <TextField fx:id="imageUrlsTextField" prefWidth="500.0" />
          </children>
       </VBox>
+      <VBox spacing="5.0">
+         <children>
+            <Label text="附件信息JSON（可选，留空表示清空附件）：" />
+            <TextArea fx:id="attachmentInfosTextArea" prefHeight="80.0" prefWidth="500.0" wrapText="true" />
+         </children>
+      </VBox>
       <HBox spacing="10.0" alignment="CENTER_RIGHT">
          <children>
             <Button fx:id="cancelButton" mnemonicParsing="false" text="取消" />

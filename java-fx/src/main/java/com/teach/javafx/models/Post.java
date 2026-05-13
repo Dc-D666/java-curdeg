@@ -1,7 +1,9 @@
 package com.teach.javafx.models;
 
 import com.google.gson.annotations.SerializedName;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 
 public class Post {
     private Long id;
@@ -12,6 +14,7 @@ public class Post {
     private String content;
     @SerializedName(value = "images", alternate = "imageUrls")
     private String images;
+    private String attachmentInfos;
     private Integer likeCount;
     private Integer commentCount;
     private Integer viewCount;
@@ -88,6 +91,14 @@ public class Post {
 
     public void setImages(String images) {
         this.images = images;
+    }
+
+    public String getAttachmentInfos() {
+        return attachmentInfos;
+    }
+
+    public void setAttachmentInfos(String attachmentInfos) {
+        this.attachmentInfos = attachmentInfos;
     }
 
     public Integer getLikeCount() {
@@ -228,6 +239,94 @@ public class Post {
         }
     }
 
+    public String getModerationStatusStyle() {
+        if (moderationStatus == null || moderationStatus.isBlank()) {
+            return "";
+        }
+        String baseStyle = "-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px;";
+        switch (moderationStatus) {
+            case "pending":
+                return baseStyle + " -fx-background-color: #3b82f6; -fx-text-fill: white;";
+            case "manual":
+                return baseStyle + " -fx-background-color: #f59e0b; -fx-text-fill: white;";
+            case "pass":
+                return baseStyle + " -fx-background-color: #22c55e; -fx-text-fill: white;";
+            case "reject":
+                return baseStyle + " -fx-background-color: #ef4444; -fx-text-fill: white;";
+            default:
+                return baseStyle + " -fx-background-color: #94a3b8; -fx-text-fill: white;";
+        }
+    }
+
+    public boolean hasManualModerationTrace() {
+        return moderatorNickname != null && !moderatorNickname.isBlank();
+    }
+
+    public ModerationFlowView getModerationFlowView() {
+        ModerationFlowStep publishStep = new ModerationFlowStep("帖子已发布", "已提交", ModerationFlowVisualState.COMPLETED);
+        ModerationFlowStep aiStep;
+        ModerationFlowStep manualStep;
+        ModerationFlowStep resultStep;
+        List<Boolean> connectors;
+        String summary;
+        boolean manualReviewed = hasManualModerationTrace();
+        String status = moderationStatus == null ? "" : moderationStatus.trim();
+
+        switch (status) {
+            case "manual":
+                aiStep = new ModerationFlowStep("AI审核", "需人工复核", ModerationFlowVisualState.COMPLETED);
+                manualStep = new ModerationFlowStep("人工审核", "进行中", ModerationFlowVisualState.WARNING);
+                resultStep = new ModerationFlowStep("审核结果", "待定", ModerationFlowVisualState.INACTIVE);
+                connectors = Arrays.asList(true, true, false);
+                summary = "AI判定需人工复核，等待管理员审核";
+                break;
+            case "pass":
+                if (manualReviewed) {
+                    aiStep = new ModerationFlowStep("AI审核", "已转人工", ModerationFlowVisualState.COMPLETED);
+                    manualStep = new ModerationFlowStep("人工审核", "已完成", ModerationFlowVisualState.COMPLETED);
+                    resultStep = new ModerationFlowStep("审核结果", "审核通过", ModerationFlowVisualState.COMPLETED);
+                    connectors = Arrays.asList(true, true, true);
+                    summary = "人工审核已完成，最终结果：审核通过";
+                } else {
+                    aiStep = new ModerationFlowStep("AI审核", "审核通过", ModerationFlowVisualState.COMPLETED);
+                    manualStep = new ModerationFlowStep("人工审核", "已跳过", ModerationFlowVisualState.INACTIVE);
+                    resultStep = new ModerationFlowStep("审核结果", "审核通过", ModerationFlowVisualState.COMPLETED);
+                    connectors = Arrays.asList(true, false, false);
+                    summary = "AI审核通过，人工审核已跳过";
+                }
+                break;
+            case "reject":
+                if (manualReviewed) {
+                    aiStep = new ModerationFlowStep("AI审核", "已转人工", ModerationFlowVisualState.COMPLETED);
+                    manualStep = new ModerationFlowStep("人工审核", "已完成", ModerationFlowVisualState.COMPLETED);
+                    resultStep = new ModerationFlowStep("审核结果", "内容违规", ModerationFlowVisualState.DANGER);
+                    connectors = Arrays.asList(true, true, true);
+                    summary = "人工审核已完成，最终结果：内容违规";
+                } else {
+                    aiStep = new ModerationFlowStep("AI审核", "判定违规", ModerationFlowVisualState.DANGER);
+                    manualStep = new ModerationFlowStep("人工审核", "已跳过", ModerationFlowVisualState.INACTIVE);
+                    resultStep = new ModerationFlowStep("审核结果", "内容违规", ModerationFlowVisualState.DANGER);
+                    connectors = Arrays.asList(true, false, false);
+                    summary = "AI审核判定违规，人工审核已跳过";
+                }
+                break;
+            case "pending":
+            default:
+                aiStep = new ModerationFlowStep("AI审核", "审核中", ModerationFlowVisualState.ACTIVE);
+                manualStep = new ModerationFlowStep("人工审核", "未开始", ModerationFlowVisualState.INACTIVE);
+                resultStep = new ModerationFlowStep("审核结果", "待定", ModerationFlowVisualState.INACTIVE);
+                connectors = Arrays.asList(true, false, false);
+                summary = "AI正在审核，审核完成前帖子暂不公开";
+                break;
+        }
+
+        return new ModerationFlowView(
+                summary,
+                Arrays.asList(publishStep, aiStep, manualStep, resultStep),
+                connectors
+        );
+    }
+
     public String getStatusText() {
         StringBuilder sb = new StringBuilder();
         if (isTop != null && isTop) {
@@ -293,5 +392,61 @@ public class Post {
 
     public void setModerationRemark(String moderationRemark) {
         this.moderationRemark = moderationRemark;
+    }
+
+    public enum ModerationFlowVisualState {
+        COMPLETED,
+        ACTIVE,
+        WARNING,
+        DANGER,
+        INACTIVE
+    }
+
+    public static class ModerationFlowStep {
+        private final String title;
+        private final String stateText;
+        private final ModerationFlowVisualState visualState;
+
+        public ModerationFlowStep(String title, String stateText, ModerationFlowVisualState visualState) {
+            this.title = title;
+            this.stateText = stateText;
+            this.visualState = visualState;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getStateText() {
+            return stateText;
+        }
+
+        public ModerationFlowVisualState getVisualState() {
+            return visualState;
+        }
+    }
+
+    public static class ModerationFlowView {
+        private final String summary;
+        private final List<ModerationFlowStep> steps;
+        private final List<Boolean> connectors;
+
+        public ModerationFlowView(String summary, List<ModerationFlowStep> steps, List<Boolean> connectors) {
+            this.summary = summary;
+            this.steps = steps;
+            this.connectors = connectors;
+        }
+
+        public String getSummary() {
+            return summary;
+        }
+
+        public List<ModerationFlowStep> getSteps() {
+            return steps;
+        }
+
+        public boolean isConnectorReached(int index) {
+            return index >= 0 && index < connectors.size() && Boolean.TRUE.equals(connectors.get(index));
+        }
     }
 }

@@ -35,8 +35,12 @@ import java.util.stream.Collectors;
 @Service
 public class AiSearchService {
 
+    private static final Pattern EMOJI_PATTERN = Pattern.compile(
+            "[\\x{1F000}-\\x{1FAFF}\\x{2600}-\\x{27BF}\\x{FE0F}\\x{200D}]");
+    private static final Pattern UNSUPPORTED_SYMBOL_PATTERN = Pattern.compile("[✓✗★☆✔✘]");
+
     private static final String SYSTEM_PROMPT = """
-你是校园论坛智能助手。根据以下帖子回答用户问题。
+你是校园论坛智能助手。请根据下面的帖子内容回答用户问题。
 
 【相关帖子】
 {postsContent}
@@ -45,17 +49,18 @@ public class AiSearchService {
 {question}
 
 【回答要求】
-1. 先总结帖子中的相关讨论内容
-2. 然后给出针对性的建议
-3. 如果没有相关帖子，明确告知用户，然后用你的知识给出一般性建议
-4. 回答简洁友好，符合校园论坛氛围
-5. 不要编造信息
-6. 使用Markdown格式：**加粗**, *斜体*, ~~删除线~~
-7. 重要的关键词或重点内容用[红色]标红文本[/红色]标红
-8. 段落之间用换行分隔
+1. 先总结帖子中的相关讨论内容，再给出针对性建议。
+2. 如果没有相关帖子，请明确说明，然后基于通用知识给出一般建议。
+3. 不要编造帖子中不存在的信息。
+4. 可以使用受支持的 Markdown：# 标题、**加粗**、*斜体*、~~删除线~~、普通列表。
+5. 重要关键词或重点内容必须使用 [红色]重点文字[/红色] 标记。
+6. 禁止输出任何 emoji 表情符号。
+7. 禁止输出特殊装饰符号，例如对勾、叉号、星号、图钉、灯泡、文档、禁止、警告、靶心等图标。
+8. 如需强调，请使用文字前缀，例如“注意：”“重要提示：”“建议：”。
+9. 段落之间用换行分隔，保持简洁友好。
 
 【发帖建议】
-在回答结束后**单独一段**添加发帖建议：
+如果适合引导用户发帖，请在回答结尾单独添加以下结构，结构本身不要使用 emoji：
 [SUGGEST_POST]
 标题：{推荐的帖子标题}
 内容：{推荐的帖子初始内容}
@@ -64,17 +69,18 @@ public class AiSearchService {
  
 
     private static final String KEYWORD_REFACTOR_PROMPT = """
-你是校园论坛搜索关键词优化专家。请分析用户的问题，提取1-2个最核心的搜索关键词。
+你是校园论坛搜索关键词优化助手。请分析用户问题，提取最核心的搜索关键词。
 
 【用户问题】
 {question}
 
 【要求】
-1. 只提取{keywordCount}个最核心的关键词，不要太多
-2. 关键词要简洁，直接使用用户问题中的核心词汇
-3. 每个关键词用逗号分隔
-4. 只输出关键词列表，不要其他解释
-5. 输出格式：关键词1, 关键词2
+1. 只提取 {keywordCount} 个以内的核心关键词。
+2. 关键词要简洁，优先使用用户问题中的核心词汇。
+3. 多个关键词用英文逗号分隔。
+4. 只输出关键词列表，不要解释。
+5. 禁止输出 emoji 或特殊装饰符号。
+输出格式：关键词1, 关键词2
 """;
 
     private final BbsPostService bbsPostService;
@@ -384,7 +390,7 @@ public class AiSearchService {
                                 if (choices != null && choices.isArray() && !choices.isEmpty()) {
                                     JsonNode delta = choices.get(0).get("delta");
                                     if (delta != null && delta.has("content")) {
-                                        String content = delta.get("content").asText();
+                                        String content = sanitizeAiOutput(delta.get("content").asText());
                                         totalChunks++;
                                         log.trace("AI返回chunk #{}: '{}'", totalChunks, content);
                                         onContent.accept(content);
@@ -420,7 +426,7 @@ public class AiSearchService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", moderationConfig.getApi().getModel());
         requestBody.put("messages", List.of(message));
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.2);
         requestBody.put("stream", true);
 
         return requestBody;
@@ -567,7 +573,7 @@ public class AiSearchService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", moderationConfig.getApi().getModel());
         requestBody.put("messages", List.of(message));
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", 0.2);
 
         try {
             log.debug("请求体JSON: {}", objectMapper.writeValueAsString(requestBody));
@@ -605,7 +611,7 @@ public class AiSearchService {
                 return "抱歉，AI返回格式异常。";
             }
 
-            String answer = content.asText();
+            String answer = sanitizeAiOutput(content.asText());
             log.info("成功解析AI答案，长度={}", answer.length());
             return answer;
 
@@ -662,7 +668,7 @@ public class AiSearchService {
             return new ArrayList<>();
         }
 
-        String cleanedResponse = aiResponse.trim();
+        String cleanedResponse = sanitizeAiOutput(aiResponse).trim();
         List<String> keywords = new ArrayList<>();
 
         // 尝试按逗号分割
@@ -696,6 +702,15 @@ public class AiSearchService {
 
         log.trace("解析完成，得到 {} 个关键词", keywords.size());
         return keywords;
+    }
+
+    public String sanitizeAiOutput(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        String sanitized = EMOJI_PATTERN.matcher(text).replaceAll("");
+        sanitized = UNSUPPORTED_SYMBOL_PATTERN.matcher(sanitized).replaceAll("");
+        return sanitized;
     }
 }
 

@@ -62,6 +62,18 @@
                   <Label fx:id="moderationStatusLabel" style="-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px;" />
                </children>
             </HBox>
+            <VBox fx:id="moderationFlowCard" spacing="14.0" styleClass="moderation-flow-card">
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <Label text="帖子审核流程" styleClass="moderation-flow-title" />
+                        <Label text="真实流转" styleClass="moderation-flow-badge" />
+                     </children>
+                  </HBox>
+                  <HBox fx:id="moderationFlowStepsBox" alignment="CENTER_LEFT" spacing="0.0" />
+                  <Label fx:id="moderationFlowSummaryLabel" styleClass="moderation-flow-summary" text="AI正在审核，审核完成前帖子暂不公开" wrapText="true" />
+               </children>
+            </VBox>
          </children>
       </VBox>
    </top>
@@ -89,6 +101,7 @@
                      </content>
                   </ScrollPane>
                   <VBox fx:id="postImagesVBox" spacing="10.0" />
+                  <VBox fx:id="postAttachmentsVBox" spacing="8.0" />
                   <Separator />
                   <TitledPane fx:id="aiSummaryPane" expanded="false" text="AI 智能总结">
                      <content>
@@ -153,9 +166,15 @@
                   <FlowPane fx:id="commentImagePreviewPane" hgap="8.0" vgap="0.0" prefHeight="62.0" styleClass="composer-preview" />
                </content>
             </ScrollPane>
+            <ScrollPane fx:id="commentAttachmentPreviewScrollPane" fitToHeight="true" hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" prefHeight="52.0" maxHeight="52.0" visible="false" managed="false" styleClass="composer-preview-scroll">
+               <content>
+                  <FlowPane fx:id="commentAttachmentPreviewPane" hgap="8.0" vgap="0.0" prefHeight="40.0" styleClass="composer-preview" />
+               </content>
+            </ScrollPane>
             <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="comment-composer">
                <children>
                   <Button fx:id="addImageButton" mnemonicParsing="false" styleClass="secondary-button" text="添加图片" />
+                  <Button fx:id="addAttachmentButton" mnemonicParsing="false" styleClass="secondary-button" text="添加附件" />
                   <TextArea fx:id="commentTextArea" prefRowCount="2" HBox.hgrow="ALWAYS" promptText="发表评论，支持添加图片..." />
                   <Button fx:id="submitCommentButton" mnemonicParsing="false" styleClass="primary-button" text="发布评论" />
                </children>

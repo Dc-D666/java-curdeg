@@ -427,6 +427,29 @@ public class StatisticsService {
         result.put("validReports", validReports);
         double handleRateValue = totalReports > 0 ? (double)(totalReports - pendingReports) / totalReports * 100 : 0.0;
         result.put("handleRate", Math.round(handleRateValue * 100.0) / 100.0);
+        result.put("reportTypeDistribution", buildReportTypeDistribution());
+        return result;
+    }
+
+    private List<Map<String, Object>> buildReportTypeDistribution() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        Map<Integer, String> typeNameMap = new HashMap<>();
+        typeNameMap.put(1, "帖子");
+        typeNameMap.put(2, "评论");
+        typeNameMap.put(3, "个人主页资料卡");
+
+        for (Object[] row : bbsReportRepository.countReportsByType()) {
+            if (row == null || row.length < 2 || !(row[0] instanceof Number)) {
+                continue;
+            }
+            Integer type = ((Number) row[0]).intValue();
+            Map<String, Object> item = new HashMap<>();
+            item.put("type", type);
+            item.put("name", typeNameMap.getOrDefault(type, "未知"));
+            item.put("count", row[1] instanceof Number ? ((Number) row[1]).longValue() : 0L);
+            result.add(item);
+        }
+
         return result;
     }
 }

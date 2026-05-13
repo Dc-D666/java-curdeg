@@ -380,7 +380,7 @@ public class PostSearchController extends ToolController {
         copyAnswerBtn.setOnAction(event -> {
             if (currentAnswerText != null && !currentAnswerText.isEmpty()) {
                 // 清理标签，只保留纯文本
-                String cleanText = currentAnswerText
+                String cleanText = sanitizeAiDisplayText(currentAnswerText)
                         .replaceAll("\\*\\*", "")
                         .replaceAll("\\*", "")
                         .replaceAll("~~", "")
@@ -394,13 +394,13 @@ public class PostSearchController extends ToolController {
                 clipboard.setContent(content);
                 
                 // 提示用户
-                copyAnswerBtn.setText("✅ 已复制");
+                copyAnswerBtn.setText("已复制");
                 copyAnswerBtn.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
                 
                 // 2秒后恢复
                 javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
                 pause.setOnFinished(e -> {
-                    copyAnswerBtn.setText("📋 复制答案");
+                    copyAnswerBtn.setText("复制答案");
                     copyAnswerBtn.setStyle("-fx-background-color: #1890ff; -fx-text-fill: white;");
                 });
                 pause.play();
@@ -417,13 +417,13 @@ public class PostSearchController extends ToolController {
                 System.out.println("[AI搜索前端] 正在格式化答案...");
                 aiAnswerTextFlow.getChildren().clear();
                 parseAndDisplayMarkdown(currentAnswerText);
-                formatAnswerBtn.setText("✅ 已格式化");
+                formatAnswerBtn.setText("已格式化");
                 formatAnswerBtn.setStyle("-fx-background-color: #13c2c2; -fx-text-fill: white;");
                 
                 // 2秒后恢复
                 javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(2));
                 pause.setOnFinished(e -> {
-                    formatAnswerBtn.setText("✨ 格式化显示");
+                    formatAnswerBtn.setText("格式化显示");
                     formatAnswerBtn.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
                 });
                 pause.play();
@@ -747,7 +747,7 @@ public class PostSearchController extends ToolController {
      */
     private void updateStreamDisplay(String text) {
         // 先清理 SUGGEST_POST 标签，确保不会显示
-        String cleanedText = removeSuggestPostTags(text);
+        String cleanedText = sanitizeAiDisplayText(removeSuggestPostTags(text));
         aiAnswerTextFlow.getChildren().clear();
         Text t = new Text(cleanedText);
         t.setStyle("-fx-font-size: 13px; -fx-line-spacing: 5px;");
@@ -848,7 +848,7 @@ private void aiSearch() {
                 Platform.runLater(() -> {
                     String rawAnswer = fullAnswerBuffer.toString();
                     // 先清理 SUGGEST_POST 标签，再保存和显示
-                    currentAnswerText = removeSuggestPostTags(rawAnswer);
+                    currentAnswerText = sanitizeAiDisplayText(removeSuggestPostTags(rawAnswer));
                     
                     if (currentAnswerText.isEmpty() && !hasRelatedPostsLocal.get()) {
                         // 没有结果也没有相关帖子，显示引导界面
@@ -926,7 +926,7 @@ private void aiSearch() {
             //     (content.length() > 100 ? content.substring(0, 100) + "..." : content));
             
             // 1. 先清理 SUGGEST_POST 标签，确保不会显示在前端
-            String cleanedContent = removeSuggestPostTags(content);
+            String cleanedContent = sanitizeAiDisplayText(removeSuggestPostTags(content));
             System.out.println("[Markdown解析] 清理后内容长度=" + cleanedContent.length());
             
             // 2. 再在内存中构建所有 Text 节点
@@ -1011,13 +1011,16 @@ private void aiSearch() {
                 }
                 
                 // 检查红色标签 [红色]text[/红色]
-                if (index + 4 <= length && processedContent.startsWith("[红色]", index)) {
-                    int redEnd = processedContent.indexOf("[/红色]", index + 4);
+                String redStartTag = "[红色]";
+                String redEndTag = "[/红色]";
+                if (processedContent.startsWith(redStartTag, index)) {
+                    int contentStart = index + redStartTag.length();
+                    int redEnd = processedContent.indexOf(redEndTag, contentStart);
                     if (redEnd != -1) {
-                        String redText = processedContent.substring(index + 4, redEnd);
+                        String redText = processedContent.substring(contentStart, redEnd);
                         // System.out.println("[Markdown解析] 找到红色文本：" + redText);
-                        textNodes.add(createStyledText(redText, "-fx-fill: #ff4444; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
-                        index = redEnd + 5;
+                        textNodes.add(createStyledText(redText, "-fx-fill: #d4380d; -fx-font-weight: bold; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        index = redEnd + redEndTag.length();
                         continue;
                     }
                 }
@@ -1104,6 +1107,33 @@ private void aiSearch() {
         t.setStyle(style);
         return t;
     }
+
+    private String sanitizeAiDisplayText(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        StringBuilder builder = new StringBuilder(text.length());
+        text.codePoints().forEach(codePoint -> {
+            if (isUnsupportedAiSymbol(codePoint)) {
+                return;
+            }
+            builder.appendCodePoint(codePoint);
+        });
+        return builder.toString();
+    }
+
+    private boolean isUnsupportedAiSymbol(int codePoint) {
+        if (codePoint >= 0x1F000 && codePoint <= 0x1FAFF) {
+            return true;
+        }
+        if (codePoint >= 0x2600 && codePoint <= 0x27BF) {
+            return true;
+        }
+        if (codePoint == 0xFE0F || codePoint == 0x200D) {
+            return true;
+        }
+        return "✓✗★☆✔✘".indexOf(codePoint) >= 0;
+    }
     
     /**
      * 从内容中移除 SUGGEST_POST 标签及其包裹的内容
@@ -1187,11 +1217,11 @@ private void aiSearch() {
     private void showEmptyResultBox() {
         // 根据是否有相关帖子显示不同文案
         if (hasRelatedPosts) {
-            emptyTitleLabel.setText("🤔 对搜索结果不满意？");
+            emptyTitleLabel.setText("对搜索结果不满意？");
             emptyTitleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1890ff;");
             emptyDescLabel.setText("直接发帖问大家，获得更多人帮助！");
         } else {
-            emptyTitleLabel.setText("😮 未找到相关帖子");
+            emptyTitleLabel.setText("未找到相关帖子");
             emptyTitleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #d46b08;");
             emptyDescLabel.setText("要不要发布一个问题，让大家来帮你解答？");
         }

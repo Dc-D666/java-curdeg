@@ -66,6 +66,7 @@
                                     <children>
                                         <Button fx:id="followButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-edit" text="关注" />
                                         <Button fx:id="messageButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-save" text="私信" />
+                                        <Button fx:id="reportButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-secondary" text="举报" />
                                     </children>
                                 </VBox>
                             </children>

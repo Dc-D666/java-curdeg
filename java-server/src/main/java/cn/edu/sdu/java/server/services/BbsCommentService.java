@@ -31,16 +31,19 @@ public class BbsCommentService {
     private final BbsNotificationRepository bbsNotificationRepository;
     private final SensitiveWordFilter sensitiveWordFilter;
     private final BbsCommentLikeRepository bbsCommentLikeRepository;
+    private final BbsFileService bbsFileService;
 
     public BbsCommentService(BbsCommentRepository bbsCommentRepository, BbsPostRepository bbsPostRepository,
                           UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository,
-                          SensitiveWordFilter sensitiveWordFilter, BbsCommentLikeRepository bbsCommentLikeRepository) {
+                          SensitiveWordFilter sensitiveWordFilter, BbsCommentLikeRepository bbsCommentLikeRepository,
+                          BbsFileService bbsFileService) {
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.sensitiveWordFilter = sensitiveWordFilter;
         this.bbsCommentLikeRepository = bbsCommentLikeRepository;
+        this.bbsFileService = bbsFileService;
     }
     
     private void createNotification(Long receiverId, Integer type, String title, String content) {
@@ -108,10 +111,21 @@ public class BbsCommentService {
     public DataResponse createComment(Long postId, DataRequest dataRequest) {
         String content = dataRequest.getString("content");
         String imageUrls = dataRequest.getString("imageUrls");
+        String attachmentInfos = dataRequest.getString("attachmentInfos");
         Long parentId = dataRequest.getLong("parentId");
 
-        if (content == null || content.isBlank()) {
+        try {
+            attachmentInfos = bbsFileService.normalizeAttachmentInfos(attachmentInfos);
+        } catch (IllegalArgumentException e) {
+            return CommonMethod.getReturnMessageError(e.getMessage());
+        }
+        boolean hasAttachments = attachmentInfos != null && !attachmentInfos.isBlank();
+
+        if ((content == null || content.isBlank()) && !hasAttachments) {
             return CommonMethod.getReturnMessageError("参数错误：评论内容不能为空");
+        }
+        if (content == null || content.isBlank()) {
+            content = "分享附件";
         }
         if (content.length() < 2 || content.length() > 500) {
             return CommonMethod.getReturnMessageError("参数错误：评论内容长度2-500");
@@ -184,6 +198,7 @@ public class BbsCommentService {
         comment.setReplyToUserNickname(replyToUserNickname);
         comment.setContent(filteredContent);
         comment.setImageUrls(imageUrls);
+        comment.setAttachmentInfos(attachmentInfos);
         comment.setLikeCount(0);
         comment.setStatus(hasSevereWord ? 0 : 1);
 
