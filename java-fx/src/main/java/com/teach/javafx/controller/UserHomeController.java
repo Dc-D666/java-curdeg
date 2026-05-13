@@ -21,6 +21,8 @@ public class UserHomeController extends ToolController {
     @javafx.fxml.FXML
     private ScrollPane mainScrollPane;
     @javafx.fxml.FXML
+    private ScrollPane mainScrollPane;
+    @javafx.fxml.FXML
     private Button backButton;
     @javafx.fxml.FXML
     private Label breadcrumbLabel;
