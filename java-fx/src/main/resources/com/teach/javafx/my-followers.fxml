@@ -23,8 +23,8 @@
                                         <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
                                     </padding>
                                     <children>
-                                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="我的关注"/>
-                                        <Label fx:id="followingTotalLabel" text=""/>
+                                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" text="我的关注"/>
+                                        <Label fx:id="followingTotalLabel" style="-fx-text-fill: white;" text=""/>
                                         <Button fx:id="followingRefreshButton" mnemonicParsing="false" text="刷新"/>
                                     </children>
                                 </HBox>
@@ -66,8 +66,8 @@
                                         <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
                                     </padding>
                                     <children>
-                                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="我的粉丝"/>
-                                        <Label fx:id="followerTotalLabel" text=""/>
+                                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" text="我的粉丝"/>
+                                        <Label fx:id="followerTotalLabel" style="-fx-text-fill: white;" text=""/>
                                         <Button fx:id="followerRefreshButton" mnemonicParsing="false" text="刷新"/>
                                     </children>
                                 </HBox>

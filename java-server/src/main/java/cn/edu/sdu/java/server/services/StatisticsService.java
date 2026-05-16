@@ -104,27 +104,167 @@ public class StatisticsService {
     }
 
     public Map<String, Object> getOverview() {
+        System.out.println("========== StatisticsService.getOverview 开始执行 ==========");
         Map<String, Object> result = new HashMap<>();
-        result.put("userCount", userRepository.countTotalUsers());
-        result.put("todayNewUsers", userRepository.countTodayNewUsers());
-        result.put("monthlyActiveUsers", userRepository.countMonthlyActiveUsers());
-        result.put("postCount", bbsPostRepository.countTotalPosts());
-        result.put("todayNewPosts", bbsPostRepository.countTodayPosts());
-        result.put("commentCount", bbsCommentRepository.countTotalComments());
-        result.put("todayNewComments", bbsCommentRepository.countTodayComments());
-        result.put("pendingModerationCount", bbsPostRepository.countPendingModerationPosts());
+        
+        try {
+            // 1. 总用户数 - 使用JPA内置方法，更可靠
+            Long totalUsers = null;
+            try {
+                totalUsers = userRepository.countTotalUsers();
+                System.out.println("总用户数 (自定义查询): " + totalUsers);
+            } catch (Exception e) {
+                System.out.println("自定义查询总用户数失败: " + e.getMessage());
+                e.printStackTrace();
+                totalUsers = userRepository.count();
+                System.out.println("总用户数 (JPA内置方法): " + totalUsers);
+            }
+            result.put("userCount", totalUsers != null ? totalUsers : 0L);
+            
+            // 2. 月活跃用户
+            Long monthlyActiveUsers = null;
+            try {
+                monthlyActiveUsers = userRepository.countMonthlyActiveUsers();
+                System.out.println("月活跃用户: " + monthlyActiveUsers);
+            } catch (Exception e) {
+                System.out.println("月活跃用户查询失败: " + e.getMessage());
+                monthlyActiveUsers = 0L;
+            }
+            result.put("monthlyActiveUsers", monthlyActiveUsers != null ? monthlyActiveUsers : 0L);
+            
+            // 3. 今日发帖数
+            Long todayNewPosts = null;
+            try {
+                todayNewPosts = bbsPostRepository.countTodayPosts();
+                System.out.println("今日发帖数: " + todayNewPosts);
+            } catch (Exception e) {
+                System.out.println("今日发帖数查询失败: " + e.getMessage());
+                todayNewPosts = 0L;
+            }
+            result.put("todayNewPosts", todayNewPosts != null ? todayNewPosts : 0L);
+            
+            // 4. 待审核帖子数
+            Long pendingModerationCount = null;
+            try {
+                pendingModerationCount = bbsPostRepository.countPendingModerationPosts();
+                System.out.println("待审核帖子数: " + pendingModerationCount);
+            } catch (Exception e) {
+                System.out.println("待审核帖子数查询失败: " + e.getMessage());
+                pendingModerationCount = 0L;
+            }
+            result.put("pendingModerationCount", pendingModerationCount != null ? pendingModerationCount : 0L);
+            
+            // 5. 今日评论数
+            Long todayNewComments = null;
+            try {
+                todayNewComments = bbsCommentRepository.countTodayComments();
+                System.out.println("今日评论数: " + todayNewComments);
+            } catch (Exception e) {
+                System.out.println("今日评论数查询失败: " + e.getMessage());
+                todayNewComments = 0L;
+            }
+            result.put("todayNewComments", todayNewComments != null ? todayNewComments : 0L);
+            
+            // 6. 待处理举报数
+            Long pendingReports = 0L;
+            try {
+                Map<String, Object> reportStats = getReportStatistics();
+                pendingReports = (Long) reportStats.get("pendingReports");
+                System.out.println("待处理举报数: " + pendingReports);
+            } catch (Exception e) {
+                System.out.println("待处理举报数查询失败: " + e.getMessage());
+            }
+            result.put("pendingReports", pendingReports != null ? pendingReports : 0L);
+            
+            // 7. AI审核通过率
+            Long totalPosts = null;
+            Long aiPassedPosts = null;
+            try {
+                totalPosts = bbsPostRepository.countTotalPosts();
+                if (totalPosts == null) totalPosts = bbsPostRepository.count();
+                System.out.println("总帖子数: " + totalPosts);
+                
+                aiPassedPosts = bbsPostRepository.countAIPassedPosts();
+                System.out.println("AI审核通过数: " + aiPassedPosts);
+            } catch (Exception e) {
+                System.out.println("帖子数查询失败: " + e.getMessage());
+                totalPosts = bbsPostRepository.count();
+                aiPassedPosts = 0L;
+            }
+            double aiPassRate = 0.0;
+            if (totalPosts != null && totalPosts > 0 && aiPassedPosts != null) {
+                aiPassRate = (double) aiPassedPosts / totalPosts * 100;
+            }
+            result.put("aiPassRate", Math.round(aiPassRate * 100.0) / 100.0);
+            
+            // 额外返回一些辅助数据
+            result.put("postCount", totalPosts != null ? totalPosts : 0L);
+            Long totalComments = null;
+            try {
+                totalComments = bbsCommentRepository.countTotalComments();
+                if (totalComments == null) totalComments = bbsCommentRepository.count();
+            } catch (Exception e) {
+                System.out.println("总评论数查询失败: " + e.getMessage());
+                totalComments = bbsCommentRepository.count();
+            }
+            result.put("commentCount", totalComments != null ? totalComments : 0L);
+            
+            Long todayNewUsers = null;
+            try {
+                todayNewUsers = userRepository.countTodayNewUsers();
+            } catch (Exception e) {
+                System.out.println("今日新增用户查询失败: " + e.getMessage());
+                todayNewUsers = 0L;
+            }
+            result.put("todayNewUsers", todayNewUsers != null ? todayNewUsers : 0L);
+            
+            System.out.println("========== 返回数据: " + result + " ==========");
+            System.out.println("========== StatisticsService.getOverview 执行完成 ==========");
+            
+        } catch (Exception e) {
+            System.out.println("========== StatisticsService.getOverview 异常 ==========");
+            e.printStackTrace();
+            // 返回默认数据，确保界面至少能显示
+            result.put("userCount", 0L);
+            result.put("monthlyActiveUsers", 0L);
+            result.put("todayNewPosts", 0L);
+            result.put("pendingModerationCount", 0L);
+            result.put("todayNewComments", 0L);
+            result.put("pendingReports", 0L);
+            result.put("aiPassRate", 0.0);
+            result.put("postCount", 0L);
+            result.put("commentCount", 0L);
+            result.put("todayNewUsers", 0L);
+        }
         return result;
     }
 
     public List<Map<String, Object>> getUserGrowthTrend(Integer days) {
         List<Object[]> rawData = userRepository.countDailyUserGrowth(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 
@@ -188,13 +328,30 @@ public class StatisticsService {
 
     public List<Map<String, Object>> getPostTrend(Integer days) {
         List<Object[]> rawData = bbsPostRepository.countDailyPostTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 

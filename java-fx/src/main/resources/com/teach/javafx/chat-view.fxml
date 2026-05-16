@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
+            fx:controller="com.teach.javafx.controller.ChatViewController" fx:id="rootPane"
+            stylesheets="@css/chat-view.css">
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" style="-fx-background-color: white; -fx-padding: 16;">
+            <children>
+                <ImageView fx:id="avatarImageView" fitHeight="50.0" fitWidth="50.0" preserveRatio="true" />
+                <VBox alignment="CENTER_LEFT" spacing="4.0">
+                    <children>
+                        <Label fx:id="nicknameLabel" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="用户昵称" />
+                        <Label fx:id="statusLabel" style="-fx-font-size: 12px; -fx-text-fill: #52c41a;" text="互相关注" />
+                    </children>
+                </VBox>
+            </children>
+        </HBox>
+    </top>
+    <center>
+        <ScrollPane fx:id="messageScrollPane" fitToWidth="true" style="-fx-background-color: #f5f5f5;">
+            <VBox fx:id="messageList" alignment="BOTTOM_LEFT" spacing="12.0" style="-fx-padding: 16;">
+            </VBox>
+        </ScrollPane>
+    </center>
+    <bottom>
+        <VBox spacing="8.0" style="-fx-background-color: white; -fx-padding: 12;">
+            <children>
+                <HBox fx:id="warningBox" alignment="CENTER_LEFT" spacing="8.0" visible="false">
+                    <children>
+                        <Label style="-fx-text-fill: #faad14; -fx-font-size: 12px;" text="⚠️" />
+                        <Label fx:id="warningLabel" style="-fx-text-fill: #faad14; -fx-font-size: 12px;" text="对方还没有关注你，你只能发送一条消息" />
+                    </children>
+                </HBox>
+                <TextArea fx:id="messageTextArea" prefRowCount="3" promptText="输入消息..." style="-fx-background-color: white; -fx-border-color: #e8e8e8; -fx-border-radius: 4;" />
+                <HBox alignment="CENTER_RIGHT" spacing="12.0">
+                    <children>
+                        <Button fx:id="imageButton" onAction="#onSelectImage" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="选择图片" />
+                        <Button fx:id="sendButton" onAction="#onSendMessage" style="-fx-background-color: #52c41a; -fx-text-fill: white;" text="发送" />
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </bottom>
+</BorderPane>

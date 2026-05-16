@@ -17,7 +17,7 @@
             <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
          </padding>
          <children>
-            <Label text="板块：" />
+            <Label text="板块：" style="-fx-text-fill: white; -fx-font-weight: bold;" />
             <ComboBox fx:id="boardComboBox" prefWidth="150.0" />
             <TextField fx:id="keywordTextField" prefWidth="600.0" promptText="搜索帖子标题或内容...或在此粘贴分享链接" HBox.hgrow="ALWAYS" />
             <Button fx:id="searchButton" mnemonicParsing="false" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="搜索" />

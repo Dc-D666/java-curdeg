@@ -47,6 +47,10 @@ public interface BbsCommentRepository extends JpaRepository<BbsComment, Long> {
     @Query(value = "SELECT * FROM bbs_comment WHERE post_id = :postId AND status = :status ORDER BY like_count DESC LIMIT :n", nativeQuery = true)
     List<BbsComment> findTopNByPostIdAndStatusOrderByLikeCountDesc(@Param("postId") Long postId, @Param("status") Integer status, @Param("n") int n);
 
+    // 使用JPA内置方法，更可靠
+    @Override
+    long count();
+
     @Query(value = "SELECT COUNT(*) FROM bbs_comment", nativeQuery = true)
     Long countTotalComments();
 

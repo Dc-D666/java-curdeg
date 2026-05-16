@@ -112,13 +112,13 @@
                            <children>
                               <HBox spacing="10.0" alignment="CENTER_LEFT">
                                  <children>
-                                    <Label fx:id="postSummaryLabel" style="-fx-font-weight: bold;" text="帖子摘要" />
+                                    <Label fx:id="postSummaryLabel" style="-fx-font-weight: bold; -fx-text-fill: #333333;" text="帖子摘要" />
                                     <ProgressIndicator fx:id="aiSummaryProgress" visible="false" prefWidth="24.0" prefHeight="24.0" />
                                  </children>
                               </HBox>
-                              <Label fx:id="postSummaryContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px;" />
-                              <Label fx:id="commentHotspotsTitleLabel" style="-fx-font-weight: bold;" text="评论热点" />
-                              <Label fx:id="commentHotspotsContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px;" />
+                              <Label fx:id="postSummaryContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px; -fx-text-fill: #333333;" />
+                              <Label fx:id="commentHotspotsTitleLabel" style="-fx-font-weight: bold; -fx-text-fill: #333333;" text="评论热点" />
+                              <Label fx:id="commentHotspotsContentLabel" text="请点击AI总结按钮开始总结" wrapText="true" style="-fx-font-size: 13px; -fx-line-spacing: 4px; -fx-text-fill: #333333;" />
                            </children>
                         </VBox>
                      </content>

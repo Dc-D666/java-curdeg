@@ -2,17 +2,22 @@ package com.teach.javafx.controller;
 
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.request.HttpRequestUtil;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.css.PseudoClass;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.StackPane;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class PersonalCenterController extends ToolController {
 
@@ -37,12 +42,20 @@ public class PersonalCenterController extends ToolController {
     private Button myFollowersButton;
 
     @FXML
+    private Button myMessagesButton;
+
+    @FXML
     private Button statisticsButton;
 
     @FXML
     private Button changePasswordButton;
 
+    @FXML
+    private Label unreadBadge;
+
     private final List<Button> navButtons = new ArrayList<>();
+    private Thread unreadUpdateThread;
+    private volatile boolean stopUpdate = false;
 
     @FXML
     public void initialize() {
@@ -51,10 +64,54 @@ public class PersonalCenterController extends ToolController {
         navButtons.add(myFavoritesButton);
         navButtons.add(myFollowingButton);
         navButtons.add(myFollowersButton);
+        navButtons.add(myMessagesButton);
         navButtons.add(statisticsButton);
         navButtons.add(changePasswordButton);
 
         loadPage("personal-profile.fxml", profileButton);
+        startUnreadCountUpdater();
+    }
+
+    private void startUnreadCountUpdater() {
+        stopUpdate = false;
+        unreadUpdateThread = new Thread(() -> {
+            while (!stopUpdate) {
+                try {
+                    Thread.sleep(5000);
+                    updateUnreadBadge();
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        unreadUpdateThread.setDaemon(true);
+        unreadUpdateThread.start();
+    }
+
+    private void updateUnreadBadge() {
+        Task<Map<String, Object>> task = new Task<>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getUnreadCount();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> data = task.getValue();
+                if (data != null) {
+                    Number totalUnread = (Number) data.get("totalUnread");
+                    if (totalUnread != null && totalUnread.intValue() > 0) {
+                        unreadBadge.setText(String.valueOf(totalUnread.intValue()));
+                        unreadBadge.setVisible(true);
+                    } else {
+                        unreadBadge.setVisible(false);
+                    }
+                }
+            });
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
@@ -80,6 +137,11 @@ public class PersonalCenterController extends ToolController {
     @FXML
     private void onMyFollowers() {
         loadPage("my-followers.fxml", myFollowersButton);
+    }
+
+    @FXML
+    private void onMyMessages() {
+        loadPage("my-messages.fxml", myMessagesButton);
     }
 
     @FXML
@@ -124,5 +186,12 @@ public class PersonalCenterController extends ToolController {
         scrollPane.setFitToHeight(false);
         scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+    }
+
+    public void onClose() {
+        stopUpdate = true;
+        if (unreadUpdateThread != null) {
+            unreadUpdateThread.interrupt();
+        }
     }
 }

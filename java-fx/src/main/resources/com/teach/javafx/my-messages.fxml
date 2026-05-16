@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" styleClass="profile-scroll-pane" stylesheets="@css/personal-center.css,@css/chat-view.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.MyMessagesController">
+    <VBox spacing="16.0" styleClass="profile-page">
+        <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+        </padding>
+        <HBox alignment="CENTER_LEFT" spacing="16.0">
+            <Label styleClass="section-title" text="我的私信" />
+            <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefresh" styleClass="primary-button" text="刷新" />
+        </HBox>
+        <VBox fx:id="conversationList" spacing="12.0">
+        </VBox>
+    </VBox>
+</ScrollPane>

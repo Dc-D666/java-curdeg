@@ -78,7 +78,6 @@ public class StatisticsController {
     }
 
     @GetMapping("/overview")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
     public DataResponse getOverview() {
         Map<String, Object> result = statisticsService.getOverview();
         return CommonMethod.getReturnData(result);

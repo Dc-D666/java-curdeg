@@ -318,6 +318,11 @@ public class MainFrameController {
         System.out.println("Original name: " + name);
         System.out.println("title: " + title);
         
+        if(name == null || name.trim().isEmpty()) {
+            System.out.println("ERROR: Menu name is null or empty");
+            return;
+        }
+        
         // 驼峰转 kebab-case
         String actualName = camelToKebab(name);
         System.out.println("Looking for: " + actualName + ".fxml");
@@ -330,21 +335,48 @@ public class MainFrameController {
         if(tab == null) {
             content = contentMap.get(actualName);
             if(content == null) {
-                java.net.URL resource = MainApplication.class.getResource(actualName + ".fxml");
+                String resourcePath = actualName + ".fxml";
+                System.out.println("Trying to load: " + resourcePath);
+                System.out.println("Current class: " + MainApplication.class.getName());
+                System.out.println("ClassLoader: " + MainApplication.class.getClassLoader());
+                
+                // 尝试多个可能的路径
+                java.net.URL resource = MainApplication.class.getResource(resourcePath);
+                if (resource == null) {
+                    resource = MainApplication.class.getResource("/com/teach/javafx/" + resourcePath);
+                }
+                if (resource == null) {
+                    resource = MainApplication.class.getResource("/" + resourcePath);
+                }
+                
                 System.out.println("Resource found: " + resource);
                 if (resource == null) {
                     System.out.println("ERROR: FXML file not found for: " + actualName);
+                    // 列出所有可用的 FXML 文件
+                    System.out.println("=== Available FXML files ===");
+                    try {
+                        java.util.Enumeration<java.net.URL> resources = MainApplication.class.getClassLoader().getResources("com/teach/javafx/*.fxml");
+                        while (resources.hasMoreElements()) {
+                            System.out.println("  - " + resources.nextElement());
+                        }
+                    } catch (Exception e) {
+                        System.out.println("  Error listing resources: " + e.getMessage());
+                    }
                     return;
                 }
                 FXMLLoader fxmlLoader = new FXMLLoader(resource);
                 try {
+                    System.out.println("Loading FXML...");
                     content = fxmlLoader.load();
+                    System.out.println("FXML loaded successfully!");
                     contentMap.put(actualName, content);
                 } catch (IOException e) {
+                    System.err.println("ERROR loading FXML: " + e.getMessage());
                     e.printStackTrace();
                     return;
                 }
                 c = fxmlLoader.getController();
+                System.out.println("Controller: " + c);
                 if(c instanceof ToolController) {
                     controlMap.put(actualName,(ToolController)c);
                 }
@@ -354,6 +386,20 @@ public class MainFrameController {
                 if ("post-publish".equals(actualName) && c instanceof com.teach.javafx.controller.PostPublishController) {
                     ((com.teach.javafx.controller.PostPublishController) c).setMainFrameController(this);
                 }
+                // 如果是帖子详情页面，设置帖子ID
+                if ("post-detail".equals(actualName) && c instanceof com.teach.javafx.controller.PostDetailController) {
+                    Long postId = AppStore.getSelectedPostId();
+                    if (postId != null) {
+                        ((com.teach.javafx.controller.PostDetailController) c).setPostId(postId);
+                    }
+                }
+                // 如果是用户主页，设置用户ID
+                if ("user-home".equals(actualName) && c instanceof com.teach.javafx.controller.UserHomeController) {
+                    Integer userId = AppStore.getSelectedUserId();
+                    if (userId != null) {
+                        ((com.teach.javafx.controller.UserHomeController) c).setUserId(userId);
+                    }
+                }
             }
             tab = new Tab(title);
             tab.setId(actualName);
@@ -362,6 +408,7 @@ public class MainFrameController {
             tab.setContent(content);
             contentTabPane.getTabs().add(tab);
             tabMap.put(actualName, tab);
+            System.out.println("Tab created and added: " + title);
         }
         contentTabPane.getSelectionModel().select(tab);
     }
@@ -427,6 +474,31 @@ public class MainFrameController {
                 ((com.teach.javafx.controller.PostDetailController) controller).setPostId(postId);
             }
             changeContentWithScene(tabName, "帖子详情", scene, controller);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void openUserHome(Integer userId) {
+        if (userId == null) {
+            return;
+        }
+
+        String tabName = "user-home-" + userId;
+        Tab existingTab = tabMap.get(tabName);
+        if (existingTab != null) {
+            contentTabPane.getSelectionModel().select(existingTab);
+            return;
+        }
+
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("user-home.fxml"));
+            Scene scene = new Scene(fxmlLoader.load(), 1024, 768);
+            Object controller = fxmlLoader.getController();
+            if (controller instanceof com.teach.javafx.controller.UserHomeController) {
+                ((com.teach.javafx.controller.UserHomeController) controller).setUserId(userId);
+            }
+            changeContentWithScene(tabName, "用户主页", scene, controller);
         } catch (IOException e) {
             e.printStackTrace();
         }
