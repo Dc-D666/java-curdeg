@@ -21,8 +21,6 @@ public class UserHomeController extends ToolController {
     @javafx.fxml.FXML
     private ScrollPane mainScrollPane;
     @javafx.fxml.FXML
-    private ScrollPane mainScrollPane;
-    @javafx.fxml.FXML
     private Button backButton;
     @javafx.fxml.FXML
     private Label breadcrumbLabel;
@@ -79,7 +77,7 @@ public class UserHomeController extends ToolController {
         backButton.setOnAction(event -> handleBack());
         refreshButton.setOnAction(event -> loadUserPosts());
         followButton.setOnAction(event -> toggleFollow());
-        messageButton.setOnAction(event -> showInfoAlert("私信功能开发中..."));
+        messageButton.setOnAction(event -> openPrivateChat());
         reportButton.setOnAction(event -> openProfileReportDialog());
         reportButton.setVisible(false);
         reportButton.setManaged(false);
@@ -310,9 +308,13 @@ public class UserHomeController extends ToolController {
         if (isFollowing) {
             followButton.setText("已关注");
             followButton.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
+            messageButton.setVisible(true);
+            messageButton.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
         } else {
             followButton.setText("关注");
             followButton.setStyle("");
+            messageButton.setVisible(false);
+            messageButton.setManaged(false);
         }
     }
     
@@ -574,5 +576,65 @@ public class UserHomeController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+    
+    private void openPrivateChat() {
+        if (currentUserId == null) {
+            showErrorAlert("请先登录");
+            return;
+        }
+        
+        if (!isFollowing) {
+            showErrorAlert("请先关注该用户才能发起私信");
+            return;
+        }
+        
+        Task<Map<String, Object>> task = new Task<>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getOrCreateConversation(userId);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> data = task.getValue();
+                if (data != null) {
+                    Long conversationId = null;
+                    Object convIdObj = data.get("conversationId");
+                    if (convIdObj instanceof Number) {
+                        conversationId = ((Number) convIdObj).longValue();
+                    }
+                    
+                    if (conversationId != null && AppStore.getMainFrameController() != null) {
+                        try {
+                            javafx.fxml.FXMLLoader fxmlLoader = new javafx.fxml.FXMLLoader(
+                                com.teach.javafx.MainApplication.class.getResource("chat-view.fxml"));
+                            javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 800, 600);
+                            ChatViewController controller = fxmlLoader.getController();
+                            controller.setConversation(conversationId, currentProfileData);
+                            
+                            String tabName = "chat-" + conversationId;
+                            String nickname = currentProfileData != null && currentProfileData.get("nickname") != null
+                                ? String.valueOf(currentProfileData.get("nickname"))
+                                : "用户";
+                            AppStore.getMainFrameController().changeContentWithScene(
+                                tabName, "与" + nickname + "聊天", scene, controller);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            showErrorAlert("打开私信页面失败");
+                        }
+                    }
+                } else {
+                    showErrorAlert("操作失败");
+                }
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> showErrorAlert("操作失败: " + event.getSource().getException().getMessage()));
+        });
+        
+        new Thread(task).start();
     }
 }

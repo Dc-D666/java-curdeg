@@ -19,6 +19,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -295,22 +296,57 @@ public class StatisticsController extends ToolController {
     }
     
     private void loadOverviewData() {
+        System.out.println("========== StatisticsController.loadOverviewData 开始 ==========");
+        
         Task<Map<String, Object>> task = new Task<>() {
             @Override
             protected Map<String, Object> call() {
-                return HttpRequestUtil.getOverview();
+                System.out.println("Task: 开始调用 HttpRequestUtil.getOverview()");
+                Map<String, Object> result = HttpRequestUtil.getOverview();
+                System.out.println("Task: 收到结果: " + result);
+                return result;
             }
         };
         
         task.setOnSucceeded(e -> Platform.runLater(() -> {
+            System.out.println("========== Task 成功 ==========");
             Map<String, Object> data = task.getValue();
+            System.out.println("收到数据: " + data);
+            
             if (data != null) {
+                System.out.println("数据不为null，开始更新UI");
                 updateOverviewCards(data);
+            } else {
+                System.out.println("数据为null，创建默认数据");
+                // 创建默认数据，确保界面显示
+                Map<String, Object> defaultData = new HashMap<>();
+                defaultData.put("userCount", 0L);
+                defaultData.put("todayNewUsers", 0L);
+                defaultData.put("monthlyActiveUsers", 0L);
+                defaultData.put("postCount", 0L);
+                defaultData.put("todayNewPosts", 0L);
+                defaultData.put("commentCount", 0L);
+                defaultData.put("todayNewComments", 0L);
+                defaultData.put("pendingModerationCount", 0L);
+                updateOverviewCards(defaultData);
             }
         }));
         
-        task.setOnFailed(e -> Platform.runLater(() -> 
-            showError("加载概览数据失败")));
+        task.setOnFailed(e -> Platform.runLater(() -> {
+            System.out.println("========== Task 失败 ==========");
+            e.getSource().getException().printStackTrace();
+            System.out.println("创建默认数据，确保界面显示");
+            Map<String, Object> defaultData = new HashMap<>();
+            defaultData.put("userCount", 0L);
+            defaultData.put("todayNewUsers", 0L);
+            defaultData.put("monthlyActiveUsers", 0L);
+            defaultData.put("postCount", 0L);
+            defaultData.put("todayNewPosts", 0L);
+            defaultData.put("commentCount", 0L);
+            defaultData.put("todayNewComments", 0L);
+            defaultData.put("pendingModerationCount", 0L);
+            updateOverviewCards(defaultData);
+        }));
         
         new Thread(task).start();
     }

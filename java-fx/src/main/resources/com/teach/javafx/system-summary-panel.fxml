@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="system-summary-scroll-pane" stylesheets="@css/system-summary-panel.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.SystemSummaryPanelController">
+    <content>
+        <VBox maxWidth="1.7976931348623157E308" minWidth="0.0" spacing="20.0" styleClass="system-summary-page">
+            <padding>
+                <Insets bottom="28.0" left="28.0" right="28.0" top="26.0" />
+            </padding>
+
+            <!-- 页面标题栏 -->
+            <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="title-row">
+                <children>
+                    <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                        <children>
+                            <Label styleClass="page-title" text="系统概览" />
+                            <Label styleClass="page-subtitle" text="实时监控系统运行状态和数据指标" />
+                        </children>
+                    </VBox>
+                    <HBox alignment="CENTER" spacing="8.0">
+                        <children>
+                            <Label fx:id="lastUpdateLabel" styleClass="update-time-label" text="最后更新: --" />
+                            <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefresh" styleClass="btn-refresh" text="刷新数据" />
+                        </children>
+                    </HBox>
+                </children>
+            </HBox>
+
+
+
+            <!-- 趋势图表区域 -->
+            <VBox spacing="12.0">
+                <children>
+                    <Label styleClass="section-header" text="数据趋势" />
+                    <GridPane hgap="16.0" vgap="16.0">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints minHeight="300.0" vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                            <!-- 用户增长趋势 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <children>
+                                            <Label styleClass="chart-title" text="用户增长趋势" />
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <HBox alignment="CENTER" spacing="8.0">
+                                                <children>
+                                                    <Button fx:id="userTrend7Btn" mnemonicParsing="false" onAction="#onUserTrend7Days" styleClass="btn-period" text="近7天" />
+                                                    <Button fx:id="userTrend30Btn" mnemonicParsing="false" onAction="#onUserTrend30Days" styleClass="btn-period-active" text="近30天" />
+                                                </children>
+                                            </HBox>
+                                        </children>
+                                    </HBox>
+                                    <LineChart fx:id="userGrowthChart" animated="false" legendVisible="true" prefHeight="260.0" styleClass="stats-line-chart">
+                                        <xAxis>
+                                            <CategoryAxis fx:id="userGrowthXAxis" label="日期" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis fx:id="userGrowthYAxis" label="新增用户" />
+                                        </yAxis>
+                                    </LineChart>
+                                </children>
+                            </VBox>
+
+                            <!-- 发帖趋势 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <children>
+                                            <Label styleClass="chart-title" text="发帖趋势" />
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <HBox alignment="CENTER" spacing="8.0">
+                                                <children>
+                                                    <Button fx:id="postTrend7Btn" mnemonicParsing="false" onAction="#onPostTrend7Days" styleClass="btn-period" text="近7天" />
+                                                    <Button fx:id="postTrend30Btn" mnemonicParsing="false" onAction="#onPostTrend30Days" styleClass="btn-period-active" text="近30天" />
+                                                </children>
+                                            </HBox>
+                                        </children>
+                                    </HBox>
+                                    <LineChart fx:id="postTrendChart" animated="false" legendVisible="true" prefHeight="260.0" styleClass="stats-line-chart">
+                                        <xAxis>
+                                            <CategoryAxis fx:id="postTrendXAxis" label="日期" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis fx:id="postTrendYAxis" label="发帖数" />
+                                        </yAxis>
+                                    </LineChart>
+                                </children>
+                            </VBox>
+                        </children>
+                    </GridPane>
+                </children>
+            </VBox>
+
+            <!-- 分布图表和排行榜区域 -->
+            <VBox spacing="12.0">
+                <children>
+                    <Label styleClass="section-header" text="数据分析" />
+                    <GridPane hgap="16.0" vgap="16.0">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="33.3" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="33.3" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="33.4" />
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints minHeight="280.0" vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                            <!-- 用户类型分布 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <children>
+                                    <Label styleClass="chart-title" text="用户类型分布" />
+                                    <PieChart fx:id="userTypePieChart" animated="false" labelLineLength="10.0" labelsVisible="true" legendVisible="true" prefHeight="240.0" styleClass="stats-pie-chart" />
+                                </children>
+                            </VBox>
+
+                            <!-- 帖子状态分布 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <children>
+                                    <Label styleClass="chart-title" text="帖子状态分布" />
+                                    <PieChart fx:id="postStatusPieChart" animated="false" labelLineLength="10.0" labelsVisible="true" legendVisible="true" prefHeight="240.0" styleClass="stats-pie-chart" />
+                                </children>
+                            </VBox>
+
+                            <!-- 违规类型分布 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                                <children>
+                                    <Label styleClass="chart-title" text="违规类型分布" />
+                                    <BarChart fx:id="violationTypeChart" animated="false" legendVisible="true" prefHeight="240.0" styleClass="stats-bar-chart">
+                                        <xAxis>
+                                            <CategoryAxis fx:id="violationTypeXAxis" label="类型" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis fx:id="violationTypeYAxis" label="数量" />
+                                        </yAxis>
+                                    </BarChart>
+                                </children>
+                            </VBox>
+                        </children>
+                    </GridPane>
+                </children>
+            </VBox>
+
+            <!-- 热门内容和排行榜区域 -->
+            <VBox spacing="12.0">
+                <children>
+                    <Label styleClass="section-header" text="热门内容" />
+                    <GridPane hgap="16.0" vgap="16.0">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints minHeight="320.0" vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                            <!-- 热门帖子 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <children>
+                                            <Label styleClass="chart-title" text="热门帖子 TOP 10" />
+                                        </children>
+                                    </HBox>
+                                    <TableView fx:id="hotPostsTableView" prefHeight="280.0" styleClass="stats-table">
+                                        <columns>
+                                            <TableColumn fx:id="hotPostRankColumn" prefWidth="50.0" text="排名" />
+                                            <TableColumn fx:id="hotPostTitleColumn" prefWidth="200.0" text="标题" />
+                                            <TableColumn fx:id="hotPostLikesColumn" prefWidth="70.0" text="点赞" />
+                                            <TableColumn fx:id="hotPostCommentsColumn" prefWidth="70.0" text="评论" />
+                                        </columns>
+                                        <placeholder>
+                                            <Label styleClass="table-placeholder" text="暂无热门帖子" />
+                                        </placeholder>
+                                    </TableView>
+                                </children>
+                            </VBox>
+
+                            <!-- 活跃用户 -->
+                            <VBox spacing="12.0" styleClass="chart-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <children>
+                                            <Label styleClass="chart-title" text="活跃用户 TOP 10" />
+                                        </children>
+                                    </HBox>
+                                    <TableView fx:id="activeUsersTableView" prefHeight="280.0" styleClass="stats-table">
+                                        <columns>
+                                            <TableColumn fx:id="activeUserRankColumn" prefWidth="50.0" text="排名" />
+                                            <TableColumn fx:id="activeUserNicknameColumn" prefWidth="120.0" text="昵称" />
+                                            <TableColumn fx:id="activeUserPostsColumn" prefWidth="70.0" text="发帖" />
+                                            <TableColumn fx:id="activeUserCommentsColumn" prefWidth="70.0" text="评论" />
+                                        </columns>
+                                        <placeholder>
+                                            <Label styleClass="table-placeholder" text="暂无活跃用户" />
+                                        </placeholder>
+                                    </TableView>
+                                </children>
+                            </VBox>
+                        </children>
+                    </GridPane>
+                </children>
+            </VBox>
+
+            <!-- AI 监控面板 -->
+            <VBox spacing="12.0">
+                <children>
+                    <Label styleClass="section-header" text="AI 智能监控" />
+                    <GridPane hgap="16.0" vgap="16.0">
+                        <columnConstraints>
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="60.0" />
+                            <ColumnConstraints hgrow="ALWAYS" percentWidth="40.0" />
+                        </columnConstraints>
+                        <rowConstraints>
+                            <RowConstraints minHeight="280.0" vgrow="SOMETIMES" />
+                        </rowConstraints>
+                        <children>
+                            <!-- AI 审核趋势 -->
+                            <VBox spacing="12.0" styleClass="chart-card ai-monitor-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <children>
+                                    <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                        <children>
+                                            <HBox alignment="CENTER" spacing="6.0">
+                                                <children>
+                                                    <Circle fill="#10b981" radius="5.0" stroke="transparent" strokeWidth="0.0" />
+                                                    <Label styleClass="chart-title" text="AI 审核趋势" />
+                                                </children>
+                                            </HBox>
+                                            <Region HBox.hgrow="ALWAYS" />
+                                            <HBox alignment="CENTER" spacing="6.0">
+                                                <children>
+                                                    <Label styleClass="ai-status-label" text="● 运行中" />
+                                                    <Label fx:id="aiTodayCountLabel" styleClass="ai-count-label" text="今日审核: 0" />
+                                                </children>
+                                            </HBox>
+                                        </children>
+                                    </HBox>
+                                    <LineChart fx:id="moderationTrendChart" animated="false" legendVisible="true" prefHeight="220.0" styleClass="stats-line-chart">
+                                        <xAxis>
+                                            <CategoryAxis fx:id="moderationTrendXAxis" label="日期" />
+                                        </xAxis>
+                                        <yAxis>
+                                            <NumberAxis fx:id="moderationTrendYAxis" label="审核数" />
+                                        </yAxis>
+                                    </LineChart>
+                                    <HBox alignment="CENTER_LEFT" spacing="20.0" styleClass="ai-legend-row">
+                                        <children>
+                                            <HBox alignment="CENTER" spacing="6.0">
+                                                <Label styleClass="legend-dot" style="-fx-background-color: #10b981;" />
+                                                <Label styleClass="legend-label" text="通过" />
+                                            </HBox>
+                                            <HBox alignment="CENTER" spacing="6.0">
+                                                <Label styleClass="legend-dot" style="-fx-background-color: #ef4444;" />
+                                                <Label styleClass="legend-label" text="违规" />
+                                            </HBox>
+                                            <HBox alignment="CENTER" spacing="6.0">
+                                                <Label styleClass="legend-dot" style="-fx-background-color: #f59e0b;" />
+                                                <Label styleClass="legend-label" text="待审" />
+                                            </HBox>
+                                        </children>
+                                    </HBox>
+                                </children>
+                            </VBox>
+
+                            <!-- AI 智能建议 -->
+                            <VBox spacing="12.0" styleClass="chart-card ai-suggestion-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <children>
+                                    <Label styleClass="chart-title" text="AI 智能建议" />
+                                    <VBox fx:id="aiSuggestionContainer" spacing="10.0" VBox.vgrow="ALWAYS">
+                                        <children>
+                                            <VBox spacing="8.0" styleClass="suggestion-item">
+                                                <children>
+                                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                                        <children>
+                                                            <Label styleClass="suggestion-icon" text="💡" />
+                                                            <Label styleClass="suggestion-title" text="审核效率" />
+                                                        </children>
+                                                    </HBox>
+                                                    <Label fx:id="suggestion1Label" styleClass="suggestion-text" text="系统运行正常，建议保持当前审核策略。" />
+                                                </children>
+                                            </VBox>
+                                            <VBox spacing="8.0" styleClass="suggestion-item">
+                                                <children>
+                                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                                        <children>
+                                                            <Label styleClass="suggestion-icon" text="📊" />
+                                                            <Label styleClass="suggestion-title" text="内容质量" />
+                                                        </children>
+                                                    </HBox>
+                                                    <Label fx:id="suggestion2Label" styleClass="suggestion-text" text="近期帖子质量良好，社区氛围健康。" />
+                                                </children>
+                                            </VBox>
+                                            <VBox spacing="8.0" styleClass="suggestion-item">
+                                                <children>
+                                                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                                        <children>
+                                                            <Label styleClass="suggestion-icon" text="⚠️" />
+                                                            <Label styleClass="suggestion-title" text="注意事项" />
+                                                        </children>
+                                                    </HBox>
+                                                    <Label fx:id="suggestion3Label" styleClass="suggestion-text" text="暂无异常提醒。" />
+                                                </children>
+                                            </VBox>
+                                        </children>
+                                    </VBox>
+                                    <Button mnemonicParsing="false" onAction="#onRefreshAISuggestions" styleClass="btn-refresh-suggestion" text="刷新建议" />
+                                </children>
+                            </VBox>
+                        </children>
+                    </GridPane>
+                </children>
+            </VBox>
+
+            <!-- 快捷操作入口 -->
+            <VBox spacing="12.0">
+                <children>
+                    <Label styleClass="section-header" text="快捷操作" />
+                    <HBox alignment="CENTER" spacing="16.0" styleClass="quick-actions-container">
+                        <children>
+                            <VBox alignment="CENTER" onMouseClicked="#onQuickActionPosts" spacing="8.0" styleClass="quick-action-item">
+                                <children>
+                                    <Label styleClass="quick-action-icon" text="📋" />
+                                    <Label styleClass="quick-action-title" text="帖子管理" />
+                                    <Label styleClass="quick-action-desc" text="查看所有帖子" />
+                                </children>
+                            </VBox>
+                            <VBox alignment="CENTER" onMouseClicked="#onQuickActionReports" spacing="8.0" styleClass="quick-action-item">
+                                <children>
+                                    <Label styleClass="quick-action-icon" text="🚨" />
+                                    <Label styleClass="quick-action-title" text="举报处理" />
+                                    <Label styleClass="quick-action-desc" text="处理用户举报" />
+                                </children>
+                            </VBox>
+                            <VBox alignment="CENTER" onMouseClicked="#onQuickActionModeration" spacing="8.0" styleClass="quick-action-item">
+                                <children>
+                                    <Label styleClass="quick-action-icon" text="✅" />
+                                    <Label styleClass="quick-action-title" text="内容审核" />
+                                    <Label styleClass="quick-action-desc" text="审核待发布内容" />
+                                </children>
+                            </VBox>
+                        </children>
+                    </HBox>
+                </children>
+            </VBox>
+        </VBox>
+    </content>
+</ScrollPane>

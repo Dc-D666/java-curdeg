@@ -2091,7 +2091,9 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
     }
 
     public static Map<String, Object> getOverview() {
+        System.out.println("========== HttpRequestUtil.getOverview 开始 ==========");
         String url = serverUrl + "/api/bbs/statistics/overview";
+        System.out.println("请求URL: " + url);
         
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -2100,22 +2102,47 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         
         if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
             builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+            System.out.println("已添加JWT Token");
+        } else {
+            System.out.println("无JWT Token");
         }
         
         HttpRequest httpRequest = builder.build();
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            System.out.println("getOverview response: " + response.body());
+            System.out.println("响应状态码: " + response.statusCode());
+            System.out.println("响应内容: " + response.body());
+            
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
                 DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
-                if (dataResponse.getCode() == 0) {
-                    return dataResponse.getData();
+                
+                if (dataResponse != null) {
+                    System.out.println("dataResponse code: " + dataResponse.getCode());
+                    System.out.println("dataResponse data: " + dataResponse.getData());
+                    
+                    if (dataResponse.getCode() == 0) {
+                        System.out.println("========== 返回数据: " + dataResponse.getData() + " ==========");
+                        return dataResponse.getData();
+                    } else {
+                        System.out.println("返回错误，消息: " + dataResponse.getMsg());
+                    }
+                } else {
+                    System.out.println("dataResponse 为 null");
                 }
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
+            System.out.println("IOException: " + e.getMessage());
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            System.out.println("InterruptedException: " + e.getMessage());
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+        } catch (Exception e) {
+            System.out.println("异常: " + e.getMessage());
             e.printStackTrace();
         }
+        System.out.println("========== HttpRequestUtil.getOverview 返回 null ==========");
         return null;
     }
 
@@ -3033,5 +3060,144 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static Map<String, Object> get(String url) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("get request: " + url + ", response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<Map<String, Object>> getList(String url) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + url))
+                .GET()
+                .headers("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getList request: " + url + ", response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<Map<String, Object>>>>(){}.getType();
+                DataResponse<List<Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0 && dataResponse.getData() != null) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<Map<String, Object>> getConversationList() {
+        String url = "/api/bbs/message/conversations";
+        return getList(url);
+    }
+
+    public static Map<String, Object> getOrCreateConversation(Integer otherUserId) {
+        String url = "/api/bbs/message/conversation/" + otherUserId;
+        return get(url);
+    }
+
+    public static Map<String, Object> getMessageHistory(Long conversationId) {
+        String url = "/api/bbs/message/history/" + conversationId;
+        return get(url);
+    }
+
+    public static Map<String, Object> sendMessage(Long conversationId, String messageType, String content) {
+        String url = "/api/bbs/message/send";
+        
+        Map<String, Object> bodyMap = Map.of(
+            "conversationId", conversationId,
+            "messageType", messageType,
+            "content", content
+        );
+        String jsonBody = gson.toJson(bodyMap);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + url))
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .header("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.header("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("sendMessage request: " + url + ", response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0 && dataResponse.getData() != null) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> markMessagesAsRead(Long conversationId) {
+        String url = "/api/bbs/message/read/" + conversationId;
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+            .uri(URI.create(serverUrl + url))
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .header("Content-Type", "application/json");
+
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.header("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("markMessagesAsRead request: " + url + ", response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
+                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0 && dataResponse.getData() != null) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getUnreadCount() {
+        String url = "/api/bbs/message/unread-count";
+        return get(url);
     }
 }

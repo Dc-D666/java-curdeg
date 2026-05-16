@@ -78,12 +78,22 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     List<User> findByIsBanned(Boolean isBanned);
 
-    @Query(value = "SELECT COUNT(*) FROM user", nativeQuery = true)
+    // 使用JPA内置方法，更可靠
+    @Override
+    long count();
+
+    // 自定义SQL查询
+    @Query(value = "SELECT COUNT(*) FROM sys_user", nativeQuery = true)
     Long countTotalUsers();
 
-    @Query(value = "SELECT COUNT(*) FROM user WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM sys_user WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
     Long countTodayNewUsers();
 
-    @Query(value = "SELECT COUNT(*) FROM user WHERE last_login_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)", nativeQuery = true)
+    // 简化的活跃用户查询，避免复杂的LEFT JOIN
+    @Query(value = "SELECT COUNT(DISTINCT u.person_id) FROM sys_user u " +
+           "WHERE u.person_id IN (SELECT p.author_id FROM bbs_post p WHERE p.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
+           "OR u.person_id IN (SELECT c.author_id FROM bbs_comment c WHERE c.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
+           "OR u.person_id IN (SELECT l.user_id FROM bbs_like l WHERE l.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
+           "OR u.person_id IN (SELECT f.user_id FROM bbs_favorite f WHERE f.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))", nativeQuery = true)
     Long countMonthlyActiveUsers();
 }

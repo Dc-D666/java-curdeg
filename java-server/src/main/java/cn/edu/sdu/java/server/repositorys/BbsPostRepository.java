@@ -117,6 +117,10 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
     @Query(value = "SELECT board_id, COUNT(*) as count FROM bbs_post GROUP BY board_id ORDER BY count DESC", nativeQuery = true)
     List<Object[]> countPostsByBoard();
 
+    // 使用JPA内置方法，更可靠
+    @Override
+    long count();
+
     @Query(value = "SELECT COUNT(*) FROM bbs_post", nativeQuery = true)
     Long countTotalPosts();
 
@@ -125,6 +129,9 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
 
     @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'pending'", nativeQuery = true)
     Long countPendingModerationPosts();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'pass'", nativeQuery = true)
+    Long countAIPassedPosts();
 
     @Query("SELECT p FROM BbsPost p WHERE " +
            "p.authorId = :authorId AND " +
