@@ -1,5 +1,6 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.request.HttpRequestUtil;
@@ -68,6 +69,9 @@ public class PersonalCenterController extends ToolController {
         navButtons.add(statisticsButton);
         navButtons.add(changePasswordButton);
 
+        // Register this controller in AppStore for child controllers to access
+        AppStore.setPersonalCenterController(this);
+
         loadPage("personal-profile.fxml", profileButton);
         startUnreadCountUpdater();
     }
@@ -131,12 +135,12 @@ public class PersonalCenterController extends ToolController {
 
     @FXML
     private void onMyFollowing() {
-        loadPage("my-followers.fxml", myFollowingButton);
+        loadPageWithTabIndex("my-followers.fxml", myFollowingButton, 0);
     }
 
     @FXML
     private void onMyFollowers() {
-        loadPage("my-followers.fxml", myFollowersButton);
+        loadPageWithTabIndex("my-followers.fxml", myFollowersButton, 1);
     }
 
     @FXML
@@ -152,6 +156,101 @@ public class PersonalCenterController extends ToolController {
     @FXML
     private void onPasswordChange() {
         loadPage("password-change.fxml", changePasswordButton);
+    }
+
+    /**
+     * Programmatic navigation by page name, used by child controllers
+     */
+    public void navigateByPage(String pageName, String title) {
+        String fxmlFile = pageName + ".fxml";
+        Button targetButton = findButtonByPageName(pageName);
+        
+        if (pageName.equals("my-followers")) {
+            loadPageWithTabIndex(fxmlFile, targetButton != null ? targetButton : myFollowersButton, 1);
+            return;
+        }
+        if (pageName.equals("my-following")) {
+            loadPageWithTabIndex(fxmlFile, targetButton != null ? targetButton : myFollowingButton, 0);
+            return;
+        }
+        
+        if (targetButton != null) {
+            loadPage(fxmlFile, targetButton);
+        } else {
+            // Fallback: try loading the page without button highlight
+            try {
+                FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource(fxmlFile));
+                Node content = fxmlLoader.load();
+                contentStackPane.getChildren().clear();
+
+                if (content instanceof ScrollPane scrollPane) {
+                    configureScrollPane(scrollPane);
+                    contentStackPane.getChildren().add(scrollPane);
+                } else {
+                    ScrollPane scrollPane = new ScrollPane(content);
+                    configureScrollPane(scrollPane);
+                    scrollPane.getStyleClass().add("profile-scroll-pane");
+                    contentStackPane.getChildren().add(scrollPane);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void loadPageWithTabIndex(String fxmlFile, Button selectedButton, int tabIndex) {
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource(fxmlFile));
+            Node content = fxmlLoader.load();
+            contentStackPane.getChildren().clear();
+
+            Object controller = fxmlLoader.getController();
+            if (controller instanceof MyFollowersController followersController) {
+                Platform.runLater(() -> {
+                    followersController.selectTab(tabIndex);
+                });
+            }
+
+            if (content instanceof ScrollPane scrollPane) {
+                configureScrollPane(scrollPane);
+                contentStackPane.getChildren().add(scrollPane);
+            } else {
+                ScrollPane scrollPane = new ScrollPane(content);
+                configureScrollPane(scrollPane);
+                scrollPane.getStyleClass().add("profile-scroll-pane");
+                contentStackPane.getChildren().add(scrollPane);
+            }
+
+            for (Button btn : navButtons) {
+                btn.pseudoClassStateChanged(SELECTED_PSEUDO_CLASS, false);
+            }
+            selectedButton.pseudoClassStateChanged(SELECTED_PSEUDO_CLASS, true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Button findButtonByPageName(String pageName) {
+        switch (pageName) {
+            case "my-posts":
+                return myPostsButton;
+            case "my-following":
+                return myFollowingButton;
+            case "my-followers":
+                return myFollowersButton;
+            case "my-favorites":
+                return myFavoritesButton;
+            case "my-messages":
+                return myMessagesButton;
+            case "user-statistics":
+                return statisticsButton;
+            case "password-change":
+                return changePasswordButton;
+            case "personal-profile":
+                return profileButton;
+            default:
+                return null;
+        }
     }
 
     private void loadPage(String fxmlFile, Button selectedButton) {

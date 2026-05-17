@@ -1,6 +1,8 @@
 package com.teach.javafx.controller;
 
 import com.teach.javafx.AppStore;
+import com.teach.javafx.controller.PersonalCenterController;
+import com.teach.javafx.controller.base.MainFrameController;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
@@ -227,20 +229,34 @@ public class PersonalProfileController extends ToolController {
         });
     }
 
+    private void navigateToPage(String pageName, String title) {
+        PersonalCenterController centerController = AppStore.getPersonalCenterController();
+        if (centerController != null) {
+            // Navigate through PersonalCenterController
+            centerController.navigateByPage(pageName, title);
+        } else {
+            // Fallback to MainFrameController
+            MainFrameController mainFrameController = AppStore.getMainFrameController();
+            if (mainFrameController != null) {
+                mainFrameController.changeContent(pageName, title);
+            }
+        }
+    }
+
     private void setupStatsCardEvents() {
         // 发帖数点击跳转到 myPosts
         postCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            AppStore.getMainFrameController().changeContent("myPosts", "我的帖子");
+            navigateToPage("my-posts", "我的帖子");
         });
         
-        // 关注数点击跳转到 myFollowers
+        // 关注数点击跳转到 myFollowing
         followingCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            AppStore.getMainFrameController().changeContent("myFollowers", "我的关注");
+            navigateToPage("my-following", "我的关注");
         });
         
         // 粉丝数点击跳转到 myFollowers
         followerCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            AppStore.getMainFrameController().changeContent("myFollowers", "我的粉丝");
+            navigateToPage("my-followers", "我的粉丝");
         });
         
     }

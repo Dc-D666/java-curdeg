@@ -2,6 +2,7 @@ package com.teach.javafx;
 
 
 import com.teach.javafx.controller.base.*;
+import com.teach.javafx.controller.PersonalCenterController;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.JwtResponse;
 
@@ -12,6 +13,7 @@ import com.teach.javafx.request.JwtResponse;
 public class AppStore {
     private static JwtResponse jwt;
     private static MainFrameController mainFrameController;
+    private static PersonalCenterController personalCenterController;
     private static Long selectedPostId;
     private static Integer selectedUserId;
     private static Long selectedConversationId;
@@ -33,6 +35,14 @@ public class AppStore {
 
     public static void setMainFrameController(MainFrameController mainFrameController) {
         AppStore.mainFrameController = mainFrameController;
+    }
+
+    public static PersonalCenterController getPersonalCenterController() {
+        return personalCenterController;
+    }
+
+    public static void setPersonalCenterController(PersonalCenterController personalCenterController) {
+        AppStore.personalCenterController = personalCenterController;
     }
 
     public static Long getSelectedPostId() {

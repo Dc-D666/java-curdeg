@@ -2,6 +2,9 @@ package com.teach.javafx.controller.base;
 
 import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
+import com.teach.javafx.controller.dialog.ExportPostsDialogController;
+import com.teach.javafx.controller.dialog.ExportUsersDialogController;
+import com.teach.javafx.controller.dialog.ExportStatsDialogController;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.request.MyTreeNode;
@@ -51,11 +54,11 @@ public class MainFrameController {
     @FXML
     private Menu menuHome;
     @FXML
-    private MenuItem menuPostList;
+    private Menu menuExportMenu;
     @FXML
-    private Menu menuTool;
+    private Menu menuSettings;
     @FXML
-    private Menu menuMy;
+    private Menu menuHelp;
     @FXML
     private Menu menuSwitchAccount;
     @FXML
@@ -243,6 +246,12 @@ public class MainFrameController {
         
         loadUnreadNotificationCount();
 
+        String role = AppStore.getJwt().getRole();
+        boolean isAdmin = "ROLE_SUPER".equals(role) || "ROLE_ADMIN".equals(role);
+        if (menuExportMenu != null) {
+            menuExportMenu.setVisible(isAdmin);
+        }
+
         String currentUsername = AppStore.getJwt().getUsername();
         
         MenuItem superItem = new MenuItem("super");
@@ -327,6 +336,12 @@ public class MainFrameController {
         String actualName = camelToKebab(name);
         System.out.println("Looking for: " + actualName + ".fxml");
         
+        // Map "my-following" to "my-followers" since they share the same FXML
+        String fxmlName = actualName;
+        if ("my-following".equals(actualName)) {
+            fxmlName = "my-followers";
+        }
+        
         if(actualName == null || actualName.length() == 0)
             return;
         Tab tab = tabMap.get(actualName);
@@ -335,7 +350,7 @@ public class MainFrameController {
         if(tab == null) {
             content = contentMap.get(actualName);
             if(content == null) {
-                String resourcePath = actualName + ".fxml";
+                String resourcePath = fxmlName + ".fxml";
                 System.out.println("Trying to load: " + resourcePath);
                 System.out.println("Current class: " + MainApplication.class.getName());
                 System.out.println("ClassLoader: " + MainApplication.class.getClassLoader());
@@ -682,38 +697,113 @@ public class MainFrameController {
     }
 
     @FXML
-    protected void onPostListMenuClick(ActionEvent event) {
-        changeContent("post-list", "帖子列表");
+    protected void onPostSquareClick(ActionEvent event) {
+        changeContent("post-list", "帖子广场");
     }
-    
+
     @FXML
-    protected void onNewMenuClick(ActionEvent event) {
-        doNewCommand();
+    protected void onExportPostsClick(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("export-posts-dialog.fxml"));
+            DialogPane dialogPane = loader.load();
+            ExportPostsDialogController controller = loader.getController();
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(dialogPane);
+            dialog.setTitle("导出帖子数据");
+            ButtonType exportButtonType = new ButtonType("导出", ButtonBar.ButtonData.OK_DONE);
+            dialogPane.getButtonTypes().setAll(ButtonType.CANCEL, exportButtonType);
+            Button exportButton = (Button) dialogPane.lookupButton(exportButtonType);
+            exportButton.addEventFilter(ActionEvent.ACTION, e -> {
+                if (!controller.handleExport()) {
+                    e.consume();
+                }
+            });
+            dialog.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    
+
     @FXML
-    protected void onSaveMenuClick(ActionEvent event) {
-        doSaveCommand();
+    protected void onExportUsersClick(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("export-users-dialog.fxml"));
+            DialogPane dialogPane = loader.load();
+            ExportUsersDialogController controller = loader.getController();
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(dialogPane);
+            dialog.setTitle("导出用户数据");
+            ButtonType exportButtonType = new ButtonType("导出", ButtonBar.ButtonData.OK_DONE);
+            dialogPane.getButtonTypes().setAll(ButtonType.CANCEL, exportButtonType);
+            Button exportButton = (Button) dialogPane.lookupButton(exportButtonType);
+            exportButton.addEventFilter(ActionEvent.ACTION, e -> {
+                if (!controller.handleExport()) {
+                    e.consume();
+                }
+            });
+            dialog.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    
+
     @FXML
-    protected void onDeleteMenuClick(ActionEvent event) {
-        doDeleteCommand();
+    protected void onExportStatsClick(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("export-stats-dialog.fxml"));
+            DialogPane dialogPane = loader.load();
+            ExportStatsDialogController controller = loader.getController();
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(dialogPane);
+            dialog.setTitle("导出统计报表");
+            ButtonType exportButtonType = new ButtonType("导出", ButtonBar.ButtonData.OK_DONE);
+            dialogPane.getButtonTypes().setAll(ButtonType.CANCEL, exportButtonType);
+            Button exportButton = (Button) dialogPane.lookupButton(exportButtonType);
+            exportButton.addEventFilter(ActionEvent.ACTION, e -> {
+                if (!controller.handleExport()) {
+                    e.consume();
+                }
+            });
+            dialog.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    
+
     @FXML
-    protected void onPrintMenuClick(ActionEvent event) {
-        doPrintCommand();
+    protected void onProfileClick(ActionEvent event) {
+        changeContent("personal-center", "个人中心");
     }
-    
+
     @FXML
-    protected void onImportMenuClick(ActionEvent event) {
-        doImportCommand();
+    protected void onChangePasswordClick(ActionEvent event) {
+        changeContent("password-change", "修改密码");
     }
-    
+
     @FXML
-    protected void onExportMenuClick(ActionEvent event) {
-        doExportCommand();
+    protected void onAboutClick(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("about-dialog.fxml"));
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(loader.load());
+            dialog.setTitle("关于");
+            dialog.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    protected void onFeedbackClick(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(MainApplication.class.getResource("feedback-dialog.fxml"));
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setDialogPane(loader.load());
+            dialog.setTitle("反馈与建议");
+            dialog.showAndWait();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     
     public void loadUnreadNotificationCount() {

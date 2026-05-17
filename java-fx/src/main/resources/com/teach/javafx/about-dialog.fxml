@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane prefWidth="480.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.dialog.AboutDialogController">
+   <content>
+      <VBox spacing="10.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <Label style="-fx-font-size: 20px; -fx-font-weight: bold;" text="学生交流社区（校园论坛系统）" />
+            <Label style="-fx-font-size: 13px; -fx-text-fill: #888;" text="v2.7" />
+            <Separator />
+            <Label style="-fx-font-size: 13px;" text="基于 JavaFX + Spring Boot 的校园论坛系统，支持 AI 智能搜索、写作助手、一键配图、内容审核等功能" wrapText="true" prefWidth="440.0" />
+            <Separator />
+            <Label style="-fx-font-size: 13px; -fx-font-weight: bold;" text="GitHub" />
+            <Hyperlink fx:id="githubLink" style="-fx-font-size: 13px;" text="https://github.com/Dc-D666/java-curdeg" />
+            <Separator />
+            <Label style="-fx-font-size: 13px; -fx-font-weight: bold;" text="技术栈" />
+            <Label style="-fx-font-size: 13px;" text="前端：Java 21 + JavaFX 21 + Gson" wrapText="true" prefWidth="440.0" />
+            <Label style="-fx-font-size: 13px;" text="后端：Spring Boot 3.2.5 + JPA + MySQL" wrapText="true" prefWidth="440.0" />
+            <Separator />
+            <Label style="-fx-font-size: 13px; -fx-font-weight: bold;" text="AI 功能" />
+            <Label style="-fx-font-size: 13px;" text="智能搜索（SSE 流式）、写作助手、一键配图、内容审核、帖子总结" wrapText="true" prefWidth="440.0" />
+            <Separator />
+            <Label style="-fx-font-size: 13px; -fx-font-weight: bold;" text="团队信息" />
+            <Label style="-fx-font-size: 13px;" text="团队编号：48" wrapText="true" prefWidth="440.0" />
+            <Label style="-fx-font-size: 13px;" text="成员：202400210090 戴睿羲  202333180042 南迪  202420210070 张心甜  202420210042 吴煜菲  202400210027 刘鑫" wrapText="true" prefWidth="440.0" />
+            <Separator />
+            <Label style="-fx-font-size: 12px; -fx-text-fill: #999;" text="MIT License © 2026" />
+         </children>
+      </VBox>
+   </content>
+   <buttonTypes>
+      <ButtonType fx:constant="OK" />
+   </buttonTypes>
+</DialogPane>

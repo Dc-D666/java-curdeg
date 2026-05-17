@@ -81,11 +81,16 @@ public class MyFollowersController extends ToolController {
     private int currentPageSize = 10;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private Gson gson = new Gson();
+    private Integer initialTabIndex = null;
 
     @FXML
     public void initialize() {
         setupFollowingTable();
         setupFollowerTable();
+        
+        if (initialTabIndex != null) {
+            tabPane.getSelectionModel().select(initialTabIndex);
+        }
         
         tabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
             if (newTab != null) {
@@ -112,7 +117,21 @@ public class MyFollowersController extends ToolController {
             loadFollowers(followerRefreshButton);
         });
         
-        loadFollowing();
+        if (initialTabIndex == null || initialTabIndex == 0) {
+            loadFollowing();
+        } else {
+            loadFollowers();
+        }
+    }
+
+    public void setInitialTabIndex(int index) {
+        this.initialTabIndex = index;
+    }
+
+    public void selectTab(int index) {
+        if (tabPane != null && index >= 0 && index < tabPane.getTabs().size()) {
+            tabPane.getSelectionModel().select(index);
+        }
     }
 
     private void setupFollowingTable() {
@@ -138,6 +157,8 @@ public class MyFollowersController extends ToolController {
             String avatarUrl = (String) user.get("avatarUrl");
             if (avatarUrl == null || avatarUrl.isBlank()) {
                 avatarUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+            } else if (!avatarUrl.startsWith("http")) {
+                avatarUrl = com.teach.javafx.request.HttpRequestUtil.serverUrl + avatarUrl;
             }
             ImageView imageView = new ImageView(new Image(avatarUrl, true));
             imageView.setFitHeight(50);
@@ -176,7 +197,12 @@ public class MyFollowersController extends ToolController {
             Map<String, Object> user = cellData.getValue();
             Object followTime = user.get("followTime");
             if (followTime != null) {
-                return new javafx.beans.property.SimpleStringProperty(dateFormat.format(new Date(toLong(followTime))));
+                String timeStr = followTime.toString();
+                if (timeStr.contains("-")) {
+                    return new javafx.beans.property.SimpleStringProperty(timeStr);
+                } else {
+                    return new javafx.beans.property.SimpleStringProperty(dateFormat.format(new Date(toLong(followTime))));
+                }
             }
             return new javafx.beans.property.SimpleStringProperty("");
         });
@@ -225,6 +251,8 @@ public class MyFollowersController extends ToolController {
             String avatarUrl = (String) user.get("avatarUrl");
             if (avatarUrl == null || avatarUrl.isBlank()) {
                 avatarUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+            } else if (!avatarUrl.startsWith("http")) {
+                avatarUrl = com.teach.javafx.request.HttpRequestUtil.serverUrl + avatarUrl;
             }
             ImageView imageView = new ImageView(new Image(avatarUrl, true));
             imageView.setFitHeight(50);
@@ -263,7 +291,12 @@ public class MyFollowersController extends ToolController {
             Map<String, Object> user = cellData.getValue();
             Object followTime = user.get("followTime");
             if (followTime != null) {
-                return new javafx.beans.property.SimpleStringProperty(dateFormat.format(new Date(toLong(followTime))));
+                String timeStr = followTime.toString();
+                if (timeStr.contains("-")) {
+                    return new javafx.beans.property.SimpleStringProperty(timeStr);
+                } else {
+                    return new javafx.beans.property.SimpleStringProperty(dateFormat.format(new Date(toLong(followTime))));
+                }
             }
             return new javafx.beans.property.SimpleStringProperty("");
         });

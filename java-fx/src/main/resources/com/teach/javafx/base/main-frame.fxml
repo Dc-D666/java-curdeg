@@ -12,6 +12,7 @@
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 <!-- 前端应用主框架FXML配置文件 对应页面交互控制类 com.teach.javafx.controller.base.MainFrameController -->
+<?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.TreeView?>
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.base.MainFrameController">
   <top>
@@ -19,22 +20,28 @@
       <menus>
         <Menu fx:id="menuHome" text="首页">
           <items>
-            <MenuItem fx:id="menuPostList" text="帖子列表" onAction="#onPostListMenuClick" />
+            <MenuItem text="帖子广场" onAction="#onPostSquareClick" />
           </items>
         </Menu>
-        <Menu fx:id="menuTool" text="工具">
+        <Menu fx:id="menuExportMenu" text="导出" visible="false">
           <items>
-            <MenuItem fx:id="menuNew" text="新建" onAction="#onNewMenuClick" />
-            <MenuItem fx:id="menuSave" text="保存" onAction="#onSaveMenuClick" />
-            <MenuItem fx:id="menuDelete" text="删除" onAction="#onDeleteMenuClick" />
-            <MenuItem fx:id="menuPrint" text="打印" onAction="#onPrintMenuClick" />
-            <MenuItem fx:id="menuImport" text="导入" onAction="#onImportMenuClick" />
-            <MenuItem fx:id="menuExport" text="导出" onAction="#onExportMenuClick" />
+            <MenuItem text="导出帖子数据" onAction="#onExportPostsClick" />
+            <MenuItem text="导出用户数据" onAction="#onExportUsersClick" />
+            <MenuItem text="导出统计报表" onAction="#onExportStatsClick" />
           </items>
         </Menu>
-        <Menu fx:id="menuMy" text="我的">
+        <Menu fx:id="menuSettings" text="设置">
           <items>
+            <MenuItem text="个人资料" onAction="#onProfileClick" />
+            <MenuItem text="修改密码" onAction="#onChangePasswordClick" />
+            <SeparatorMenuItem />
             <MenuItem fx:id="menuLogout" text="退出登录" onAction="#onLogoutMenuClick" />
+          </items>
+        </Menu>
+        <Menu fx:id="menuHelp" text="帮助">
+          <items>
+            <MenuItem text="关于" onAction="#onAboutClick" />
+            <MenuItem text="反馈与建议" onAction="#onFeedbackClick" />
           </items>
         </Menu>
         <Menu fx:id="menuSwitchAccount" text="切换账号" />

@@ -49,9 +49,29 @@
 - ✅ 个人资料编辑
 - ✅ 头像、昵称、个性签名
 - ✅ 密码修改（旧密码 + 绑定邮箱验证码 + 新密码确认）
-- ✅ 个人中心（我的帖子、我的收藏、我的关注、我的举报、我的通知）
+- ✅ 个人中心（我的帖子、我的收藏、我的关注、我的举报、我的通知、我的私信）
 - ✅ 隐私设置
 - ✅ 私信功能（互关用户可无限畅聊，非互关用户只能发送一条消息）
+- ✅ 反馈与建议功能
+
+### 管理功能
+
+- ✅ 帖子管理（置顶、加精、删除）
+- ✅ 板块管理
+- ✅ 用户管理
+- ✅ 举报审核处理（删除内容 / 驳回举报 / 清空违规资料）
+- ✅ 举报流程可视化
+- ✅ 内容审核管理（人工审核）
+- ✅ 审核历史记录查看
+- ✅ 数据统计分析（多维度统计、趋势图表、分布图、排行榜）
+- ✅ 数据导出功能（帖子/用户/统计，支持 CSV/Excel/JSON 格式）
+- ✅ 反馈管理
+
+### 界面优化
+
+- ✅ 菜单栏重新设计（首页、导出、设置、帮助、切换账号）
+- ✅ 通知页面美化（卡片式布局、Tab 切换、圆点指示器）
+- ✅ 关于页面（项目介绍、版本信息、GitHub 链接）
 
 ### 论坛功能
 
@@ -204,6 +224,9 @@
 | `menu_info`          | 菜单表           |
 | `email_verification` | 邮箱验证表         |
 | `statistics_day`     | 每日统计表         |
+| `feedback`           | 反馈表           |
+| `bbs_conversation`   | 私信会话表         |
+| `bbs_message`        | 私信消息表         |
 
 ### 数据库初始化脚本
 
@@ -235,7 +258,10 @@
 | `24_enhanced_statistics_support.sql`                    | 增强统计支持     |
 | `25_add_comment_like_table.sql`                         | 评论点赞表     |
 | `26_add_bbs_attachment_fields.sql`                      | 帖子与评论附件字段 |
-| `27_add_profile_report_support.sql`                     | 举报流程升级（资料卡举报快照） |
+| `27_add_profile_report_support.sql`               | 举报流程升级（资料卡举报快照） |
+| `28_system_summary_panel.sql`                    | 系统概览界面（可选优化） |
+| `29_private_message_feature.sql`                 | 私信功能（会话表+消息表） |
+| `30_private_message_menu.sql`                    | 私信功能菜单配置 |
 
 ***
 
@@ -482,6 +508,32 @@ java-curdeg/
 | GET  | `/api/bbs/statistics/violation-types`     | 违规类型分布          |
 | GET  | `/api/bbs/statistics/report-statistics`   | 举报统计            |
 
+### 数据导出相关（管理员）
+
+| 方法   | 路径                              | 说明                |
+| ---- | ------------------------------- | ----------------- |
+| POST | `/api/admin/export/posts`       | 导出帖子数据（支持范围、字段、格式选择） |
+| POST | `/api/admin/export/users`       | 导出用户数据（支持字段、格式选择） |
+| POST | `/api/admin/export/statistics`  | 导出统计数据（支持格式选择） |
+
+### 反馈相关
+
+| 方法   | 路径                              | 说明                |
+| ---- | ------------------------------- | ----------------- |
+| POST | `/api/bbs/feedback`             | 提交反馈（需要登录）      |
+| GET  | `/api/bbs/feedback/list`        | 获取我的反馈列表        |
+| GET  | `/api/admin/feedback/list`      | 获取全部反馈列表（管理员） |
+| POST | `/api/admin/feedback/{id}/handle` | 处理反馈（管理员）        |
+
+### 私信相关
+
+| 方法   | 路径                              | 说明                |
+| ---- | ------------------------------- | ----------------- |
+| GET  | `/api/bbs/conversation/list`    | 获取我的会话列表        |
+| POST | `/api/bbs/conversation/send`    | 发送私信（互关用户无限量、非互关仅1条） |
+| GET  | `/api/bbs/conversation/{conversationId}/messages` | 获取会话的消息列表 |
+| POST | `/api/bbs/conversation/{conversationId}/read` | 标记会话为已读 |
+
 
 ***
 
@@ -610,6 +662,24 @@ A: 请检查：
 ***
 
 ## 更新日志
+
+### v2.9 (2026-05-17) - 菜单栏重构、数据导出与反馈系统
+- 菜单栏重新设计：从旧的「首页/工具/我的/切换账号」改为「首页/导出/设置/帮助/切换账号」
+- 新增导出功能：管理员可导出帖子数据（支持范围/字段/格式选择）、用户数据、统计数据
+- 新增反馈系统：用户可提交反馈（类型/标题/描述/联系方式），管理员可查看并处理反馈
+- 新增关于页面：展示项目信息、版本号、团队信息、GitHub 链接
+- 通知页面美化：卡片式布局、Tab 切换（全部/未读/已读）、圆点指示器
+- 菜单栏功能完善：
+  - 首页：新增帖子广场入口
+  - 导出：管理员可见，支持导出帖子/用户/统计数据
+  - 设置：个人资料、修改密码、退出登录
+  - 帮助：关于、反馈与建议
+  - 切换账号：完整保留原有功能
+- 新增 SQL 脚本：`28_system_summary_panel.sql`、`29_private_message_feature.sql`、`30_private_message_menu.sql`
+- 新增后端模型与控制器：`Feedback`、`FeedbackService`、`FeedbackController`、`AdminFeedbackController`、`ExportController`
+- 新增前端对话框：`export-posts-dialog`、`export-users-dialog`、`export-stats-dialog`、`about-dialog`、`feedback-dialog`
+- 修复模块系统访问权限问题：新增 `com.teach.javafx.controller.dialog` 包的 `opens` 和 `exports` 配置
+- 修复导出 API：改为返回 `DataResponse`（Base64 编码），与项目其他 API 保持一致
 
 ### v2.8 (2026-05-19) - 私信功能与UI优化
 - 新增私信功能：用户之间可以发送私信进行一对一交流
