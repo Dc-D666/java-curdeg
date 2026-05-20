@@ -32,6 +32,20 @@ public class UserHomeController extends ToolController {
     @javafx.fxml.FXML
     private Label signatureLabel;
     @javafx.fxml.FXML
+    private Label genderLabel;
+    @javafx.fxml.FXML
+    private Label deptLabel;
+    @javafx.fxml.FXML
+    private Label birthdayLabel;
+    @javafx.fxml.FXML
+    private Label emailLabel;
+    @javafx.fxml.FXML
+    private Label phoneLabel;
+    @javafx.fxml.FXML
+    private Label addressLabel;
+    @javafx.fxml.FXML
+    private Label introduceLabel;
+    @javafx.fxml.FXML
     private Label postCountLabel;
     @javafx.fxml.FXML
     private Label followerCountLabel;
@@ -251,6 +265,30 @@ public class UserHomeController extends ToolController {
         }
         followingCountLabel.setText(followingCountText);
         
+        // 显示性别、学院、生日
+        String gender = (String) userData.get("personGender");
+        genderLabel.setText(gender != null && !gender.isBlank() ? gender : "未填写");
+        
+        String dept = (String) userData.get("personDept");
+        deptLabel.setText(dept != null && !dept.isBlank() ? dept : "未填写");
+        
+        String birthday = (String) userData.get("personBirthday");
+        birthdayLabel.setText(birthday != null && !birthday.isBlank() ? birthday : "未填写");
+        
+        // 显示邮箱、电话、地址
+        String email = (String) userData.get("personEmail");
+        emailLabel.setText(email != null && !email.isBlank() ? email : "未填写");
+        
+        String phone = (String) userData.get("personPhone");
+        phoneLabel.setText(phone != null && !phone.isBlank() ? phone : "未填写");
+        
+        String address = (String) userData.get("personAddress");
+        addressLabel.setText(address != null && !address.isBlank() ? address : "未填写");
+        
+        // 显示个人简介
+        String introduce = (String) userData.get("personIntroduce");
+        introduceLabel.setText(introduce != null && !introduce.isBlank() ? introduce : "未填写");
+        
         String avatarUrl = (String) userData.get("avatarUrl");
         if (avatarUrl != null && !avatarUrl.isBlank()) {
             try {
@@ -459,11 +497,6 @@ public class UserHomeController extends ToolController {
         Object totalPagesObj = result.get("totalPages");
         if (totalPagesObj instanceof Number) {
             totalPages = ((Number) totalPagesObj).intValue();
-        }
-        
-        Object numberObj = result.get("number");
-        if (numberObj instanceof Number) {
-            currentPage = ((Number) numberObj).intValue() + 1;
         }
         
         pageInfoLabel.setText("第 " + currentPage + " 页 / 共 " + totalPages + " 页");

@@ -128,7 +128,7 @@ public class PersonalProfileController extends ToolController {
     private static final Pattern URL_PATTERN = Pattern.compile("^(https?|ftp)://.*$|^/.*$");
 
     // 隐私选项的简化显示
-    private static final ObservableList<String> PRIVACY_OPTIONS = FXCollections.observableArrayList("公开", "仅关注可见", "私密");
+    private static final ObservableList<String> PRIVACY_OPTIONS = FXCollections.observableArrayList("公开", "仅互关可见", "私密");
     private static final ObservableList<String> PRIVACY_VALUES = FXCollections.observableArrayList("PUBLIC", "FOLLOWING", "PRIVATE");
 
     private void setupCircleAvatar() {
@@ -230,35 +230,50 @@ public class PersonalProfileController extends ToolController {
     }
 
     private void navigateToPage(String pageName, String title) {
-        PersonalCenterController centerController = AppStore.getPersonalCenterController();
-        if (centerController != null) {
-            // Navigate through PersonalCenterController
-            centerController.navigateByPage(pageName, title);
-        } else {
-            // Fallback to MainFrameController
-            MainFrameController mainFrameController = AppStore.getMainFrameController();
-            if (mainFrameController != null) {
-                mainFrameController.changeContent(pageName, title);
+        try {
+            PersonalCenterController centerController = AppStore.getPersonalCenterController();
+            if (centerController != null) {
+                // 优先通过 PersonalCenterController 导航
+                centerController.navigateByPage(pageName, title);
+            } else {
+                // 备用方案：直接通过 MainFrameController 导航
+                MainFrameController mainFrameController = AppStore.getMainFrameController();
+                if (mainFrameController != null) {
+                    mainFrameController.changeContent(pageName, title);
+                } else {
+                    showError("无法导航：找不到主窗口控制器");
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("导航失败：" + e.getMessage());
         }
     }
 
     private void setupStatsCardEvents() {
-        // 发帖数点击跳转到 myPosts
-        postCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            navigateToPage("my-posts", "我的帖子");
+        // 为每个统计卡片及其内部组件设置点击事件
+        setupCardClickHandler(postCountBox, "my-posts", "我的帖子");
+        setupCardClickHandler(followingCountBox, "my-following", "我的关注");
+        setupCardClickHandler(followerCountBox, "my-followers", "我的粉丝");
+    }
+    
+    private void setupCardClickHandler(javafx.scene.layout.VBox card, String pageName, String title) {
+        // 创建统一的点击事件处理器
+        javafx.event.EventHandler<MouseEvent> clickHandler = event -> {
+            event.consume();
+            navigateToPage(pageName, title);
+        };
+        
+        // 为 VBox 本身添加点击事件
+        card.addEventHandler(MouseEvent.MOUSE_CLICKED, clickHandler);
+        
+        // 为 VBox 内的所有子组件也添加点击事件，确保无论点击哪个位置都能响应
+        card.getChildren().forEach(child -> {
+            child.addEventHandler(MouseEvent.MOUSE_CLICKED, clickHandler);
         });
         
-        // 关注数点击跳转到 myFollowing
-        followingCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            navigateToPage("my-following", "我的关注");
-        });
-        
-        // 粉丝数点击跳转到 myFollowers
-        followerCountBox.addEventHandler(MouseEvent.MOUSE_CLICKED, event -> {
-            navigateToPage("my-followers", "我的粉丝");
-        });
-        
+        // 设置鼠标样式，让用户知道这些卡片是可点击的
+        card.setStyle("-fx-cursor: hand;");
     }
 
     private void loadUserData() {

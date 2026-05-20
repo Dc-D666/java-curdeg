@@ -29,6 +29,9 @@ public class BbsMessage {
     @Column(name = "content", columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 

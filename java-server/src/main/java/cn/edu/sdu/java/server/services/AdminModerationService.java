@@ -2,11 +2,13 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.BbsBoard;
+import cn.edu.sdu.java.server.models.BbsFollow;
 import cn.edu.sdu.java.server.models.BbsModerationLog;
 import cn.edu.sdu.java.server.models.BbsNotification;
 import cn.edu.sdu.java.server.models.BbsPost;
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.repositorys.BbsBoardRepository;
+import cn.edu.sdu.java.server.repositorys.BbsFollowRepository;
 import cn.edu.sdu.java.server.repositorys.BbsModerationLogRepository;
 import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
@@ -31,17 +33,20 @@ public class AdminModerationService {
     private final BbsModerationLogRepository bbsModerationLogRepository;
     private final UserRepository userRepository;
     private final BbsBoardRepository bbsBoardRepository;
+    private final BbsFollowRepository bbsFollowRepository;
 
     public AdminModerationService(BbsPostRepository bbsPostRepository,
                                   BbsNotificationRepository bbsNotificationRepository,
                                   BbsModerationLogRepository bbsModerationLogRepository,
                                   UserRepository userRepository,
-                                  BbsBoardRepository bbsBoardRepository) {
+                                  BbsBoardRepository bbsBoardRepository,
+                                  BbsFollowRepository bbsFollowRepository) {
         this.bbsPostRepository = bbsPostRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.bbsModerationLogRepository = bbsModerationLogRepository;
         this.userRepository = userRepository;
         this.bbsBoardRepository = bbsBoardRepository;
+        this.bbsFollowRepository = bbsFollowRepository;
     }
 
     public Page<BbsPost> getPendingPosts(Pageable pageable) {
@@ -92,6 +97,10 @@ public class AdminModerationService {
 
         String oldStatus = post.getModerationStatus();
         String newStatus = decision;
+        Integer oldPostStatus = post.getStatus();
+        
+        log.info("人工审核 - 帖子ID={}, 旧审核状态={}, 新审核状态={}, 旧帖子状态={}", 
+            postId, oldStatus, newStatus, oldPostStatus);
 
         post.setModerationStatus(newStatus);
         post.setModerationViolationLevel(violationLevel);
@@ -100,16 +109,81 @@ public class AdminModerationService {
         post.setModerationTime(DateTimeTool.parseDateTime(new java.util.Date()));
         post.setModeratorId(moderatorId);
 
+        // 处理状态变化和用户发帖数
         if ("reject".equals(newStatus)) {
             post.setStatus(0);
+            log.info("人工审核：帖子设为不可见（status=0）");
+            
+            // 如果之前是可见的，需要减少用户发帖数
+            if (oldPostStatus != null && oldPostStatus == 1) {
+                updateUserPostCount(post.getAuthorId().intValue(), -1);
+            }
         } else if ("pass".equals(newStatus)) {
             post.setStatus(1);
+            log.info("人工审核：帖子设为可见（status=1）");
+            
+            // 如果之前不是可见的，需要增加用户发帖数
+            if (oldPostStatus == null || oldPostStatus != 1) {
+                updateUserPostCount(post.getAuthorId().intValue(), 1);
+                // 发送关注者通知
+                sendFollowerNotifications(post);
+            }
         }
 
         bbsPostRepository.save(post);
 
         saveModerationLog(post, oldStatus, newStatus, violationLevel, violationType, remark, moderatorId);
         sendUserNotification(post, decision, remark);
+    }
+    
+    /**
+     * 更新用户发帖数
+     * @param userId 用户ID
+     * @param delta 变化量（+1 或 -1）
+     */
+    private void updateUserPostCount(Integer userId, int delta) {
+        try {
+            Optional<User> userOptional = userRepository.findById(userId);
+            if (userOptional.isPresent()) {
+                User user = userOptional.get();
+                int newCount = Math.max(0, (user.getPostCount() != null ? user.getPostCount() : 0) + delta);
+                user.setPostCount(newCount);
+                userRepository.save(user);
+                log.info("用户 {} 的发帖数更新为 {}", userId, newCount);
+            }
+        } catch (Exception e) {
+            log.error("更新用户发帖数失败", e);
+        }
+    }
+    
+    /**
+     * 向用户的关注者发送新帖子通知
+     */
+    private void sendFollowerNotifications(BbsPost post) {
+        try {
+            java.util.List<BbsFollow> followers = bbsFollowRepository.findByFollowingId(post.getAuthorId().intValue());
+            if (!followers.isEmpty()) {
+                Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
+                String authorNickname = authorOptional.map(User::getNickname).orElse("用户");
+                
+                java.util.List<BbsNotification> notifications = new java.util.ArrayList<>();
+                String notificationContent = String.format("用户【%s】发布帖子「%s」", authorNickname, post.getTitle());
+                
+                for (BbsFollow follow : followers) {
+                    BbsNotification notification = new BbsNotification();
+                    notification.setReceiverId(follow.getFollowerId().longValue());
+                    notification.setType(6);
+                    notification.setTitle("关注用户发帖通知");
+                    notification.setContent(notificationContent);
+                    notifications.add(notification);
+                }
+                
+                bbsNotificationRepository.saveAll(notifications);
+                log.info("已向 {} 位关注者发送通知", followers.size());
+            }
+        } catch (Exception e) {
+            log.error("发送关注者通知失败", e);
+        }
     }
 
     private void saveModerationLog(BbsPost post, String oldStatus, String newStatus,

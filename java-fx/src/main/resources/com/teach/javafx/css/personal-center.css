@@ -484,6 +484,20 @@ TextArea.form-input {
     -fx-padding: 4 0 0 0;
 }
 
+.stats-chart .chart-legend {
+    -fx-padding: 8 4 4 4;
+    -fx-min-width: 800;
+    -fx-pref-width: 2000;
+    -fx-max-width: 10000;
+}
+
+.stats-chart .chart-legend > * {
+    -fx-pref-wrap-length: 100000;
+    -fx-min-width: 800;
+    -fx-pref-width: 2000;
+    -fx-max-width: 10000;
+}
+
 .stats-chart .chart-plot-background {
     -fx-background-color: #f8fafc;
 }
@@ -536,4 +550,19 @@ TextArea.form-input {
 .stats-table .table-cell {
     -fx-text-fill: #334155;
     -fx-padding: 9 10;
+}
+
+.profile-info-row {
+    -fx-padding: 6 0;
+}
+
+.profile-info-label {
+    -fx-font-size: 13px;
+    -fx-text-fill: #64748b;
+}
+
+.profile-info-value {
+    -fx-font-size: 13px;
+    -fx-text-fill: #374151;
+    -fx-font-weight: 500;
 }

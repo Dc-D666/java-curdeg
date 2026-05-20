@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class BbsUserService {
 
@@ -590,7 +592,10 @@ public class BbsUserService {
         if (currentUserId == null) {
             return CommonMethod.getReturnMessageError("用户未登录");
         }
+        return getUserPosts(currentUserId, dataRequest);
+    }
 
+    public DataResponse getUserPosts(Integer userId, DataRequest dataRequest) {
         Integer pageNum = dataRequest.getInteger("pageNum");
         Integer pageSize = dataRequest.getInteger("pageSize");
 
@@ -602,7 +607,7 @@ public class BbsUserService {
         }
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
-        Page<BbsPost> postPage = bbsPostRepository.findByAuthorIdAndStatusOrderByCreateTimeDesc(currentUserId.longValue(), 1, pageable);
+        Page<BbsPost> postPage = bbsPostRepository.findMyVisibleAndRejectedPosts(userId.longValue(), pageable);
 
         for (BbsPost post : postPage.getContent()) {
             Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
@@ -860,5 +865,37 @@ public class BbsUserService {
         }
 
         return CommonMethod.getReturnData(userProfile);
+    }
+    
+    /**
+     * 修复用户发帖数与实际帖子数量不一致的问题
+     * 此方法会遍历所有用户，重新计算他们的有效帖子数量（status=1）
+     */
+    @Transactional
+    public DataResponse fixPostCountInconsistency() {
+        log.info("开始修复用户发帖数不一致问题...");
+        
+        int fixedCount = 0;
+        List<User> allUsers = userRepository.findAll();
+        
+        for (User user : allUsers) {
+            int currentCount = user.getPostCount() != null ? user.getPostCount() : 0;
+            long actualCount = bbsPostRepository.countByAuthorIdAndStatus(user.getPersonId().longValue(), 1);
+            
+            if (currentCount != actualCount) {
+                log.info("用户 {} (ID: {}) 发帖数不一致: 记录数={}, 实际数={}", 
+                    user.getNickname(), user.getPersonId(), currentCount, actualCount);
+                user.setPostCount((int) actualCount);
+                userRepository.save(user);
+                fixedCount++;
+            }
+        }
+        
+        log.info("修复完成，共修复了 {} 个用户的发帖数", fixedCount);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalUsers", allUsers.size());
+        result.put("fixedUsers", fixedCount);
+        return CommonMethod.getReturnData(result);
     }
 }

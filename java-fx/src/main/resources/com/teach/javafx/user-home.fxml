@@ -59,6 +59,59 @@
                                                 </VBox>
                                             </children>
                                         </HBox>
+
+                                        <HBox spacing="12.0" styleClass="profile-info-row">
+                                            <children>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="性别：" />
+                                                        <Label fx:id="genderLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="学院：" />
+                                                        <Label fx:id="deptLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="生日：" />
+                                                        <Label fx:id="birthdayLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </HBox>
+
+                                        <HBox spacing="12.0" styleClass="profile-info-row">
+                                            <children>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="邮箱：" />
+                                                        <Label fx:id="emailLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="电话：" />
+                                                        <Label fx:id="phoneLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                                <HBox spacing="4.0">
+                                                    <children>
+                                                        <Label styleClass="profile-info-label" text="地址：" />
+                                                        <Label fx:id="addressLabel" styleClass="profile-info-value" />
+                                                    </children>
+                                                </HBox>
+                                            </children>
+                                        </HBox>
+
+                                        <HBox styleClass="profile-info-row">
+                                            <children>
+                                                <Label styleClass="profile-info-label" text="个人简介：" />
+                                                <Label fx:id="introduceLabel" styleClass="profile-info-value" wrapText="true" HBox.hgrow="ALWAYS" />
+                                            </children>
+                                        </HBox>
                                     </children>
                                 </VBox>
 

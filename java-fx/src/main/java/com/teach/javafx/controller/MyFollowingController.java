@@ -15,55 +15,55 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-public class MyFollowersController extends ToolController {
+public class MyFollowingController extends ToolController {
     @FXML
-    private TableView<Map<String, Object>> followerTableView;
+    private TableView<Map<String, Object>> followingTableView;
     @FXML
-    private TableColumn<Map<String, Object>, ImageView> followerAvatarColumn;
+    private TableColumn<Map<String, Object>, ImageView> followingAvatarColumn;
     @FXML
-    private TableColumn<Map<String, Object>, String> followerNicknameColumn;
+    private TableColumn<Map<String, Object>, String> followingNicknameColumn;
     @FXML
-    private TableColumn<Map<String, Object>, String> followerSignatureColumn;
+    private TableColumn<Map<String, Object>, String> followingSignatureColumn;
     @FXML
-    private TableColumn<Map<String, Object>, Integer> followerPostCountColumn;
+    private TableColumn<Map<String, Object>, Integer> followingPostCountColumn;
     @FXML
-    private TableColumn<Map<String, Object>, Integer> followerFollowerCountColumn;
+    private TableColumn<Map<String, Object>, Integer> followingFollowerCountColumn;
     @FXML
-    private TableColumn<Map<String, Object>, String> followerTimeColumn;
+    private TableColumn<Map<String, Object>, String> followingTimeColumn;
     @FXML
-    private TableColumn<Map<String, Object>, Button> followerActionColumn;
+    private TableColumn<Map<String, Object>, Button> followingActionColumn;
     @FXML
-    private Label followerTotalLabel;
+    private Label followingTotalLabel;
     @FXML
-    private Label followerPageInfoLabel;
+    private Label followingPageInfoLabel;
     @FXML
-    private Button followerPrevButton;
+    private Button followingPrevButton;
     @FXML
-    private Button followerNextButton;
+    private Button followingNextButton;
     @FXML
-    private Button followerRefreshButton;
+    private Button followingRefreshButton;
 
-    private int followerCurrentPageNum = 1;
+    private int followingCurrentPageNum = 1;
     private int currentPageSize = 10;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     @FXML
     public void initialize() {
-        setupFollowerTable();
+        setupFollowingTable();
         
-        loadFollowers();
+        loadFollowing();
         
-        followerPrevButton.setOnAction(event -> onFollowerPrevPage());
-        followerNextButton.setOnAction(event -> onFollowerNextPage());
+        followingPrevButton.setOnAction(event -> onFollowingPrevPage());
+        followingNextButton.setOnAction(event -> onFollowingNextPage());
         
-        followerRefreshButton.setOnAction(event -> {
-            followerCurrentPageNum = 1;
-            loadFollowers(followerRefreshButton);
+        followingRefreshButton.setOnAction(event -> {
+            followingCurrentPageNum = 1;
+            loadFollowing(followingRefreshButton);
         });
     }
 
-    private void setupFollowerTable() {
-        followerAvatarColumn.setCellFactory(col -> new TableCell<Map<String, Object>, ImageView>() {
+    private void setupFollowingTable() {
+        followingAvatarColumn.setCellFactory(col -> new TableCell<Map<String, Object>, ImageView>() {
             private final ImageView imageView = new ImageView();
             {
                 imageView.setFitHeight(50);
@@ -80,7 +80,7 @@ public class MyFollowersController extends ToolController {
                 }
             }
         });
-        followerAvatarColumn.setCellValueFactory(cellData -> {
+        followingAvatarColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             String avatarUrl = (String) user.get("avatarUrl");
             if (avatarUrl == null || avatarUrl.isBlank()) {
@@ -95,12 +95,12 @@ public class MyFollowersController extends ToolController {
             return new javafx.beans.property.SimpleObjectProperty<>(imageView);
         });
 
-        followerNicknameColumn.setCellValueFactory(cellData -> {
+        followingNicknameColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             return new javafx.beans.property.SimpleStringProperty((String) user.get("nickname"));
         });
 
-        followerSignatureColumn.setCellValueFactory(cellData -> {
+        followingSignatureColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             String signature = (String) user.get("signature");
             if (signature != null && signature.length() > 20) {
@@ -109,19 +109,19 @@ public class MyFollowersController extends ToolController {
             return new javafx.beans.property.SimpleStringProperty(signature != null ? signature : "");
         });
 
-        followerPostCountColumn.setCellValueFactory(cellData -> {
+        followingPostCountColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             Object postCount = user.get("postCount");
             return new javafx.beans.property.SimpleIntegerProperty(toInt(postCount)).asObject();
         });
 
-        followerFollowerCountColumn.setCellValueFactory(cellData -> {
+        followingFollowerCountColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             Object followerCount = user.get("followerCount");
             return new javafx.beans.property.SimpleIntegerProperty(toInt(followerCount)).asObject();
         });
 
-        followerTimeColumn.setCellValueFactory(cellData -> {
+        followingTimeColumn.setCellValueFactory(cellData -> {
             Map<String, Object> user = cellData.getValue();
             Object followTime = user.get("followTime");
             if (followTime != null) {
@@ -135,10 +135,10 @@ public class MyFollowersController extends ToolController {
             return new javafx.beans.property.SimpleStringProperty("");
         });
 
-        followerActionColumn.setCellFactory(col -> new TableCell<Map<String, Object>, Button>() {
-            private final Button button = new Button("关注");
+        followingActionColumn.setCellFactory(col -> new TableCell<Map<String, Object>, Button>() {
+            private final Button button = new Button("取消关注");
             {
-                button.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+                button.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white;");
                 button.setOnAction(event -> {
                     Map<String, Object> user = getTableView().getItems().get(getIndex());
                     toggleFollow(user);
@@ -150,26 +150,17 @@ public class MyFollowersController extends ToolController {
                 if (empty) {
                     setGraphic(null);
                 } else {
-                    Map<String, Object> user = getTableView().getItems().get(getIndex());
-                    Boolean isFollowed = (Boolean) user.get("isFollowed");
-                    if (isFollowed != null && isFollowed) {
-                        button.setText("取消关注");
-                        button.setStyle("-fx-background-color: #ff6b6b; -fx-text-fill: white;");
-                    } else {
-                        button.setText("关注");
-                        button.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
-                    }
                     setGraphic(button);
                 }
             }
         });
     }
 
-    public void loadFollowers() {
-        loadFollowers(null);
+    public void loadFollowing() {
+        loadFollowing(null);
     }
 
-    private void loadFollowers(Button refreshBtn) {
+    private void loadFollowing(Button refreshBtn) {
         if (refreshBtn != null) {
             refreshBtn.setDisable(true);
             refreshBtn.setText("刷新中");
@@ -178,7 +169,7 @@ public class MyFollowersController extends ToolController {
         Task<PageResult<Map<String, Object>>> task = new Task<PageResult<Map<String, Object>>>() {
             @Override
             protected PageResult<Map<String, Object>> call() {
-                return HttpRequestUtil.getMyFollowerPage(followerCurrentPageNum, currentPageSize);
+                return HttpRequestUtil.getMyFollowingPage(followingCurrentPageNum, currentPageSize);
             }
         };
 
@@ -191,16 +182,16 @@ public class MyFollowersController extends ToolController {
                 
                 PageResult<Map<String, Object>> pageResult = task.getValue();
                 if (pageResult != null && pageResult.getList() != null) {
-                    followerTableView.getItems().clear();
-                    followerTableView.getItems().addAll(pageResult.getList());
+                    followingTableView.getItems().clear();
+                    followingTableView.getItems().addAll(pageResult.getList());
                     
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    followerTotalLabel.setText("共 " + total + " 条");
-                    followerPageInfoLabel.setText("第 " + followerCurrentPageNum + " 页");
+                    followingTotalLabel.setText("共 " + total + " 条");
+                    followingPageInfoLabel.setText("第 " + followingCurrentPageNum + " 页");
                     
-                    followerPrevButton.setDisable(followerCurrentPageNum <= 1);
+                    followingPrevButton.setDisable(followingCurrentPageNum <= 1);
                     int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    followerNextButton.setDisable(followerCurrentPageNum >= totalPages);
+                    followingNextButton.setDisable(followingCurrentPageNum >= totalPages);
                 }
             });
         });
@@ -211,23 +202,23 @@ public class MyFollowersController extends ToolController {
                     refreshBtn.setDisable(false);
                     refreshBtn.setText("刷新");
                 }
-                showError("加载粉丝列表失败");
+                showError("加载关注列表失败");
             });
         });
 
         new Thread(task).start();
     }
 
-    public void onFollowerPrevPage() {
-        if (followerCurrentPageNum > 1) {
-            followerCurrentPageNum--;
-            loadFollowers();
+    public void onFollowingPrevPage() {
+        if (followingCurrentPageNum > 1) {
+            followingCurrentPageNum--;
+            loadFollowing();
         }
     }
 
-    public void onFollowerNextPage() {
-        followerCurrentPageNum++;
-        loadFollowers();
+    public void onFollowingNextPage() {
+        followingCurrentPageNum++;
+        loadFollowing();
     }
 
     private void toggleFollow(Map<String, Object> user) {
@@ -242,7 +233,7 @@ public class MyFollowersController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
-                loadFollowers();
+                loadFollowing();
             });
         });
 

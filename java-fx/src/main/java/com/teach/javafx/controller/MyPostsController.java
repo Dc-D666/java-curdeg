@@ -9,6 +9,7 @@ import com.teach.javafx.request.HttpRequestUtil;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.paint.Color;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseButton;
@@ -26,6 +27,8 @@ public class MyPostsController extends ToolController {
     private TableColumn<Post, String> boardColumn;
     @FXML
     private TableColumn<Post, String> createTimeColumn;
+    @FXML
+    private TableColumn<Post, String> violationStatusColumn;
     @FXML
     private TableColumn<Post, Integer> likeCountColumn;
     @FXML
@@ -64,6 +67,34 @@ public class MyPostsController extends ToolController {
                 return new javafx.beans.property.SimpleStringProperty(dateFormat.format(cellData.getValue().getCreateTime()));
             }
             return new javafx.beans.property.SimpleStringProperty("");
+        });
+        violationStatusColumn.setCellValueFactory(cellData -> {
+            Post post = cellData.getValue();
+            if (isReportedDownPost(post)) {
+                return new javafx.beans.property.SimpleStringProperty("举报下架");
+            }
+            String statusText = post != null ? post.getModerationStatusText() : "";
+            return new javafx.beans.property.SimpleStringProperty(statusText);
+        });
+        violationStatusColumn.setCellFactory(column -> new TableCell<Post, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null || item.isBlank()) {
+                    setText(null);
+                    setTextFill(Color.BLACK);
+                    return;
+                }
+                setText(item);
+                Post post = getTableRow() == null ? null : getTableRow().getItem();
+                if (isReportedDownPost(post) || "reject".equals(post.getModerationStatus())) {
+                    setTextFill(Color.RED);
+                } else if ("pass".equals(post.getModerationStatus())) {
+                    setTextFill(Color.GREEN);
+                } else {
+                    setTextFill(Color.ORANGE);
+                }
+            }
         });
         
         likeCountColumn.setCellValueFactory(new PropertyValueFactory<>("likeCount"));
@@ -179,5 +210,10 @@ public class MyPostsController extends ToolController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private boolean isReportedDownPost(Post post) {
+        return post != null && post.getStatus() != null && post.getStatus() == 0
+                && "reject".equals(post.getModerationStatus());
     }
 }
