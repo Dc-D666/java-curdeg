@@ -61,12 +61,18 @@ public class HttpRequestUtil {
                 System.out.println("response.statusCode===="+response.statusCode());
                 if (response.statusCode() == 200) {
                     JwtResponse jwt = gson.fromJson(response.body(), JwtResponse.class);
+                    if (jwt == null || jwt.getToken() == null || jwt.getToken().isBlank()) {
+                        AppStore.setJwt(null);
+                        return "用户名或密码错误！";
+                    }
                     AppStore.setJwt(jwt);
                     return null;
                 } else if (response.statusCode() == 401) {
-                    return "用户名或密码不存在！";
+                    AppStore.setJwt(null);
+                    return "用户名或密码错误！";
                 }
             } catch (IOException | InterruptedException e) {
+                AppStore.setJwt(null);
                 e.printStackTrace();
             }
         return "登录失败";
@@ -1824,7 +1830,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return "修改密码失败";
     }
 
-    public static Map<String, Object> getMyFollowingPage(int pageNum, int pageSize) {
+    public static PageResult<Map<String, Object>> getMyFollowingPage(int pageNum, int pageSize) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/follow/my-following/page?pageNum=" + pageNum + "&pageSize=" + pageSize))
                 .GET()
@@ -1839,8 +1845,8 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             System.out.println("getMyFollowingPage response: " + response.body());
             if (response.statusCode() == 200) {
-                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
-                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                Type responseType = new TypeToken<DataResponse<PageResult<Map<String, Object>>>>(){}.getType();
+                DataResponse<PageResult<Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
                 if (dataResponse.getCode() == 0) {
                     return dataResponse.getData();
                 }
@@ -1851,7 +1857,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return null;
     }
 
-    public static Map<String, Object> getMyFollowerPage(int pageNum, int pageSize) {
+    public static PageResult<Map<String, Object>> getMyFollowerPage(int pageNum, int pageSize) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/follow/my-follower/page?pageNum=" + pageNum + "&pageSize=" + pageSize))
                 .GET()
@@ -1866,8 +1872,8 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
             System.out.println("getMyFollowerPage response: " + response.body());
             if (response.statusCode() == 200) {
-                Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
-                DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
+                Type responseType = new TypeToken<DataResponse<PageResult<Map<String, Object>>>>(){}.getType();
+                DataResponse<PageResult<Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
                 if (dataResponse.getCode() == 0) {
                     return dataResponse.getData();
                 }
@@ -2981,7 +2987,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
     }
 
     public static Map<String, Object> getUserPosts(Integer userId, int pageNum, int pageSize) {
-        String url = serverUrl + "/api/bbs/post/user/" + userId + "?pageNum=" + pageNum + "&pageSize=" + pageSize;
+        String url = serverUrl + "/api/bbs/user/" + userId + "/posts?pageNum=" + pageNum + "&pageSize=" + pageSize;
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()

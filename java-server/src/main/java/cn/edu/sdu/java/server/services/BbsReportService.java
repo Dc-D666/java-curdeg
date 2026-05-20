@@ -273,22 +273,26 @@ public class BbsReportService {
             Optional<BbsPost> postOptional = bbsPostRepository.findById(report.getTargetId());
             if (postOptional.isPresent()) {
                 BbsPost post = postOptional.get();
-                if (post.getStatus() == 1) {
-                    post.setStatus(0);
-                    bbsPostRepository.saveAndFlush(post);
+                boolean wasVisible = post.getStatus() != null && post.getStatus() == 1;
+                post.setStatus(0);
+                post.setModerationStatus("reject");
+                post.setModerationViolationLevel("一般");
+                post.setModerationViolationType("举报处理");
+                post.setModerationRemark("举报成立，内容已删除。处理备注：" + safeRemark(report.getHandleRemark()));
+                post.setModerationTime(cn.edu.sdu.java.server.util.DateTimeTool.parseDateTime(new java.util.Date()));
+                bbsPostRepository.saveAndFlush(post);
 
-                    if (post.getAuthorId() != null) {
-                        Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
-                        if (authorOptional.isPresent()) {
-                            User author = authorOptional.get();
-                            if (author.getPostCount() > 0) {
-                                author.setPostCount(author.getPostCount() - 1);
-                                userRepository.saveAndFlush(author);
-                            }
-                            createNotification(author.getPersonId().longValue(), 2, postTitle, 
-                                "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
-                                (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
+                if (post.getAuthorId() != null) {
+                    Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
+                    if (authorOptional.isPresent()) {
+                        User author = authorOptional.get();
+                        if (wasVisible && author.getPostCount() > 0) {
+                            author.setPostCount(author.getPostCount() - 1);
+                            userRepository.saveAndFlush(author);
                         }
+                        createNotification(author.getPersonId().longValue(), 2, postTitle, 
+                            "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
+                            (report.getHandleRemark() != null ? report.getHandleRemark() : "无"));
                     }
                 }
             }

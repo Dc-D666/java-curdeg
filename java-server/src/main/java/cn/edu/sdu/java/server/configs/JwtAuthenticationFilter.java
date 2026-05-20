@@ -90,7 +90,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             logger.info(url + "," +username+"," + startTime+ "," + requestTime);
         } catch (Exception exception) {
             exception.printStackTrace();
-            handlerExceptionResolver.resolveException(request, response, null, exception);
+            SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":1,\"msg\":\"未登录或登录已失效\"}");
         }
     }
 }

@@ -9,6 +9,7 @@ import cn.edu.sdu.java.server.repositorys.BbsFollowRepository;
 import cn.edu.sdu.java.server.repositorys.BbsMessageRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.CommonMethod;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +22,18 @@ public class BbsMessageService {
     private final BbsMessageRepository messageRepository;
     private final UserRepository userRepository;
     private final BbsFollowRepository followRepository;
+    private final ObjectMapper objectMapper;
 
     public BbsMessageService(BbsConversationRepository conversationRepository,
                             BbsMessageRepository messageRepository,
                             UserRepository userRepository,
-                            BbsFollowRepository followRepository) {
+                            BbsFollowRepository followRepository,
+                            ObjectMapper objectMapper) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
+        this.objectMapper = objectMapper;
     }
 
     private void fillUserBasicInfo(Map<String, Object> userMap, User user) {
@@ -165,6 +169,7 @@ public class BbsMessageService {
             msgMap.put("receiverId", msg.getReceiverId());
             msgMap.put("messageType", msg.getMessageType());
             msgMap.put("content", msg.getContent());
+            msgMap.put("imageUrl", msg.getImageUrl());
             msgMap.put("isRead", msg.getIsRead());
             msgMap.put("createTime", msg.getCreateTime());
             msgMap.put("isOwnMessage", msg.getSenderId().equals(currentUserId));
@@ -218,7 +223,20 @@ public class BbsMessageService {
             if (existingMessages > 0) {
                 Map<String, Object> result = new HashMap<>();
                 result.put("canSend", false);
-                result.put("message", "对方还没有关注你，你只能发送一条消息");
+                // 根据单向关注情况返回不同的提示文案
+                boolean currentUserFollowsOther = followRepository.existsByFollowerIdAndFollowingId(currentUserId, otherUserId);
+                boolean otherFollowsCurrentUser = followRepository.existsByFollowerIdAndFollowingId(otherUserId, currentUserId);
+                
+                if (currentUserFollowsOther && !otherFollowsCurrentUser) {
+                    // 当前用户关注了对方，但对方未回关
+                    result.put("message", "对方还没有关注你，你只能发送一条消息");
+                } else if (!currentUserFollowsOther && otherFollowsCurrentUser) {
+                    // 对方关注了当前用户，但当前用户未回关
+                    result.put("message", "你还没有回关对方，只能发送一条消息");
+                } else {
+                    // 双方都未互相关注（单向关系情况之外的其他情况）
+                    result.put("message", "你们还没有互相关注，只能发送一条消息");
+                }
                 return CommonMethod.getReturnData(result);
             }
         }
@@ -229,6 +247,20 @@ public class BbsMessageService {
         message.setReceiverId(otherUserId);
         message.setMessageType(messageType != null ? messageType : "text");
         message.setContent(content);
+        // 如果图片URL在content中（JSON格式），则解析出来单独存储
+        if (content != null && content.contains("\"imageUrl\"")) {
+            try {
+                Map<String, Object> json = objectMapper.readValue(content, Map.class);
+                if (json.get("imageUrl") != null) {
+                    message.setImageUrl(String.valueOf(json.get("imageUrl")));
+                }
+                if (json.get("text") != null) {
+                    message.setContent(String.valueOf(json.get("text")));
+                }
+            } catch (Exception e) {
+                // 解析失败，保持原content
+            }
+        }
         message.setIsRead(false);
         message = messageRepository.saveAndFlush(message);
 

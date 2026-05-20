@@ -136,6 +136,18 @@ public class BbsPostService {
         }
 
         BbsPost post = postOptional.get();
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAuthor = currentUserId != null && post.getAuthorId() != null
+                && post.getAuthorId().equals(currentUserId.longValue());
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+
+        if (post.getStatus() == null || post.getStatus() != 1) {
+            boolean ownerOrAdminCanViewRejectedPost = (isAdmin || isAuthor) && "reject".equals(post.getModerationStatus());
+            if (!ownerOrAdminCanViewRejectedPost) {
+                return CommonMethod.getReturnMessageError("帖子已下架");
+            }
+        }
         
         // 增加浏览量
         post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
@@ -247,32 +259,8 @@ public class BbsPostService {
             }
         });
 
-        // 暂时先不更新用户发帖数，等AI审核通过后再更新（或者由AI审核通过后再处理）
-        // if (!hasSevereWord) {
-            user.setPostCount(user.getPostCount() + 1);
-            userRepository.saveAndFlush(user);
-            
-            try {
-                List<BbsFollow> followers = bbsFollowRepository.findByFollowingId(currentUserId);
-                if (!followers.isEmpty()) {
-                    List<BbsNotification> notifications = new ArrayList<>();
-                    String authorNickname = user.getNickname();
-                    String notificationContent = String.format("用户【%s】发布帖子", authorNickname);
-                    
-                    for (BbsFollow follow : followers) {
-                        BbsNotification notification = new BbsNotification();
-                        notification.setReceiverId(follow.getFollowerId().longValue());
-                        notification.setType(6);
-                        notification.setTitle("关注用户发帖通知");
-                        notification.setContent(notificationContent);
-                        notifications.add(notification);
-                    }
-                    
-                    bbsNotificationRepository.saveAll(notifications);
-                }
-            } catch (Exception e) {
-            }
-        // }  // 注释掉敏感词库判断结束
+        // 不立即更新用户发帖数，等AI审核通过后再处理
+        // 通知功能也等审核通过后再发送，避免发送违规内容的通知
 
         fillPostAuthorInfo(post);
 

@@ -32,8 +32,7 @@
         </Menu>
         <Menu fx:id="menuSettings" text="设置">
           <items>
-            <MenuItem text="个人资料" onAction="#onProfileClick" />
-            <MenuItem text="修改密码" onAction="#onChangePasswordClick" />
+            <MenuItem text="系统设置" onAction="#onSystemSettingsClick" />
             <SeparatorMenuItem />
             <MenuItem fx:id="menuLogout" text="退出登录" onAction="#onLogoutMenuClick" />
           </items>

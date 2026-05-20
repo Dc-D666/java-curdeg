@@ -81,4 +81,15 @@ public class BbsUserController {
     public DataResponse getUserProfile(@PathVariable Integer userId) {
         return bbsUserService.getUserProfile(userId);
     }
+
+    @GetMapping("/{userId}/posts")
+    public DataResponse getUserPosts(@PathVariable Integer userId, @Valid DataRequest dataRequest) {
+        return bbsUserService.getUserPosts(userId, dataRequest);
+    }
+    
+    @PostMapping("/fix-post-count")
+    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_SUPER')")
+    public DataResponse fixPostCount() {
+        return bbsUserService.fixPostCountInconsistency();
+    }
 }

@@ -1,7 +1,11 @@
 package com.teach.javafx;
 
+import com.teach.javafx.models.AppSettings;
+import com.teach.javafx.util.BackgroundStyle;
+import com.teach.javafx.util.SettingsManager;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
@@ -18,7 +22,7 @@ public class MainApplication extends Application {
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/login-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 320, 240);
-//        scene.getStylesheets().add(getClass().getResource("css/styles.css").toExternalForm());
+        applyTheme(scene);
         stage.setTitle("学生交流社区");
         stage.setScene(scene);
         stage.show();
@@ -30,6 +34,31 @@ public class MainApplication extends Application {
             }
         });
         mainStage = stage;
+    }
+
+    private static void applyTheme(Scene scene) {
+        Parent root = scene.getRoot();
+        if (root.getStyleClass().contains(BackgroundStyle.BACKGROUND_STYLE_CLASS)) {
+            if (root.getStyle() == null || !root.getStyle().contains("-fx-background-image")) {
+                root.setStyle(BackgroundStyle.appBackground());
+            }
+            return;
+        }
+
+        AppSettings settings = SettingsManager.getCurrentSettings();
+        String theme = settings.getTheme();
+        
+        if ("深色主题".equals(theme)) {
+            root.setStyle("-fx-base: #1e1e1e; -fx-background: #1e1e1e; -fx-control-inner-background: #2d2d2d; -fx-text-fill: #d4d4d4;");
+        } else {
+            root.setStyle("");
+        }
+    }
+
+    public static void applyCurrentTheme() {
+        if (mainStage != null && mainStage.getScene() != null) {
+            applyTheme(mainStage.getScene());
+        }
     }
 
     public static void resetStage(String name, Scene scene) {
@@ -44,6 +73,7 @@ public class MainApplication extends Application {
             mainStage.setY(0);
         }
         mainStage.setTitle(name);
+        applyTheme(scene);
         mainStage.setScene(scene);
         if (maximize) {
             mainStage.setMaximized(true);
@@ -64,6 +94,7 @@ public class MainApplication extends Application {
         stageWidth = mainStage.getWidth();
         stageHeight = mainStage.getHeight();
         mainStage.setTitle(name);
+        applyTheme(scene);
         mainStage.setScene(scene);
         double x = (stageWidth - 320) / 2;
         double y = (stageHeight - 240) / 2;
@@ -80,6 +111,13 @@ public class MainApplication extends Application {
 
     public static Stage getMainStage() {
         return mainStage;
+    }
+
+    public static Scene getMainScene() {
+        if (mainStage != null) {
+            return mainStage.getScene();
+        }
+        return null;
     }
 
     public static void setCanClose(boolean canClose) {

@@ -3,6 +3,7 @@ package com.teach.javafx.controller.base;
 import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.request.*;
+import com.teach.javafx.util.BackgroundStyle;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -43,7 +44,8 @@ public class LoginController {
         
 //        vbox.setId("min");  // id选择器 #
 //        vbox.getStyleClass().add("min");  类选择器 .
-        vbox.setStyle("-fx-background-image: url('shanda1.jpg'); -fx-background-repeat: no-repeat; -fx-background-size: cover;");  //inline选择器
+        vbox.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
+        vbox.setStyle(BackgroundStyle.appBackground());
 //        loginButton.setStyle("-fx-background-color: red; -fx-text-fill: white;");
         
         usernameField.setOnKeyPressed(event -> {
@@ -78,6 +80,10 @@ public class LoginController {
         String msg = HttpRequestUtil.login(loginRequest);
         if(msg != null) {
             MessageDialog.showDialog( msg);
+            return;
+        }
+        if (!AppStore.isAuthenticated()) {
+            MessageDialog.showDialog("登录状态无效，请重新登录");
             return;
         }
         saveCredentials();

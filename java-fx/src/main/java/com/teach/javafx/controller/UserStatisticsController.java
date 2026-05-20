@@ -1,5 +1,7 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
+import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.request.HttpRequestUtil;
 import javafx.application.Platform;
@@ -19,17 +21,19 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Region;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public class UserStatisticsController extends ToolController {
     private static final double WHEEL_STEP_PX = 120.0;
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @FXML
     private ScrollPane mainScrollPane;
@@ -136,6 +140,37 @@ public class UserStatisticsController extends ToolController {
         contentTrendYAxis.setForceZeroInRange(true);
         interactionTrendYAxis.setForceZeroInRange(true);
         postStatusYAxis.setForceZeroInRange(true);
+        contentTrendXAxis.setLabel("日期");
+        interactionTrendXAxis.setLabel("日期");
+        
+        contentTrendChart.setLegendSide(javafx.geometry.Side.BOTTOM);
+        interactionTrendChart.setLegendSide(javafx.geometry.Side.BOTTOM);
+        interactionPieChart.setLegendSide(javafx.geometry.Side.BOTTOM);
+        postStatusChart.setLegendSide(javafx.geometry.Side.BOTTOM);
+    }
+    
+    private void updateLegendLayout() {
+        Platform.runLater(() -> {
+            setupLegendLayout(contentTrendChart);
+            setupLegendLayout(interactionTrendChart);
+            setupLegendLayout(interactionPieChart);
+            setupLegendLayout(postStatusChart);
+        });
+    }
+    
+    private void setupLegendLayout(javafx.scene.chart.Chart chart) {
+        javafx.scene.Node legend = chart.lookup(".chart-legend");
+        if (legend != null) {
+            if (legend instanceof javafx.scene.layout.FlowPane flowPane) {
+                // 设置非常大的包装长度，强制所有项目在一行
+                flowPane.setPrefWrapLength(100000);
+                flowPane.setHgap(15);
+                flowPane.setVgap(0);
+                flowPane.setMinWidth(800);
+                flowPane.setPrefWidth(2000);
+                flowPane.setMaxWidth(10000);
+            }
+        }
     }
 
     private void setupTable() {
@@ -148,6 +183,42 @@ public class UserStatisticsController extends ToolController {
         heatColumn.setCellValueFactory(data -> new SimpleIntegerProperty(data.getValue().heat()));
         createTimeColumn.setCellValueFactory(data -> new SimpleStringProperty(data.getValue().createTime()));
         topPostTableView.setItems(topPostRows);
+        
+        topPostTableView.setRowFactory(tv -> {
+            TableRow<TopPostRow> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1 && !row.isEmpty()) {
+                    TopPostRow post = row.getItem();
+                    openPostDetail(post.postId());
+                }
+            });
+            return row;
+        });
+    }
+
+    private void openPostDetail(Long postId) {
+        if (postId != null && AppStore.getMainFrameController() != null) {
+            try {
+                javafx.fxml.FXMLLoader fxmlLoader = new javafx.fxml.FXMLLoader(MainApplication.class.getResource("post-detail.fxml"));
+                javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
+                PostDetailController controller = fxmlLoader.getController();
+                controller.setPostId(postId);
+                
+                String tabName = "post-detail-" + postId;
+                AppStore.getMainFrameController().changeContentWithScene(tabName, "帖子详情", scene, controller);
+            } catch (Exception e) {
+                e.printStackTrace();
+                showError("打开帖子详情失败");
+            }
+        }
+    }
+
+    private void showError(String message) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        alert.setTitle("错误");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void loadUserStatistics() {
@@ -198,6 +269,15 @@ public class UserStatisticsController extends ToolController {
         updateTrends(asMap(statistics.get("trends")));
         updateDistribution(asMap(statistics.get("distribution")), overview);
         updateTopPosts(asList(statistics.get("topPosts")));
+        
+        // 分多次延迟应用图例布局，确保在界面渲染稳定后生效
+        Platform.runLater(() -> updateLegendLayout());
+        javafx.animation.PauseTransition pause1 = new javafx.animation.PauseTransition(javafx.util.Duration.millis(50));
+        pause1.setOnFinished(event -> updateLegendLayout());
+        pause1.play();
+        javafx.animation.PauseTransition pause2 = new javafx.animation.PauseTransition(javafx.util.Duration.millis(200));
+        pause2.setOnFinished(event -> updateLegendLayout());
+        pause2.play();
     }
 
     private void updateWithEmptyData() {
@@ -233,24 +313,42 @@ public class UserStatisticsController extends ToolController {
         contentTrendChart.getData().clear();
         interactionTrendChart.getData().clear();
 
-        addLineSeries(contentTrendChart, "发帖", asList(trends.get("postTrend")));
-        addLineSeries(contentTrendChart, "评论", asList(trends.get("commentTrend")));
+        List<String> last30Days = generateLast30Days();
+        
+        addLineSeriesWithFullData(contentTrendChart, "发帖", asList(trends.get("postTrend")), last30Days);
+        addLineSeriesWithFullData(contentTrendChart, "评论", asList(trends.get("commentTrend")), last30Days);
 
-        addLineSeries(interactionTrendChart, "获赞", asList(trends.get("receivedLikeTrend")));
-        addLineSeries(interactionTrendChart, "被收藏", asList(trends.get("favoriteTrend")));
-        addLineSeries(interactionTrendChart, "新增粉丝", asList(trends.get("followTrend")));
+        addLineSeriesWithFullData(interactionTrendChart, "获赞", asList(trends.get("receivedLikeTrend")), last30Days);
+        addLineSeriesWithFullData(interactionTrendChart, "被收藏", asList(trends.get("favoriteTrend")), last30Days);
+        addLineSeriesWithFullData(interactionTrendChart, "新增粉丝", asList(trends.get("followTrend")), last30Days);
     }
 
-    private void addLineSeries(LineChart<String, Number> chart, String name, List<Map<String, Object>> data) {
+    private List<String> generateLast30Days() {
+        List<String> dates = new ArrayList<>();
+        LocalDate today = LocalDate.now();
+        for (int i = 29; i >= 0; i--) {
+            dates.add(today.minusDays(i).format(DATE_FORMATTER));
+        }
+        return dates;
+    }
+
+    private void addLineSeriesWithFullData(LineChart<String, Number> chart, String name, List<Map<String, Object>> data, List<String> allDates) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName(name);
+        
+        Map<String, Integer> dataMap = new HashMap<>();
         for (Map<String, Object> item : data) {
             String date = getString(item, "date");
-            if (date.length() > 5) {
-                date = date.substring(5);
-            }
-            series.getData().add(new XYChart.Data<>(date, getInt(item, "count")));
+            int count = getInt(item, "count");
+            dataMap.put(date, count);
         }
+        
+        for (String date : allDates) {
+            int count = dataMap.getOrDefault(date, 0);
+            String displayDate = date.length() > 5 ? date.substring(5) : date;
+            series.getData().add(new XYChart.Data<>(displayDate, count));
+        }
+        
         if (series.getData().isEmpty()) {
             series.getData().add(new XYChart.Data<>("暂无", 0));
         }
@@ -307,6 +405,7 @@ public class UserStatisticsController extends ToolController {
         for (Map<String, Object> post : posts) {
             topPostRows.add(new TopPostRow(
                     rank++,
+                    getLong(post, "id"),
                     getString(post, "title"),
                     getInt(post, "viewCount"),
                     getInt(post, "likeCount"),
@@ -355,6 +454,21 @@ public class UserStatisticsController extends ToolController {
         return 0;
     }
 
+    private long getLong(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value != null) {
+            try {
+                return Long.parseLong(value.toString());
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
     private String getString(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value == null ? "" : value.toString();
@@ -381,6 +495,7 @@ public class UserStatisticsController extends ToolController {
 
     public record TopPostRow(
             int rank,
+            Long postId,
             String title,
             int viewCount,
             int likeCount,

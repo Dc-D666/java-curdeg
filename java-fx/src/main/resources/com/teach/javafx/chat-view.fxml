@@ -37,7 +37,7 @@
             <children>
                 <HBox fx:id="warningBox" alignment="CENTER_LEFT" spacing="8.0" visible="false">
                     <children>
-                        <Label style="-fx-text-fill: #faad14; -fx-font-size: 12px;" text="⚠️" />
+                        <Label style="-fx-text-fill: #faad14; -fx-font-size: 14px;" text="&#x26A0;" />
                         <Label fx:id="warningLabel" style="-fx-text-fill: #faad14; -fx-font-size: 12px;" text="对方还没有关注你，你只能发送一条消息" />
                     </children>
                 </HBox>

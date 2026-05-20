@@ -14,6 +14,9 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,13 +108,7 @@ public class MyMessagesController extends ToolController {
         avatar.setPreserveRatio(true);
         avatar.setStyle("-fx-background-radius: 25;");
 
-        try {
-            String fullUrl = avatarUrl.startsWith("http") ? avatarUrl : HttpRequestUtil.serverUrl + avatarUrl;
-            Image image = new Image(fullUrl, true);
-            avatar.setImage(image);
-        } catch (Exception e) {
-            avatar.setImage(new Image(DEFAULT_AVATAR_URL));
-        }
+        loadAvatar(avatar, avatarUrl);
 
         VBox infoBox = new VBox();
         infoBox.setSpacing(4);
@@ -177,12 +174,54 @@ public class MyMessagesController extends ToolController {
             if (timeStr.contains(" ")) {
                 String[] parts = timeStr.split(" ");
                 if (parts.length >= 2) {
-                    return parts[1].substring(0, 5);
+                    String datePart = parts[0];
+                    String timePart = parts[1].substring(0, 5);
+                    
+                    String[] dateParts = datePart.split("-");
+                    if (dateParts.length >= 3) {
+                        int year = Integer.parseInt(dateParts[0]);
+                        int month = Integer.parseInt(dateParts[1]);
+                        int day = Integer.parseInt(dateParts[2]);
+                        
+                        LocalDate today = LocalDate.now();
+                        LocalDate yesterday = today.minusDays(1);
+                        LocalDate msgDate = LocalDate.of(year, month, day);
+                        
+                        if (msgDate.equals(today)) {
+                            return timePart;
+                        } else if (msgDate.equals(yesterday)) {
+                            return "昨天";
+                        } else if (msgDate.getYear() == today.getYear()) {
+                            return month + "月" + day + "日";
+                        } else {
+                            return year + "/" + month + "/" + day;
+                        }
+                    }
+                    return timePart;
                 }
             }
             return timeStr.substring(0, Math.min(16, timeStr.length()));
         } catch (Exception e) {
             return timeStr;
+        }
+    }
+
+    private void loadAvatar(ImageView imageView, String avatarUrl) {
+        try {
+            String fullUrl = avatarUrl.startsWith("http") ? avatarUrl : HttpRequestUtil.serverUrl + avatarUrl;
+            Image image = new Image(fullUrl, true);
+            
+            image.errorProperty().addListener((observable, oldValue, newValue) -> {
+                if (newValue) {
+                    Platform.runLater(() -> {
+                        imageView.setImage(new Image(DEFAULT_AVATAR_URL));
+                    });
+                }
+            });
+            
+            imageView.setImage(image);
+        } catch (Exception e) {
+            imageView.setImage(new Image(DEFAULT_AVATAR_URL));
         }
     }
 

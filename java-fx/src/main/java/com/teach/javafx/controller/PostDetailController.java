@@ -108,17 +108,15 @@ public class PostDetailController extends ToolController {
     @FXML
     private Button reportButton;
     @FXML
-    private MenuButton moreButton;
+    private Button editButton;
     @FXML
-    private MenuItem editMenuItem;
+    private Button deleteButton;
     @FXML
-    private MenuItem deleteMenuItem;
+    private Button topButton;
     @FXML
-    private MenuItem topMenuItem;
+    private Button featureButton;
     @FXML
-    private MenuItem featureMenuItem;
-    @FXML
-    private MenuItem summaryMenuItem;
+    private Button summaryButton;
     @FXML
     private Button addImageButton;
     @FXML
@@ -188,11 +186,11 @@ public class PostDetailController extends ToolController {
         cancelReplyButton.setOnAction(event -> clearReplyTarget());
         editViolationButton.setOnAction(event -> openEditDialog());
         
-        editMenuItem.setOnAction(event -> openEditDialog());
-        deleteMenuItem.setOnAction(event -> deletePost());
-        topMenuItem.setOnAction(event -> toggleTop());
-        featureMenuItem.setOnAction(event -> toggleFeature());
-        summaryMenuItem.setOnAction(event -> handleSummary());
+        editButton.setOnAction(event -> openEditDialog());
+        deleteButton.setOnAction(event -> deletePost());
+        topButton.setOnAction(event -> toggleTop());
+        featureButton.setOnAction(event -> toggleFeature());
+        summaryButton.setOnAction(event -> handleSummary());
         
         submitCommentButton.setVisible(false);
         likeButton.setVisible(false);
@@ -202,7 +200,11 @@ public class PostDetailController extends ToolController {
         followButton.setVisible(false);
         addImageButton.setVisible(false);
         addAttachmentButton.setVisible(false);
-        moreButton.setVisible(false);
+        editButton.setVisible(false);
+        deleteButton.setVisible(false);
+        topButton.setVisible(false);
+        featureButton.setVisible(false);
+        summaryButton.setVisible(false);
         refreshCommentImagePreview();
         refreshCommentAttachmentPreview();
     }
@@ -484,20 +486,18 @@ public class PostDetailController extends ToolController {
         followButton.setVisible(false);
         addImageButton.setVisible(false);
         addAttachmentButton.setVisible(false);
-        moreButton.setVisible(false);
-        editMenuItem.setVisible(false);
-        deleteMenuItem.setVisible(false);
-        topMenuItem.setVisible(false);
-        featureMenuItem.setVisible(false);
-        summaryMenuItem.setVisible(false);
+        editButton.setVisible(false);
+        deleteButton.setVisible(false);
+        topButton.setVisible(false);
+        featureButton.setVisible(false);
+        summaryButton.setVisible(false);
         
         // 如果是违规帖，只显示编辑和删除菜单（给作者和管理员）
         if (isRejected) {
             boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
             if (canEditDelete) {
-                moreButton.setVisible(true);
-                editMenuItem.setVisible(true);
-                deleteMenuItem.setVisible(true);
+                editButton.setVisible(true);
+                deleteButton.setVisible(true);
             }
         } else {
             // 正常显示按钮和菜单
@@ -510,28 +510,23 @@ public class PostDetailController extends ToolController {
             addImageButton.setVisible(isLoggedIn && !isBanned);
             addAttachmentButton.setVisible(isLoggedIn && !isBanned);
             
-            boolean hasMoreOptions = false;
             boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
             if (canEditDelete) {
-                editMenuItem.setVisible(true);
-                deleteMenuItem.setVisible(true);
-                hasMoreOptions = true;
+                editButton.setVisible(true);
+                deleteButton.setVisible(true);
             }
             if (isAdmin) {
-                topMenuItem.setVisible(true);
-                featureMenuItem.setVisible(true);
-                hasMoreOptions = true;
+                topButton.setVisible(true);
+                featureButton.setVisible(true);
             }
             if (isLoggedIn && !isBanned) {
-                summaryMenuItem.setVisible(true);
-                hasMoreOptions = true;
+                summaryButton.setVisible(true);
             }
-            moreButton.setVisible(hasMoreOptions);
         }
     }
     
     private void handleSummary() {
-        summaryMenuItem.setDisable(true);
+        summaryButton.setDisable(true);
         aiSummaryProgress.setVisible(true);
         aiSummaryPane.setExpanded(true);
         postSummaryContentLabel.setText("正在总结中，请稍后......");
@@ -577,7 +572,7 @@ public class PostDetailController extends ToolController {
                     showError("获取总结失败，请稍后重试");
                 }
                 aiSummaryProgress.setVisible(false);
-                summaryMenuItem.setDisable(false);
+                summaryButton.setDisable(false);
             });
         });
 
@@ -585,7 +580,7 @@ public class PostDetailController extends ToolController {
             Platform.runLater(() -> {
                 showError("获取总结失败，请稍后重试");
                 aiSummaryProgress.setVisible(false);
-                summaryMenuItem.setDisable(false);
+                summaryButton.setDisable(false);
             });
         });
 

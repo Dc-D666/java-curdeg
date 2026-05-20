@@ -29,6 +29,10 @@ public class AppStore {
         AppStore.jwt = jwt;
     }
 
+    public static boolean isAuthenticated() {
+        return jwt != null && jwt.getToken() != null && !jwt.getToken().isBlank();
+    }
+
     public static MainFrameController getMainFrameController() {
         return mainFrameController;
     }

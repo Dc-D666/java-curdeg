@@ -7,14 +7,13 @@ import lombok.Setter;
 
 import java.util.*;
 
-/*
- * DataRequest 请求参数数据类
- * Map data 保存前端请求参数的Map集合
- */
 @Getter
 @Setter
 public class DataRequest {
     private Map<String,Object> data;
+    
+    private Integer pageNum;
+    private Integer pageSize;
 
     public DataRequest() {
         data = new HashMap<>();
@@ -89,6 +88,13 @@ public class DataRequest {
     }
 
     public Integer getInteger(String key) {
+        if ("pageNum".equals(key) && pageNum != null) {
+            return pageNum;
+        }
+        if ("pageSize".equals(key) && pageSize != null) {
+            return pageSize;
+        }
+        
         if(data == null)
             return null;
         Object obj = data.get(key);
@@ -100,14 +106,10 @@ public class DataRequest {
             return ((Double)obj).intValue();
         if(obj instanceof Long)
             return ((Long)obj).intValue();
-        String str = obj.toString();
-        try {
-            return (int)Double.parseDouble(str);
-        }catch(Exception e) {
-            return null;
-        }
+        return null;
     }
-    public Long getLong(String key) {
+
+    public Long getLong(String key){
         if(data == null)
             return null;
         Object obj = data.get(key);
@@ -115,19 +117,14 @@ public class DataRequest {
             return null;
         if(obj instanceof Long)
             return (Long)obj;
-        if(obj instanceof Double)
-            return ((Double)obj).longValue();
         if(obj instanceof Integer)
             return ((Integer)obj).longValue();
-        String str = obj.toString();
-        try {
-            return Long.parseLong(str);
-        }catch(Exception e) {
-            return null;
-        }
+        if(obj instanceof Double)
+            return ((Double)obj).longValue();
+        return null;
     }
 
-    public Double getDouble(String key) {
+    public Double getDouble(String key){
         if(data == null)
             return null;
         Object obj = data.get(key);
@@ -135,39 +132,92 @@ public class DataRequest {
             return null;
         if(obj instanceof Double)
             return (Double)obj;
-        String str = obj.toString();
-        try {
-            return Double.parseDouble(str);
-        }catch(Exception e) {
+        if(obj instanceof Integer)
+            return ((Integer)obj).doubleValue();
+        if(obj instanceof Long)
+            return ((Long)obj).doubleValue();
+        return null;
+    }
+
+    public Date getDate(String key){
+        if(data == null)
             return null;
+        Object obj = data.get(key);
+        if(obj == null)
+            return null;
+        if(obj instanceof Date)
+            return (Date)obj;
+        if(obj instanceof String){
+            return DateTimeTool.formatDateTime((String)obj, "yyyy-MM-dd HH:mm:ss");
+        }
+        return null;
+    }
+
+    public void setInteger(String key, Integer value){
+        if(data != null){
+            data.put(key,value);
         }
     }
-    public Date getDate( String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Date)
-            return (Date)obj;
-        String str = obj.toString();
-        return DateTimeTool.formatDateTime(str,"yyyy-MM-dd");
-    }
-    public Date getTime(String key) {
-        Object obj = data.get(key);
-        if(obj == null)
-            return null;
-        if(obj instanceof Date)
-            return (Date)obj;
-        String str = obj.toString();
-        return DateTimeTool.formatDateTime(str,"yyyy-MM-dd HH:mm:ss");
-    }
-    public Integer getCurrentPage(){
-        Integer cPage = this.getInteger("currentPage");
-        if(cPage != null && cPage >0 )
-            cPage = cPage -1;
-        else
-            cPage = 0;
-        return cPage;
 
+    public void setString(String key, String value){
+        if(data != null){
+            data.put(key,value);
+        }
     }
 
+    public void setLong(String key, Long value){
+        if(data != null){
+            data.put(key,value);
+        }
+    }
+
+    public void setDouble(String key, Double value){
+        if(data != null){
+            data.put(key,value);
+        }
+    }
+
+    public void setDate(String key, Date value){
+        if(data != null){
+            data.put(key,value);
+        }
+    }
+
+    public boolean contains(String key){
+        if(data == null)
+            return false;
+        return data.containsKey(key);
+    }
+
+    public void remove(String key){
+        if(data != null){
+            data.remove(key);
+        }
+    }
+
+    public int size(){
+        if(data == null)
+            return 0;
+        return data.size();
+    }
+
+    public Set<String> keySet(){
+        if(data == null)
+            return new HashSet<>();
+        return data.keySet();
+    }
+
+    public boolean isEmpty(){
+        if(data == null)
+            return true;
+        return data.isEmpty();
+    }
+
+    public Integer getCurrentPage() {
+        Integer page = getInteger("currentPage");
+        if (page == null || page < 0) {
+            return 0;
+        }
+        return page;
+    }
 }

@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -44,8 +45,13 @@ public class SecurityConfiguration {
                         authz -> {
                             try {
                                 authz
-                                        .requestMatchers("/api/auth/**").permitAll()
-                                        .requestMatchers("/api/bbs/**").permitAll()
+                                        .requestMatchers(
+                                                "/api/auth/login",
+                                                "/api/auth/getValidateCode",
+                                                "/api/auth/testValidateInfo",
+                                                "/api/auth/sendEmailCode",
+                                                "/api/auth/registerUser"
+                                        ).permitAll()
                                         .requestMatchers("/api/**").authenticated()
                                         .anyRequest().permitAll();
                             } catch (Exception e) {
@@ -53,11 +59,21 @@ public class SecurityConfiguration {
                             }
                         }
                 );
+        http.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedEntryPoint()));
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         http.authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    AuthenticationEntryPoint unauthorizedEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":1,\"msg\":\"未登录或登录已失效\"}");
+        };
     }
 
     @Bean

@@ -22,6 +22,7 @@ import javafx.scene.input.MouseEvent;
 import com.teach.javafx.request.DataRequest;
 import com.teach.javafx.request.DataResponse;
 import com.teach.javafx.request.LoginRequest;
+import com.teach.javafx.util.BackgroundStyle;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -164,6 +165,7 @@ public class MainFrameController {
         }
         menuTree.setRoot(root);
         menuTree.setShowRoot(false);
+        menuTree.setCellFactory(treeView -> new com.teach.javafx.util.NotificationTreeCell());
         menuTree.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>(){
             public void handle(MouseEvent event){
                 Node node = event.getPickResult().getIntersectedNode();
@@ -193,9 +195,14 @@ public class MainFrameController {
     }
     @FXML
     public void initialize() {
+        if (!AppStore.isAuthenticated()) {
+            Platform.runLater(this::logout);
+            return;
+        }
         handler =new ChangePanelHandler();
         contentTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
-        contentTabPane.setStyle("-fx-background-image: url('shanda1.jpg'); -fx-background-repeat: no-repeat; -fx-background-size: cover;");
+        contentTabPane.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
+        contentTabPane.setStyle(BackgroundStyle.appBackground());
         
         unreadNotificationLabel.setOnMouseClicked(event -> {
             changeContent("my-notification", "我的通知");
@@ -245,6 +252,13 @@ public class MainFrameController {
         new Thread(task).start();
         
         loadUnreadNotificationCount();
+        
+        com.teach.javafx.util.NotificationCounter.setOnCountChangedCallback(() -> {
+            if (menuTree != null) {
+                menuTree.refresh();
+            }
+        });
+        com.teach.javafx.util.NotificationCounter.startAutoRefresh();
 
         String role = AppStore.getJwt().getRole();
         boolean isAdmin = "ROLE_SUPER".equals(role) || "ROLE_ADMIN".equals(role);
@@ -291,7 +305,13 @@ public class MainFrameController {
         logout();
     }
 
+    @FXML
+    protected void onSystemSettingsClick(ActionEvent event) {
+        changeContent("system-settings", "系统设置");
+    }
+
     protected void logout(){
+        com.teach.javafx.util.NotificationCounter.stopAutoRefresh();
         AppStore.setJwt(null);
         AppStore.setMainFrameController(null);
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/login-view.fxml"));
@@ -336,12 +356,6 @@ public class MainFrameController {
         String actualName = camelToKebab(name);
         System.out.println("Looking for: " + actualName + ".fxml");
         
-        // Map "my-following" to "my-followers" since they share the same FXML
-        String fxmlName = actualName;
-        if ("my-following".equals(actualName)) {
-            fxmlName = "my-followers";
-        }
-        
         if(actualName == null || actualName.length() == 0)
             return;
         Tab tab = tabMap.get(actualName);
@@ -350,7 +364,7 @@ public class MainFrameController {
         if(tab == null) {
             content = contentMap.get(actualName);
             if(content == null) {
-                String resourcePath = fxmlName + ".fxml";
+                String resourcePath = actualName + ".fxml";
                 System.out.println("Trying to load: " + resourcePath);
                 System.out.println("Current class: " + MainApplication.class.getName());
                 System.out.println("ClassLoader: " + MainApplication.class.getClassLoader());
@@ -840,6 +854,10 @@ public class MainFrameController {
         String errorMsg = HttpRequestUtil.login(loginRequest);
         if (errorMsg != null) {
             MessageDialog.showDialog(errorMsg);
+            return;
+        }
+        if (!AppStore.isAuthenticated()) {
+            MessageDialog.showDialog("登录状态无效，请重新登录");
             return;
         }
         sceneMap.clear();

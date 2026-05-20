@@ -28,6 +28,7 @@
                 <TableColumn fx:id="contentColumn" prefWidth="300.0" text="内容摘要"/>
                 <TableColumn fx:id="boardColumn" prefWidth="100.0" text="板块"/>
                 <TableColumn fx:id="createTimeColumn" prefWidth="150.0" text="发布时间"/>
+                <TableColumn fx:id="violationStatusColumn" prefWidth="100.0" text="违规状态"/>
                 <TableColumn fx:id="likeCountColumn" prefWidth="80.0" text="点赞数"/>
                 <TableColumn fx:id="commentCountColumn" prefWidth="80.0" text="评论数"/>
             </columns>

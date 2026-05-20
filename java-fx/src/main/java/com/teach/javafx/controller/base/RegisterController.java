@@ -4,6 +4,7 @@ import com.teach.javafx.AppStore;
 import com.teach.javafx.MainApplication;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.request.LoginRequest;
+import com.teach.javafx.util.BackgroundStyle;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.fxml.FXML;
@@ -46,7 +47,8 @@ public class RegisterController {
 
     @FXML
     public void initialize() {
-        vbox.setStyle("-fx-background-image: url('shanda1.jpg'); -fx-background-repeat: no-repeat; -fx-background-size: cover;");
+        vbox.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
+        vbox.setStyle(BackgroundStyle.appBackground());
         
         studentIdField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
@@ -199,6 +201,10 @@ public class RegisterController {
         String loginMsg = HttpRequestUtil.login(loginRequest);
         if (loginMsg != null) {
             MessageDialog.showDialog(loginMsg);
+            return;
+        }
+        if (!AppStore.isAuthenticated()) {
+            MessageDialog.showDialog("登录状态无效，请重新登录");
             return;
         }
 

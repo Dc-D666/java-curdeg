@@ -8,30 +8,6 @@
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane fx:controller="com.teach.javafx.controller.PersonalCenterController" styleClass="personal-center-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
-   <left>
-      <VBox spacing="10.0" styleClass="personal-sidebar">
-         <padding>
-            <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
-         </padding>
-         <children>
-            <Label styleClass="personal-sidebar-title" text="个人中心" />
-            <Button fx:id="profileButton" mnemonicParsing="false" onAction="#onProfile" prefWidth="180.0" styleClass="nav-button" text="个人资料" />
-            <Button fx:id="myPostsButton" mnemonicParsing="false" onAction="#onMyPosts" prefWidth="180.0" styleClass="nav-button" text="我的帖子" />
-            <Button fx:id="myFavoritesButton" mnemonicParsing="false" onAction="#onMyFavorites" prefWidth="180.0" styleClass="nav-button" text="我的收藏" />
-            <Button fx:id="myFollowingButton" mnemonicParsing="false" onAction="#onMyFollowing" prefWidth="180.0" styleClass="nav-button" text="我的关注" />
-            <Button fx:id="myFollowersButton" mnemonicParsing="false" onAction="#onMyFollowers" prefWidth="180.0" styleClass="nav-button" text="我的粉丝" />
-            <Button fx:id="myMessagesButton" mnemonicParsing="false" onAction="#onMyMessages" prefWidth="180.0" styleClass="nav-button" text="我的私信">
-               <graphic>
-                  <VBox alignment="CENTER" spacing="0">
-                     <Label fx:id="unreadBadge" text="" style="-fx-background-color: #ff4d4f; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 10; -fx-min-width: 18; -fx-alignment: center; -fx-visible: false;" />
-                  </VBox>
-               </graphic>
-            </Button>
-            <Button fx:id="statisticsButton" mnemonicParsing="false" onAction="#onStatistics" prefWidth="180.0" styleClass="nav-button" text="数据统计" />
-            <Button fx:id="changePasswordButton" mnemonicParsing="false" onAction="#onPasswordChange" prefWidth="180.0" styleClass="nav-button" text="修改密码" />
-         </children>
-      </VBox>
-   </left>
    <center>
       <StackPane fx:id="contentStackPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" styleClass="profile-content" />
    </center>
