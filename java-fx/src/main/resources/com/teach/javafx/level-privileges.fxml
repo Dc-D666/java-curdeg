@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="profile-scroll-pane" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.LevelPrivilegesController">
+    <content>
+        <VBox spacing="18.0" styleClass="profile-page">
+            <padding>
+                <Insets bottom="28.0" left="28.0" right="28.0" top="24.0" />
+            </padding>
+            <children>
+                <!-- 当前等级信息 -->
+                <VBox spacing="14.0" styleClass="profile-card">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                            <children>
+                                <Label styleClass="section-title" text="我的等级特权" />
+                                <ProgressIndicator fx:id="loadingIndicator" prefHeight="24.0" prefWidth="24.0" visible="false" />
+                            </children>
+                        </HBox>
+
+                        <HBox alignment="CENTER_LEFT" spacing="18.0">
+                            <children>
+                                <ImageView fx:id="currentLevelIcon" fitHeight="64.0" fitWidth="64.0" preserveRatio="true" />
+                                <VBox alignment="CENTER_LEFT" spacing="6.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                        <Label fx:id="currentLevelName" styleClass="profile-title" text="--" />
+                                        <Label fx:id="currentPointsLabel" styleClass="profile-subtitle" text="--" />
+                                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                                            <children>
+                                                <Region fx:id="progressBarBg" HBox.hgrow="ALWAYS" maxWidth="300" minHeight="8" style="-fx-background-color: #f0f0f0; -fx-background-radius: 4;" />
+                                            </children>
+                                        </HBox>
+                                        <Label fx:id="nextLevelInfo" styleClass="profile-subtitle" text="--" />
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+
+                        <!-- 当前特权列表 -->
+                        <VBox fx:id="currentPrivilegesBox" spacing="8.0">
+                            <children>
+                                <Label styleClass="profile-info-label" text="当前特权：" />
+                            </children>
+                        </VBox>
+                    </children>
+                </VBox>
+
+                <!-- 等级列表 -->
+                <VBox spacing="14.0" styleClass="profile-card">
+                    <children>
+                        <Label styleClass="section-title" text="等级体系" />
+                        <VBox fx:id="levelListBox" spacing="10.0">
+                            <padding>
+                                <Insets bottom="6.0" left="2.0" right="2.0" top="2.0" />
+                            </padding>
+                        </VBox>
+                    </children>
+                </VBox>
+            </children>
+        </VBox>
+    </content>
+</ScrollPane>

@@ -23,17 +23,20 @@ public class BbsMessageService {
     private final UserRepository userRepository;
     private final BbsFollowRepository followRepository;
     private final ObjectMapper objectMapper;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public BbsMessageService(BbsConversationRepository conversationRepository,
                             BbsMessageRepository messageRepository,
                             UserRepository userRepository,
                             BbsFollowRepository followRepository,
-                            ObjectMapper objectMapper) {
+                            ObjectMapper objectMapper,
+                            LevelPrivilegeService levelPrivilegeService) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.objectMapper = objectMapper;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     private void fillUserBasicInfo(Map<String, Object> userMap, User user) {
@@ -219,8 +222,21 @@ public class BbsMessageService {
 
         boolean isMutualFollow = checkMutualFollow(currentUserId, otherUserId);
         if (!isMutualFollow) {
+            Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+            int messageLimit = 1;
+            if (currentUserOpt.isPresent()) {
+                messageLimit = levelPrivilegeService.getPrivateMessageLimit(currentUserOpt.get().getLevel());
+            }
+            
+            if (messageLimit <= 0) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("canSend", false);
+                result.put("message", "您当前等级不具备私信权限");
+                return CommonMethod.getReturnData(result);
+            }
+            
             long existingMessages = messageRepository.countMessagesBetweenUsers(currentUserId, otherUserId);
-            if (existingMessages > 0) {
+            if (existingMessages >= messageLimit) {
                 Map<String, Object> result = new HashMap<>();
                 result.put("canSend", false);
                 // 根据单向关注情况返回不同的提示文案
@@ -228,14 +244,11 @@ public class BbsMessageService {
                 boolean otherFollowsCurrentUser = followRepository.existsByFollowerIdAndFollowingId(otherUserId, currentUserId);
                 
                 if (currentUserFollowsOther && !otherFollowsCurrentUser) {
-                    // 当前用户关注了对方，但对方未回关
-                    result.put("message", "对方还没有关注你，你只能发送一条消息");
+                    result.put("message", "对方还没有关注你，你只能发送" + messageLimit + "条消息");
                 } else if (!currentUserFollowsOther && otherFollowsCurrentUser) {
-                    // 对方关注了当前用户，但当前用户未回关
-                    result.put("message", "你还没有回关对方，只能发送一条消息");
+                    result.put("message", "你还没有回关对方，只能发送" + messageLimit + "条消息");
                 } else {
-                    // 双方都未互相关注（单向关系情况之外的其他情况）
-                    result.put("message", "你们还没有互相关注，只能发送一条消息");
+                    result.put("message", "你们还没有互相关注，只能发送" + messageLimit + "条消息");
                 }
                 return CommonMethod.getReturnData(result);
             }

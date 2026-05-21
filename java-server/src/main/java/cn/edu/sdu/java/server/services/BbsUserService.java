@@ -33,13 +33,16 @@ public class BbsUserService {
     private final BbsFollowRepository bbsFollowRepository;
     private final BbsBoardRepository bbsBoardRepository;
     private final EmailVerificationService emailVerificationService;
+    private final PointService pointService;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public BbsUserService(UserRepository userRepository, PersonRepository personRepository,
                           UserTypeRepository userTypeRepository, PasswordEncoder passwordEncoder,
                           BbsPostRepository bbsPostRepository, BbsFavoriteRepository bbsFavoriteRepository,
                           BbsLikeRepository bbsLikeRepository, BbsCommentRepository bbsCommentRepository,
                           BbsFollowRepository bbsFollowRepository, BbsBoardRepository bbsBoardRepository,
-                          EmailVerificationService emailVerificationService) {
+                          EmailVerificationService emailVerificationService, PointService pointService,
+                          LevelPrivilegeService levelPrivilegeService) {
         this.userRepository = userRepository;
         this.personRepository = personRepository;
         this.userTypeRepository = userTypeRepository;
@@ -51,6 +54,8 @@ public class BbsUserService {
         this.bbsFollowRepository = bbsFollowRepository;
         this.bbsBoardRepository = bbsBoardRepository;
         this.emailVerificationService = emailVerificationService;
+        this.pointService = pointService;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]{6,20}$");
@@ -126,6 +131,8 @@ public class BbsUserService {
         user.setCommentCount(0);
         user.setViolationCount(0);
         user.setIsBanned(false);
+        user.setPoints(0);
+        user.setLevel(0);
 
         userRepository.saveAndFlush(user);
 
@@ -173,6 +180,33 @@ public class BbsUserService {
         }
 
         return CommonMethod.getReturnData(user);
+    }
+
+    public User getUserById(Integer userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (userOptional.isEmpty()) {
+            throw new RuntimeException("用户不存在");
+        }
+        return userOptional.get();
+    }
+
+    private double calculateProfileCompletion(User user) {
+        int filled = 0;
+        int total = 10;
+        if (user.getNickname() != null && !user.getNickname().isBlank()) filled++;
+        if (user.getAvatarUrl() != null && !user.getAvatarUrl().isBlank()) filled++;
+        if (user.getSignature() != null && !user.getSignature().isBlank()) filled++;
+        Person person = user.getPerson();
+        if (person != null) {
+            if (person.getName() != null && !person.getName().isBlank()) filled++;
+            if (person.getDept() != null && !person.getDept().isBlank()) filled++;
+            if (person.getGender() != null && !person.getGender().isBlank()) filled++;
+            if (person.getBirthday() != null && !person.getBirthday().isBlank()) filled++;
+            if (person.getEmail() != null && !person.getEmail().isBlank()) filled++;
+            if (person.getPhone() != null && !person.getPhone().isBlank()) filled++;
+            if (person.getAddress() != null && !person.getAddress().isBlank()) filled++;
+        }
+        return (double) filled / total * 100;
     }
 
     @Transactional
@@ -371,7 +405,27 @@ public class BbsUserService {
             user.setIntroducePrivacy(person.getIntroducePrivacy());
         }
 
-        userRepository.saveAndFlush(user);
+        // 资料完善度检查（先标记，不在此处发放积分）
+        boolean needPointReward = calculateProfileCompletion(user) >= 80 && Boolean.FALSE.equals(user.getProfileCompletedReward());
+
+        userRepository.updateProfile(currentUserId,
+            user.getNickname(),
+            user.getAvatarUrl(),
+            user.getSignature()
+        );
+
+        if (needPointReward) {
+            userRepository.updateProfileCompletedReward(currentUserId, 1);
+        }
+
+        // 积分奖励在更新后发放
+        if (needPointReward) {
+            try {
+                pointService.addPoints(currentUserId, "PROFILE_COMPLETE", "完善个人资料", null, null);
+            } catch (Exception e) {
+                log.error("完善资料积分发放失败: userId={}", currentUserId, e);
+            }
+        }
 
         if (user.getUserType() != null) {
             user.setAuthority(user.getUserType().getName());
@@ -436,6 +490,14 @@ public class BbsUserService {
 
         statistics.put("followingCount", user.getFollowingCount());
         statistics.put("followerCount", user.getFollowerCount());
+
+        // 添加积分等级相关字段
+        statistics.put("points", user.getPoints());
+        statistics.put("level", user.getLevel());
+        statistics.put("levelName", levelPrivilegeService.getLevelName(user.getLevel()));
+        statistics.put("weeklyGrowth", pointService.getWeeklyGrowth(currentUserId));
+        statistics.put("pointsToNextLevel", levelPrivilegeService.getPointsToNextLevel(user.getPoints()));
+        statistics.put("storeDiscount", levelPrivilegeService.getStoreDiscount(user.getLevel()));
 
         return CommonMethod.getReturnData(statistics);
     }
@@ -754,8 +816,7 @@ public class BbsUserService {
             return CommonMethod.getReturnMessageError(verifyError);
         }
 
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.saveAndFlush(user);
+        userRepository.updatePassword(currentUserId, passwordEncoder.encode(newPassword));
 
         return CommonMethod.getReturnMessageOK("密码修改成功");
     }
@@ -885,8 +946,7 @@ public class BbsUserService {
             if (currentCount != actualCount) {
                 log.info("用户 {} (ID: {}) 发帖数不一致: 记录数={}, 实际数={}", 
                     user.getNickname(), user.getPersonId(), currentCount, actualCount);
-                user.setPostCount((int) actualCount);
-                userRepository.save(user);
+                userRepository.updatePostCount(user.getPersonId(), (int) actualCount - currentCount);
                 fixedCount++;
             }
         }

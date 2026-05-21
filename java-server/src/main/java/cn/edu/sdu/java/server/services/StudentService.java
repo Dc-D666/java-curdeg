@@ -181,8 +181,7 @@ public class StudentService {
             Optional<User> uOp = userRepository.findByPersonPersonId(personId);
             if (uOp.isPresent()) {
                 u = uOp.get();
-                u.setUserName(num);
-                userRepository.saveAndFlush(u);
+                userRepository.updateUserName(u.getPersonId(), num);
             }
             p.setNum(num);  //设置属性
         }

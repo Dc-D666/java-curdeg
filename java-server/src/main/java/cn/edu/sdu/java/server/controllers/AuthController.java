@@ -79,10 +79,19 @@ public class AuthController {
                 return cn.edu.sdu.java.server.util.CommonMethod.getReturnMessageError("Admin user not found!");
             }
             adminUser.setPassword(passwordEncoder.encode("123456"));
-            userRepository.save(adminUser);
+            userRepository.updatePassword(adminUser.getPersonId(), passwordEncoder.encode("123456"));
             return cn.edu.sdu.java.server.util.CommonMethod.getReturnMessageOK("Admin password reset successfully to '123456'");
         } catch (Exception e) {
             return cn.edu.sdu.java.server.util.CommonMethod.getReturnMessageError("Error resetting password: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/resetPassword")
+    public DataResponse resetPassword(@Valid @RequestBody DataRequest dataRequest) {
+        String studentId = dataRequest.getString("studentId");
+        String email = dataRequest.getString("email");
+        String emailCode = dataRequest.getString("emailCode");
+        String newPassword = dataRequest.getString("newPassword");
+        return authService.resetPassword(studentId, email, emailCode, newPassword);
     }
 }

@@ -8,6 +8,8 @@ import com.teach.javafx.models.Post;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.FollowStateManager;
+import com.teach.javafx.util.NicknameStyleUtil;
+import com.teach.javafx.util.PrivilegeCache;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -84,6 +86,8 @@ public class PostSearchController extends ToolController {
     @FXML
     private Button quickPostBtn;
 
+    @FXML
+    private Label aiSearchLimitLabel;
     @FXML
     private VBox aiAnswerBox;
     @FXML
@@ -223,6 +227,10 @@ public class PostSearchController extends ToolController {
                         displayText.append(nickname);
                     }
 
+                    // 应用昵称样式
+                    String nicknameStyle = post.getAuthorNicknameStyle();
+                    NicknameStyleUtil.applyStyle(label, nicknameStyle);
+
                     Long userId = post.getUserId();
                     if (userId != null) {
                         if (listener != null && !userId.equals(currentUserId)) {
@@ -253,6 +261,7 @@ public class PostSearchController extends ToolController {
                                             newDisplayText.append(" (已关注)");
                                         }
                                         label.setText(newDisplayText.toString());
+                                        NicknameStyleUtil.applyStyle(label, currentPost.getAuthorNicknameStyle());
                                     }
                                 });
                             };
@@ -336,10 +345,14 @@ public class PostSearchController extends ToolController {
                 currentSearchType = "title";
                 keywordTextField.setPromptText("输入帖子标题关键词...");
                 resetToNormalSearch();
+                aiSearchLimitLabel.setVisible(false);
+                aiSearchLimitLabel.setManaged(false);
             } else if (newToggle == fulltextSearchBtn) {
                 currentSearchType = "fulltext";
                 keywordTextField.setPromptText("输入帖子内容关键词...");
                 resetToNormalSearch();
+                aiSearchLimitLabel.setVisible(false);
+                aiSearchLimitLabel.setManaged(false);
             } else if (newToggle == aiSearchBtn) {
                 currentSearchType = "ai";
                 keywordTextField.setPromptText("用自然语言描述你想找的内容...");
@@ -349,6 +362,7 @@ public class PostSearchController extends ToolController {
                 relatedPostsBox.setManaged(false);
                 normalSearchBox.setVisible(true);
                 normalSearchBox.setManaged(true);
+                updateAiSearchLimitLabel();
             }
         });
 
@@ -1009,7 +1023,32 @@ private void aiSearch() {
                 if (matched) {
                     continue;
                 }
-                
+
+                // 检查分割线 ---（必须在行首或换行后）
+                if (index + 2 < length && processedContent.startsWith("---", index) && 
+                    (index + 3 >= length || processedContent.charAt(index + 3) == '\n' || processedContent.charAt(index + 3) == '\r')) {
+                    textNodes.add(createStyledText("─────────────────────\n",
+                        "-fx-fill: #d0d0d0; -fx-font-size: 8px; -fx-line-spacing: 5px;"));
+                    int endIdx = processedContent.indexOf('\n', index + 3);
+                    index = endIdx != -1 ? endIdx : index + 3;
+                    continue;
+                }
+
+                // 检查无序列表 - （行首 "- " 格式）
+                if ((index == 0 || (index > 0 && processedContent.charAt(index - 1) == '\n')) &&
+                    index + 1 < length && processedContent.charAt(index) == '-' && processedContent.charAt(index + 1) == ' ') {
+                    int endIndex = processedContent.indexOf('\n', index + 2);
+                    if (endIndex == -1) endIndex = length;
+                    String listText = processedContent.substring(index + 2, endIndex).trim();
+                    if (!listText.isEmpty()) {
+                        textNodes.add(createStyledText("  \u2022  ", "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        textNodes.addAll(parseInlineFormatting(listText));
+                        textNodes.add(createStyledText("\n", "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                    }
+                    index = endIndex;
+                    continue;
+                }
+
                 // 检查红色标签 [红色]text[/红色]
                 String redStartTag = "[红色]";
                 String redEndTag = "[/红色]";
@@ -1108,6 +1147,56 @@ private void aiSearch() {
         return t;
     }
 
+    private List<Text> parseInlineFormatting(String text) {
+        List<Text> nodes = new ArrayList<>();
+        int i = 0;
+        int len = text.length();
+        StringBuilder plain = new StringBuilder();
+        while (i < len) {
+            char c = text.charAt(i);
+            if (i + 1 < len && c == '*' && text.charAt(i + 1) == '*') {
+                int end = text.indexOf("**", i + 2);
+                if (end != -1) {
+                    if (plain.length() > 0) {
+                        nodes.add(createStyledText(plain.toString(), "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        plain.setLength(0);
+                    }
+                    nodes.add(createStyledText(text.substring(i + 2, end), "-fx-font-weight: bold; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                    i = end + 2;
+                    continue;
+                }
+            } else if (i + 1 < len && c == '~' && text.charAt(i + 1) == '~') {
+                int end = text.indexOf("~~", i + 2);
+                if (end != -1) {
+                    if (plain.length() > 0) {
+                        nodes.add(createStyledText(plain.toString(), "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        plain.setLength(0);
+                    }
+                    nodes.add(createStyledText(text.substring(i + 2, end), "-fx-strikethrough: true; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                    i = end + 2;
+                    continue;
+                }
+            } else if (c == '*') {
+                int end = text.indexOf('*', i + 1);
+                if (end != -1 && end < len - 1 && text.charAt(end + 1) != '*') {
+                    if (plain.length() > 0) {
+                        nodes.add(createStyledText(plain.toString(), "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                        plain.setLength(0);
+                    }
+                    nodes.add(createStyledText(text.substring(i + 1, end), "-fx-font-style: italic; -fx-font-size: 13px; -fx-line-spacing: 5px;"));
+                    i = end + 1;
+                    continue;
+                }
+            }
+            plain.append(c);
+            i++;
+        }
+        if (plain.length() > 0) {
+            nodes.add(createStyledText(plain.toString(), "-fx-font-size: 13px; -fx-line-spacing: 5px;"));
+        }
+        return nodes;
+    }
+
     private String sanitizeAiDisplayText(String text) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -1201,6 +1290,31 @@ private void aiSearch() {
         emptyResultBox.setVisible(false);
         emptyResultBox.setManaged(false);
         hideProgressLabel();
+    }
+
+    private void updateAiSearchLimitLabel() {
+        int remaining = PrivilegeCache.getInstance().getAiSearchRemaining();
+        int limit = PrivilegeCache.getInstance().getAiSearchLimit();
+        if (limit > 0) {
+            aiSearchLimitLabel.setText("今日剩余 " + remaining + "/" + limit + " 次");
+            aiSearchLimitLabel.setVisible(true);
+            aiSearchLimitLabel.setManaged(true);
+            if (remaining <= 0) {
+                aiSearchLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+            } else if (remaining <= 2) {
+                aiSearchLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #faad14; -fx-background-color: #fffbe6; -fx-padding: 2 6; -fx-background-radius: 4;");
+            } else {
+                aiSearchLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #52c41a; -fx-background-color: #f6ffed; -fx-padding: 2 6; -fx-background-radius: 4;");
+            }
+        } else if (limit == 0) {
+            aiSearchLimitLabel.setText("当前等级无AI搜索权限");
+            aiSearchLimitLabel.setVisible(true);
+            aiSearchLimitLabel.setManaged(true);
+            aiSearchLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+        } else {
+            aiSearchLimitLabel.setVisible(false);
+            aiSearchLimitLabel.setManaged(false);
+        }
     }
     
     private void showProgressLabel(String text) {

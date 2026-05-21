@@ -1,5 +1,7 @@
 package cn.edu.sdu.java.server.services;
 
+import cn.edu.sdu.java.server.models.User;
+import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.DateTimeTool;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +39,19 @@ public class BbsFileService {
     public static final long MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
     private static final String UPLOAD_FOLDER = "./uploads/";
 
+    private final UserRepository userRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
+
+    public BbsFileService(UserRepository userRepository, LevelPrivilegeService levelPrivilegeService) {
+        this.userRepository = userRepository;
+        this.levelPrivilegeService = levelPrivilegeService;
+    }
+
     public String uploadImage(MultipartFile file) {
+        return uploadImage(file, null);
+    }
+
+    public String uploadImage(MultipartFile file, Integer userId) {
         log.info("Starting image upload, originalFilename: {}, size: {}", file.getOriginalFilename(), file.getSize());
         
         try {
@@ -58,6 +72,14 @@ public class BbsFileService {
             if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
                 log.error("Invalid file extension: {}", extension);
                 return null;
+            }
+
+            if ("gif".equalsIgnoreCase(extension) && userId != null) {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null && !levelPrivilegeService.canUseGifAvatar(user.getLevel())) {
+                    log.error("User level {} does not have permission to use GIF avatar", user.getLevel());
+                    return null;
+                }
             }
 
             if (file.getSize() > MAX_FILE_SIZE) {
@@ -101,6 +123,10 @@ public class BbsFileService {
     }
 
     public Map<String, Object> uploadAttachment(MultipartFile file) {
+        return uploadAttachment(file, null);
+    }
+
+    public Map<String, Object> uploadAttachment(MultipartFile file, Integer userId) {
         log.info("Starting attachment upload, originalFilename: {}, size: {}", file.getOriginalFilename(), file.getSize());
 
         try {
@@ -121,6 +147,20 @@ public class BbsFileService {
             if (BLOCKED_ATTACHMENT_EXTENSIONS.contains(extension)) {
                 throw new IllegalArgumentException("不支持上传可执行或高风险附件");
             }
+
+            if (userId != null) {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    long maxSize = levelPrivilegeService.getAttachSizeLimit(user.getLevel());
+                    if (!levelPrivilegeService.canAttach(user.getLevel())) {
+                        throw new IllegalArgumentException("您当前等级不具备上传附件权限");
+                    }
+                    if (file.getSize() > maxSize) {
+                        throw new IllegalArgumentException("附件大小超过限制，最大允许 " + (maxSize / 1024 / 1024) + "MB");
+                    }
+                }
+            }
+            
             if (file.getSize() > MAX_ATTACHMENT_SIZE) {
                 throw new IllegalArgumentException("单个附件不能超过20MB");
             }

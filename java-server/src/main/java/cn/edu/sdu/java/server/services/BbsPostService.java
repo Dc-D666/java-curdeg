@@ -48,15 +48,17 @@ public class BbsPostService {
     private final SensitiveWordFilter sensitiveWordFilter;
     private final BbsFollowRepository bbsFollowRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
     private final PostModerationService postModerationService;
     private final BbsFileService bbsFileService;
+    private final PointService pointService;
 
     public BbsPostService(BbsPostRepository bbsPostRepository, UserRepository userRepository,
                           BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
                           BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
                           SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
                           BbsNotificationRepository bbsNotificationRepository, PostModerationService postModerationService,
-                          BbsFileService bbsFileService) {
+                          BbsFileService bbsFileService, PointService pointService, LevelPrivilegeService levelPrivilegeService) {
         this.bbsPostRepository = bbsPostRepository;
         this.userRepository = userRepository;
         this.bbsBoardRepository = bbsBoardRepository;
@@ -68,6 +70,8 @@ public class BbsPostService {
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.postModerationService = postModerationService;
         this.bbsFileService = bbsFileService;
+        this.pointService = pointService;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     private void fillPostAuthorInfo(BbsPost post) {
@@ -76,6 +80,8 @@ public class BbsPostService {
             if (authorOptional.isPresent()) {
                 User author = authorOptional.get();
                 post.setAuthorNickname(author.getNickname());
+                int authorLevel = author.getLevel() != null ? author.getLevel() : 0;
+                post.setAuthorNicknameStyle(levelPrivilegeService.getNicknameStyle(authorLevel));
                 String avatarUrl = author.getAvatarUrl();
                 if (avatarUrl == null || avatarUrl.isBlank()) {
                     avatarUrl = "https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg";
@@ -123,9 +129,24 @@ public class BbsPostService {
         Page<BbsPost> postPage = bbsPostRepository.findPostsByConditionWithModeration(
                 boardId, keyword, currentUserIdLong, isAdmin, pageable);
 
-        postPage.getContent().forEach(this::fillPostAuthorInfo);
+        postPage.getContent().forEach(post -> {
+            fillPostAuthorInfo(post);
+            applyContentPriority(post);
+        });
 
         return CommonMethod.getReturnData(postPage);
+    }
+
+    private void applyContentPriority(BbsPost post) {
+        if (post.getAuthorId() == null) return;
+        Optional<User> authorOpt = userRepository.findById(post.getAuthorId().intValue());
+        if (authorOpt.isPresent()) {
+            User author = authorOpt.get();
+            int level = author.getLevel() != null ? author.getLevel() : 0;
+            if (levelPrivilegeService.hasContentPriority(level)) {
+                post.setMatchScore((post.getMatchScore() != null ? post.getMatchScore() : 0.0) + 50.0);
+            }
+        }
     }
 
     @Transactional
@@ -206,6 +227,15 @@ public class BbsPostService {
         User user = userOptional.get();
         if (user.getIsBanned()) {
             return CommonMethod.getReturnMessageError("您已被禁言，无法发帖");
+        }
+
+        // 等级权限检查
+        int level = user.getLevel() != null ? user.getLevel() : 0;
+        if (!levelPrivilegeService.canPost(level)) {
+            throw new IllegalStateException("等级不足，无法发帖");
+        }
+        if (!levelPrivilegeService.checkPostLimit(currentUserId, level)) {
+            throw new IllegalStateException("今日发帖已达上限");
         }
 
         Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(boardId);
@@ -401,18 +431,18 @@ public class BbsPostService {
         }
 
         if (post.getStatus() == 1 && post.getAuthorId() != null) {
-            Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
-            if (authorOptional.isPresent()) {
-                User author = authorOptional.get();
-                author.setPostCount(Math.max(0, author.getPostCount() - 1));
-                userRepository.saveAndFlush(author);
-            }
+            userRepository.updatePostCount(post.getAuthorId().intValue(), -1);
         }
 
         bbsCommentRepository.deleteByPostId(id);
         bbsLikeRepository.deleteByPostId(id);
         bbsFavoriteRepository.deleteByPostId(id);
         bbsPostRepository.delete(post);
+
+        // 管理员删除违规帖子扣除积分
+        if (isAdmin && post.getAuthorId() != null) {
+            pointService.deductPoints(post.getAuthorId().intValue(), "POST_DELETED_VIOLATION", "帖子违规删除", post.getId(), "POST");
+        }
 
         return CommonMethod.getReturnMessageOK("删除成功");
     }
@@ -447,8 +477,14 @@ public class BbsPostService {
             return CommonMethod.getReturnMessageError("帖子已下架");
         }
 
-        post.setIsFeatured(!post.getIsFeatured());
+        boolean wasFeatured = Boolean.TRUE.equals(post.getIsFeatured());
+        post.setIsFeatured(!wasFeatured);
         bbsPostRepository.saveAndFlush(post);
+
+        // 加精奖励积分
+        if (!wasFeatured && post.getAuthorId() != null) {
+            pointService.addPoints(post.getAuthorId().intValue(), "POST_FEATURED", "帖子加精", post.getId(), "POST");
+        }
 
         return CommonMethod.getReturnData(post);
     }
@@ -471,7 +507,7 @@ public class BbsPostService {
         }
 
         boolean alreadyLiked = bbsLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
-        
+
         if (alreadyLiked) {
             bbsLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
             post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
@@ -481,8 +517,13 @@ public class BbsPostService {
             like.setUserId(currentUserId);
             bbsLikeRepository.saveAndFlush(like);
             post.setLikeCount(post.getLikeCount() + 1);
+
+            // 被点赞积分奖励
+            if (post.getAuthorId() != null && !post.getAuthorId().equals(currentUserId.longValue())) {
+                pointService.addPoints(post.getAuthorId().intValue(), "RECEIVED_LIKE", "被点赞", like.getId(), "LIKE");
+            }
         }
-        
+
         bbsPostRepository.saveAndFlush(post);
         
         Map<String, Object> result = new HashMap<>();
@@ -497,21 +538,40 @@ public class BbsPostService {
         Integer currentUserId = CommonMethod.getPersonId();
         boolean liked = false;
         long likeCount = 0;
-        
+
         Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
         if (postOptional.isPresent()) {
             likeCount = postOptional.get().getLikeCount() != null ? postOptional.get().getLikeCount() : 0;
         }
-        
+
         if (currentUserId != null) {
             liked = bbsLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
         }
-        
+
         Map<String, Object> result = new HashMap<>();
         result.put("liked", liked);
         result.put("likeCount", likeCount);
-        
+
         return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getPostLikers(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId != null) {
+            Optional<User> userOpt = userRepository.findById(currentUserId);
+            int level = userOpt.map(u -> u.getLevel() != null ? u.getLevel() : 0).orElse(0);
+            if (!levelPrivilegeService.canViewLikers(level)) {
+                return CommonMethod.getReturnMessageError("等级达到LV.8方可查看点赞者列表");
+            }
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        List<Map<String, Object>> likers = bbsLikeRepository.findLikersByPostId(postId);
+        return CommonMethod.getReturnData(likers);
     }
 
     @Transactional

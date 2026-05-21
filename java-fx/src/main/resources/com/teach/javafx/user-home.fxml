@@ -57,6 +57,17 @@
                                                         <Label styleClass="stats-label" text="关注" />
                                                     </children>
                                                 </VBox>
+                                                <VBox alignment="CENTER" spacing="2.0">
+                                                    <children>
+                                                        <HBox alignment="CENTER" spacing="4.0">
+                                                            <children>
+                                                                <Label fx:id="pointsLabel" styleClass="stats-value" />
+                                                                <ImageView fx:id="levelIconImageView" fitHeight="36.0" fitWidth="36.0" preserveRatio="true" />
+                                                            </children>
+                                                        </HBox>
+                                                        <Label fx:id="levelLabel" styleClass="stats-label" text="等级" />
+                                                    </children>
+                                                </VBox>
                                             </children>
                                         </HBox>
 
@@ -115,11 +126,11 @@
                                     </children>
                                 </VBox>
 
-                                <VBox fx:id="actionButtonsVBox" alignment="CENTER_RIGHT" spacing="8.0">
+                                <VBox fx:id="actionButtonsVBox" alignment="CENTER" spacing="8.0" minWidth="110.0" prefWidth="110.0" fillWidth="true">
                                     <children>
-                                        <Button fx:id="followButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-edit" text="关注" />
-                                        <Button fx:id="messageButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-save" text="私信" />
-                                        <Button fx:id="reportButton" mnemonicParsing="false" prefWidth="100.0" styleClass="btn-secondary" text="举报" />
+                                        <Button fx:id="followButton" mnemonicParsing="false" maxWidth="1.7976931348623157E308" styleClass="btn-edit" text="关注" />
+                                        <Button fx:id="messageButton" mnemonicParsing="false" maxWidth="1.7976931348623157E308" styleClass="btn-save" text="私信" />
+                                        <Button fx:id="reportButton" mnemonicParsing="false" maxWidth="1.7976931348623157E308" styleClass="btn-secondary" text="举报" />
                                     </children>
                                 </VBox>
                             </children>

@@ -289,17 +289,16 @@ public class MyNotificationController extends ToolController {
     // ---- Card Rendering ----
 
     private Node createDateHeader(DateHeader header) {
-        HBox container = new HBox(6);
-        container.setAlignment(Pos.CENTER_LEFT);
-        container.setPadding(new Insets(16, 24, 6, 24));
+        HBox container = new HBox(8);
+        container.getStyleClass().add("date-header-hbox");
 
-        Label dot = new Label("●");
-        dot.getStyleClass().add("date-header-dot");
+        Region bar = new Region();
+        bar.getStyleClass().add("date-header-bar");
 
         Label label = new Label(header.dateLabel);
-        label.getStyleClass().add("date-header");
+        label.getStyleClass().add("date-header-label");
 
-        container.getChildren().addAll(dot, label);
+        container.getChildren().addAll(bar, label);
         return container;
     }
 
@@ -325,7 +324,7 @@ public class MyNotificationController extends ToolController {
 
         if (!isRead) {
             Region dot = new Region();
-            dot.getStyleClass().add("unread-dot");
+            dot.getStyleClass().add("unread-dot-box");
             dotColumn.getChildren().add(dot);
         }
 
@@ -451,17 +450,17 @@ public class MyNotificationController extends ToolController {
 
         switch (type != null ? type : 0) {
             case TYPE_SYSTEM:
-                boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "⚙"; break;
+                boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "系"; break;
             case TYPE_REPORT:
-                boxStyle = "type-icon-box-report"; textStyle = "type-icon-text-report"; text = "⚠"; break;
+                boxStyle = "type-icon-box-report"; textStyle = "type-icon-text-report"; text = "举"; break;
             case TYPE_REVIEW:
-                boxStyle = "type-icon-box-review"; textStyle = "type-icon-text-review"; text = "✓"; break;
+                boxStyle = "type-icon-box-review"; textStyle = "type-icon-text-review"; text = "审"; break;
             case TYPE_COMMENT:
-                boxStyle = "type-icon-box-comment"; textStyle = "type-icon-text-comment"; text = "💬"; break;
+                boxStyle = "type-icon-box-comment"; textStyle = "type-icon-text-comment"; text = "评"; break;
             case TYPE_FOLLOWER:
-                boxStyle = "type-icon-box-follower"; textStyle = "type-icon-text-follower"; text = "★"; break;
+                boxStyle = "type-icon-box-follower"; textStyle = "type-icon-text-follower"; text = "粉"; break;
             case TYPE_FOLLOW_POST:
-                boxStyle = "type-icon-box-follow-post"; textStyle = "type-icon-text-follow-post"; text = "✎"; break;
+                boxStyle = "type-icon-box-follow-post"; textStyle = "type-icon-text-follow-post"; text = "关"; break;
             default:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "?"; break;
         }
@@ -602,11 +601,11 @@ public class MyNotificationController extends ToolController {
 
     private String extractReviewResult(String content) {
         if (content == null) return null;
-        if (content.contains("审核通过")) return "✓ 通过";
-        if (content.contains("未通过")) return "✗ 未通过";
-        if (content.contains("审核中")) return "⏳ 审核中";
-        if (content.contains("拒绝")) return "✗ 未通过";
-        if (content.contains("驳回")) return "✗ 未通过";
+        if (content.contains("审核通过")) return "[通过]";
+        if (content.contains("未通过")) return "[未通过]";
+        if (content.contains("审核中")) return "[审核中]";
+        if (content.contains("拒绝")) return "[未通过]";
+        if (content.contains("驳回")) return "[未通过]";
         return null;
     }
 

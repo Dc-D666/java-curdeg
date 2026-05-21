@@ -2,6 +2,8 @@ package com.teach.javafx.models;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.math.BigDecimal;
+
 public class User {
     private Integer personId;
     private String userName;
@@ -16,6 +18,11 @@ public class User {
     private String authority;
     private Integer followerCount;
     private Integer followingCount;
+    private Integer points = 0;
+    private Integer level = 0;
+    private String levelName;
+    private String nicknameStyle = "normal";
+    private BigDecimal storeDiscount = BigDecimal.ONE;
 
     private String personName;
     private String personDept;
@@ -265,8 +272,48 @@ public class User {
     public String getIntroducePrivacy() {
         return introducePrivacy;
     }
-    
+
     public void setIntroducePrivacy(String introducePrivacy) {
         this.introducePrivacy = introducePrivacy;
+    }
+
+    public Integer getPoints() {
+        return points;
+    }
+
+    public void setPoints(Integer points) {
+        this.points = points;
+    }
+
+    public Integer getLevel() {
+        return level;
+    }
+
+    public void setLevel(Integer level) {
+        this.level = level;
+    }
+
+    public String getLevelName() {
+        return levelName;
+    }
+
+    public void setLevelName(String levelName) {
+        this.levelName = levelName;
+    }
+
+    public String getNicknameStyle() {
+        return nicknameStyle;
+    }
+
+    public void setNicknameStyle(String nicknameStyle) {
+        this.nicknameStyle = nicknameStyle;
+    }
+
+    public BigDecimal getStoreDiscount() {
+        return storeDiscount;
+    }
+
+    public void setStoreDiscount(BigDecimal storeDiscount) {
+        this.storeDiscount = storeDiscount;
     }
 }

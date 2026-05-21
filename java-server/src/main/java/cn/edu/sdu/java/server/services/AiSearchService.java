@@ -5,8 +5,10 @@ import cn.edu.sdu.java.server.configs.AiSearchConfig;
 import cn.edu.sdu.java.server.configs.ModerationConfig;
 import cn.edu.sdu.java.server.models.BbsComment;
 import cn.edu.sdu.java.server.models.BbsPost;
+import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
+import cn.edu.sdu.java.server.repositorys.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -90,10 +92,13 @@ public class AiSearchService {
     private final AiSearchConfig aiSearchConfig;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
+    private final UserRepository userRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public AiSearchService(BbsPostService bbsPostService, BbsCommentRepository bbsCommentRepository,
                           RestTemplate restTemplate, ModerationConfig moderationConfig, 
-                          AiSearchConfig aiSearchConfig, ObjectMapper objectMapper) {
+                          AiSearchConfig aiSearchConfig, ObjectMapper objectMapper,
+                          UserRepository userRepository, LevelPrivilegeService levelPrivilegeService) {
         this.bbsPostService = bbsPostService;
         this.bbsCommentRepository = bbsCommentRepository;
         this.restTemplate = restTemplate;
@@ -101,6 +106,8 @@ public class AiSearchService {
         this.aiSearchConfig = aiSearchConfig;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
+        this.userRepository = userRepository;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     public static class PostWithComments {
@@ -433,8 +440,31 @@ public class AiSearchService {
     }
 
     public Map<String, Object> aiSearch(String keyword) {
+        return aiSearch(keyword, null);
+    }
+
+    public Map<String, Object> aiSearch(String keyword, Integer userId) {
         log.info("===== 开始增强版AI智能搜索 =====");
         log.info("搜索关键词: {}", keyword);
+
+        if (userId != null) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null) {
+                int searchLimit = levelPrivilegeService.getAiSearchLimit(user.getLevel());
+                if (searchLimit <= 0) {
+                    Map<String, Object> errorResult = new HashMap<>();
+                    errorResult.put("answer", "您当前等级不具备AI搜索权限");
+                    errorResult.put("relatedPosts", new ArrayList<>());
+                    return errorResult;
+                }
+                if (!levelPrivilegeService.checkAiUsageLimit(userId, "search", searchLimit)) {
+                    Map<String, Object> errorResult = new HashMap<>();
+                    errorResult.put("answer", "您今日AI搜索次数已达上限(" + searchLimit + "次)，请明日再来");
+                    errorResult.put("relatedPosts", new ArrayList<>());
+                    return errorResult;
+                }
+            }
+        }
 
         try {
             // 使用增强版搜索方法获取帖子

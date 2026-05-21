@@ -10,7 +10,9 @@ import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.AiSearchService;
 import cn.edu.sdu.java.server.services.AiWriteService;
 import cn.edu.sdu.java.server.services.BbsPostService;
+import cn.edu.sdu.java.server.services.BbsUserService;
 import cn.edu.sdu.java.server.services.ContentSummaryService;
+import cn.edu.sdu.java.server.services.LevelPrivilegeService;
 import cn.edu.sdu.java.server.util.CommonMethod;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
@@ -39,14 +41,18 @@ public class BbsPostController {
     private final AiSearchService aiSearchService;
     private final ContentSummaryService contentSummaryService;
     private final AiWriteService aiWriteService;
+    private final BbsUserService bbsUserService;
+    private final LevelPrivilegeService levelPrivilegeService;
     private final ObjectMapper objectMapper;
     private final ExecutorService executorService;
 
-    public BbsPostController(BbsPostService bbsPostService, AiSearchService aiSearchService, ContentSummaryService contentSummaryService, AiWriteService aiWriteService, ObjectMapper objectMapper) {
+    public BbsPostController(BbsPostService bbsPostService, AiSearchService aiSearchService, ContentSummaryService contentSummaryService, AiWriteService aiWriteService, BbsUserService bbsUserService, LevelPrivilegeService levelPrivilegeService, ObjectMapper objectMapper) {
         this.bbsPostService = bbsPostService;
         this.aiSearchService = aiSearchService;
         this.contentSummaryService = contentSummaryService;
         this.aiWriteService = aiWriteService;
+        this.bbsUserService = bbsUserService;
+        this.levelPrivilegeService = levelPrivilegeService;
         this.objectMapper = objectMapper;
         this.executorService = Executors.newCachedThreadPool();
     }
@@ -116,6 +122,11 @@ public class BbsPostController {
         return bbsPostService.getLikeStatus(id);
     }
 
+    @GetMapping("/{id}/likers")
+    public DataResponse getPostLikers(@PathVariable Long id) {
+        return bbsPostService.getPostLikers(id);
+    }
+
     @PostMapping("/{id}/favorite")
     @PreAuthorize("isAuthenticated()")
     public DataResponse toggleFavorite(@PathVariable Long id) {
@@ -149,10 +160,12 @@ public class BbsPostController {
     }
 
     @PostMapping("/ai-search")
+    @PreAuthorize("isAuthenticated()")
     public DataResponse aiSearch(@Valid @RequestBody DataRequest dataRequest) {
         try {
             String keyword = dataRequest.getString("keyword");
-            Object result = aiSearchService.aiSearch(keyword);
+            Integer userId = CommonMethod.getPersonId();
+            Object result = aiSearchService.aiSearch(keyword, userId);
             return CommonMethod.getReturnData(result);
         } catch (Exception e) {
             return CommonMethod.getReturnMessageError(e.getMessage());
@@ -164,7 +177,8 @@ public class BbsPostController {
     public DataResponse summarizePost(@PathVariable Long postId) {
         log.info("收到帖子总结请求，postId={}", postId);
         try {
-            ContentSummaryResponse summary = contentSummaryService.summarizePostWithComments(postId);
+            Integer userId = CommonMethod.getPersonId();
+            ContentSummaryResponse summary = contentSummaryService.summarizePostWithComments(postId, userId);
             if (summary.isSuccess()) {
                 return CommonMethod.getReturnData(summary, "总结成功");
             } else {
@@ -177,9 +191,50 @@ public class BbsPostController {
     }
 
     @GetMapping(value = "/ai-search-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("isAuthenticated()")
     public SseEmitter aiSearchStream(@RequestParam String keyword) {
         log.info("收到AI流式搜索请求，keyword={}", keyword);
-        
+
+        Integer userId = CommonMethod.getPersonId();
+        if (userId != null) {
+            try {
+                cn.edu.sdu.java.server.models.User user = bbsUserService.getUserById(userId);
+                int searchLimit = levelPrivilegeService.getAiSearchLimit(user.getLevel());
+                if (searchLimit <= 0) {
+                    SseEmitter emitter = new SseEmitter();
+                    executorService.execute(() -> {
+                        try {
+                            sendSseEvent(emitter, objectMapper.writeValueAsString(Map.of(
+                                "type", "error",
+                                "message", "您当前等级不具备AI搜索权限"
+                            )));
+                            emitter.complete();
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                        }
+                    });
+                    return emitter;
+                }
+                if (!levelPrivilegeService.checkAiUsageLimit(userId, "search", searchLimit)) {
+                    SseEmitter emitter = new SseEmitter();
+                    executorService.execute(() -> {
+                        try {
+                            sendSseEvent(emitter, objectMapper.writeValueAsString(Map.of(
+                                "type", "error",
+                                "message", "您今日AI搜索次数已达上限(" + searchLimit + "次)，请明日再来"
+                            )));
+                            emitter.complete();
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                        }
+                    });
+                    return emitter;
+                }
+            } catch (RuntimeException e) {
+                log.warn("获取用户信息失败: {}", e.getMessage());
+            }
+        }
+
         // 超时时间设置为120秒
         SseEmitter emitter = new SseEmitter(120000L);
         

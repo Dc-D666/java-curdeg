@@ -1,5 +1,7 @@
 package com.teach.javafx.controller;
 
+import com.teach.javafx.AppStore;
+import com.teach.javafx.MainApplication;
 import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.PageResult;
 import com.teach.javafx.request.HttpRequestUtil;
@@ -9,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -154,6 +157,36 @@ public class MyFollowingController extends ToolController {
                 }
             }
         });
+
+        followingTableView.setRowFactory(tv -> {
+            TableRow<Map<String, Object>> row = new TableRow<>();
+            row.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
+                    Map<String, Object> user = row.getItem();
+                    Long userId = toLong(user.get("userId"));
+                    String nickname = (String) user.get("nickname");
+                    openUserHome(userId, nickname != null ? nickname : "用户主页");
+                }
+            });
+            return row;
+        });
+    }
+
+    private void openUserHome(Long userId, String tabName) {
+        if (userId == null || AppStore.getMainFrameController() == null) return;
+        try {
+            javafx.fxml.FXMLLoader fxmlLoader = new javafx.fxml.FXMLLoader(
+                MainApplication.class.getResource("user-home.fxml"));
+            javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
+            UserHomeController controller = fxmlLoader.getController();
+            controller.setUserId(userId.intValue());
+
+            String id = "user-" + userId;
+            AppStore.getMainFrameController().changeContentWithScene(id, tabName, scene, controller);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("打开用户主页失败");
+        }
     }
 
     public void loadFollowing() {

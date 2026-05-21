@@ -44,19 +44,22 @@ public class BbsReportService {
     private final BbsNotificationRepository bbsNotificationRepository;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final PointService pointService;
 
-    public BbsReportService(BbsReportRepository bbsReportRepository, 
+    public BbsReportService(BbsReportRepository bbsReportRepository,
                            BbsPostRepository bbsPostRepository,
                            BbsCommentRepository bbsCommentRepository,
                            BbsNotificationRepository bbsNotificationRepository,
                            UserRepository userRepository,
-                           ObjectMapper objectMapper) {
+                           ObjectMapper objectMapper,
+                           PointService pointService) {
         this.bbsReportRepository = bbsReportRepository;
         this.bbsPostRepository = bbsPostRepository;
         this.bbsCommentRepository = bbsCommentRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.pointService = pointService;
     }
 
     private void fillReportUserInfo(BbsReport report) {
@@ -257,12 +260,18 @@ public class BbsReportService {
 
         if (handleType == HANDLE_TYPE_DELETE_CONTENT) {
             handleDeleteContent(report, targetTitle);
+            // 有效举报奖励积分
+            pointService.addPoints(report.getReporterId().intValue(), "REPORT_VALID", "有效举报", report.getId(), "REPORT");
         } else if (handleType == HANDLE_TYPE_CLEAR_PROFILE_CARD) {
             handleClearProfileCard(report, targetTitle);
+            // 有效举报奖励积分
+            pointService.addPoints(report.getReporterId().intValue(), "REPORT_VALID", "有效举报", report.getId(), "REPORT");
         } else {
             createNotification(report.getReporterId(), 2, targetTitle,
-                "您的举报（ID：" + id + "）已处理，处理方式：驳回举报，处理备注：" + 
+                "您的举报（ID：" + id + "）已处理，处理方式：驳回举报，处理备注：" +
                 safeRemark(handleRemark));
+            // 恶意举报扣除积分
+            pointService.deductPoints(report.getReporterId().intValue(), "FALSE_REPORT", "恶意举报", report.getId(), "REPORT");
         }
 
         return CommonMethod.getReturnMessageOK("处理成功");
@@ -287,8 +296,7 @@ public class BbsReportService {
                     if (authorOptional.isPresent()) {
                         User author = authorOptional.get();
                         if (wasVisible && author.getPostCount() > 0) {
-                            author.setPostCount(author.getPostCount() - 1);
-                            userRepository.saveAndFlush(author);
+                            userRepository.updatePostCount(post.getAuthorId().intValue(), -1);
                         }
                         createNotification(author.getPersonId().longValue(), 2, postTitle, 
                             "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
@@ -309,8 +317,7 @@ public class BbsReportService {
                         if (authorOptional.isPresent()) {
                             User author = authorOptional.get();
                             if (author.getCommentCount() > 0) {
-                                author.setCommentCount(author.getCommentCount() - 1);
-                                userRepository.saveAndFlush(author);
+                                userRepository.updateCommentCount(comment.getAuthorId().intValue(), -1);
                             }
                             createNotification(author.getPersonId().longValue(), 2, postTitle, 
                                 "您的内容（ID：" + report.getTargetId() + "）因违规已被删除，处理备注：" + 
@@ -343,7 +350,7 @@ public class BbsReportService {
             user.setNickname("用户" + user.getPersonId());
             user.setAvatarUrl(null);
             user.setSignature("");
-            userRepository.saveAndFlush(user);
+            userRepository.updateProfile(user.getPersonId(), "用户" + user.getPersonId(), null, "");
 
             createNotification(user.getPersonId().longValue(), 2, targetTitle,
                 "您的个人主页资料卡因违规已被清理，处理备注：" + safeRemark(report.getHandleRemark()));

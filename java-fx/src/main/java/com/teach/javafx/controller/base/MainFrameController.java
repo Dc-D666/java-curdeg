@@ -293,6 +293,48 @@ public class MainFrameController {
         admin2Item.setOnAction(e -> switchToAccount("admin2"));
         user1Item.setOnAction(e -> switchToAccount("user1"));
         user2Item.setOnAction(e -> switchToAccount("user2"));
+
+        checkLevelZeroPrompt();
+    }
+
+    private void checkLevelZeroPrompt() {
+        Task<Map<String, Object>> task = new Task<>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getMyPoints();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Map<String, Object> data = task.getValue();
+            if (data != null) {
+                Object pointsObj = data.get("points");
+                int points = pointsObj instanceof Number ? ((Number) pointsObj).intValue() : 0;
+                if (points < 10) {
+                    Platform.runLater(() -> {
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                        alert.setTitle("权限提示");
+                        alert.setHeaderText(null);
+                        alert.setContentText("暂无发言权限，推荐前往完善个人资料即可升级解锁发言权限");
+                        ButtonType okButton = new ButtonType("确定", ButtonBar.ButtonData.OK_DONE);
+                        ButtonType cancelButton = new ButtonType("取消", ButtonBar.ButtonData.CANCEL_CLOSE);
+                        alert.getButtonTypes().setAll(okButton, cancelButton);
+
+                        alert.showAndWait().ifPresent(response -> {
+                            if (response == okButton) {
+                                changeContent("personal-center", "个人中心");
+                            }
+                        });
+                    });
+                }
+            }
+        });
+
+        task.setOnFailed(event -> {
+            // silently ignore errors
+        });
+
+        new Thread(task).start();
     }
 
 
@@ -312,6 +354,7 @@ public class MainFrameController {
 
     protected void logout(){
         com.teach.javafx.util.NotificationCounter.stopAutoRefresh();
+        com.teach.javafx.util.PrivilegeCache.getInstance().clear();
         AppStore.setJwt(null);
         AppStore.setMainFrameController(null);
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/login-view.fxml"));
@@ -819,6 +862,7 @@ public class MainFrameController {
             e.printStackTrace();
         }
     }
+
     
     public void loadUnreadNotificationCount() {
         Task<Long> task = new Task<Long>() {
@@ -850,6 +894,7 @@ public class MainFrameController {
     
     private void switchToAccount(String username) {
         AppStore.setJwt(null);
+        com.teach.javafx.util.PrivilegeCache.getInstance().clear();
         LoginRequest loginRequest = new LoginRequest(username, "123456");
         String errorMsg = HttpRequestUtil.login(loginRequest);
         if (errorMsg != null) {

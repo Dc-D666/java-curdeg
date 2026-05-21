@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.teach.javafx.controller.PointRankController"
+      spacing="10" style="-fx-padding: 20;">
+    <Label text="山竹瓣排行" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+    <HBox spacing="10">
+        <Button text="总榜" fx:id="totalRankBtn"/>
+        <Button text="周榜" fx:id="weeklyRankBtn"/>
+    </HBox>
+    <ListView fx:id="rankList" VBox.vgrow="ALWAYS"/>
+</VBox>

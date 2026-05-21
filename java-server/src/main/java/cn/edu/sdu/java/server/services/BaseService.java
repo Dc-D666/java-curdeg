@@ -361,8 +361,7 @@ public class BaseService {
         if (!encoder.matches(oldPassword, u.getPassword())) {
             return CommonMethod.getReturnMessageError("原始密码不正确！");
         }
-        u.setPassword(encoder.encode(newPassword));
-        userRepository.save(u);
+        userRepository.updatePassword(u.getPersonId(), encoder.encode(newPassword));
         return CommonMethod.getReturnMessageOK();  //通知前端操作正常
     }
 

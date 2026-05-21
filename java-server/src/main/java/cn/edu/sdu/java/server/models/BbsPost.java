@@ -52,6 +52,9 @@ public class BbsPost {
     @Column(name = "is_top", nullable = false)
     private Boolean isTop = false;
 
+    @Column(name = "top_expire_time")
+    private String topExpireTime;
+
     @Column(name = "is_featured", nullable = false)
     private Boolean isFeatured = false;
 
@@ -97,6 +100,9 @@ public class BbsPost {
 
     @Transient
     private String authorNickname;
+
+    @Transient
+    private String authorNicknameStyle;
 
     @Transient
     private String authorAvatarUrl;

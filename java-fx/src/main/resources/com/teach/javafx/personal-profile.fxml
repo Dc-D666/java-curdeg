@@ -62,6 +62,17 @@
                                 <Label styleClass="stats-label" text="粉丝数" />
                             </children>
                         </VBox>
+                        <VBox fx:id="pointsBox" alignment="CENTER" spacing="6.0" styleClass="stats-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                            <children>
+                                <HBox alignment="CENTER" spacing="4.0">
+                                    <children>
+                                        <Label fx:id="pointsLabel" styleClass="stats-value" text="0" />
+                                        <ImageView fx:id="levelIconImageView" fitHeight="36.0" fitWidth="36.0" preserveRatio="true" />
+                                    </children>
+                                </HBox>
+                                <Label fx:id="levelLabel" styleClass="stats-label" text="等级" />
+                            </children>
+                        </VBox>
                     </children>
                 </GridPane>
 

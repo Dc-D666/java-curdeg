@@ -1584,9 +1584,13 @@ public class HttpRequestUtil {
     }
     
     public static String sendEmailCode(String email) {
+        return sendEmailCode(email, "REGISTER");
+    }
+
+    public static String sendEmailCode(String email, String type) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("email", email);
-        dataRequest.add("type", "REGISTER");
+        dataRequest.add("type", type);
         
         HttpRequest httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/auth/sendEmailCode"))
@@ -1610,6 +1614,39 @@ public class HttpRequestUtil {
             e.printStackTrace();
         }
         return "发送失败";
+    }
+
+    public static String resetPassword(String studentId, String email, String emailCode, String newPassword) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("studentId", studentId);
+        dataRequest.add("email", email);
+        dataRequest.add("emailCode", emailCode);
+        dataRequest.add("newPassword", newPassword);
+        
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/auth/resetPassword"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(dataRequest)))
+                .headers("Content-Type", "application/json")
+                .build();
+        
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("resetPassword response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<Object>>(){}.getType();
+                DataResponse<Object> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse.getCode() == 0) {
+                    return null;
+                } else {
+                    return dataResponse.getMsg() != null ? dataResponse.getMsg() : "重置密码失败";
+                }
+            } else if (response.statusCode() == 400) {
+                return "重置密码请求无效";
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return "重置密码失败";
     }
 
     public static Map<String, Object> getUserStatistics() {
@@ -3205,5 +3242,88 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
     public static Map<String, Object> getUnreadCount() {
         String url = "/api/bbs/message/unread-count";
         return get(url);
+    }
+
+    public static Map<String, Object> getMyPoints() {
+        String url = "/api/bbs/points/me";
+        return get(url);
+    }
+
+    public static Map<String, Object> getPointHistory(int pageNum, int pageSize) {
+        String url = "/api/bbs/points/me/history?pageNum=" + pageNum + "&pageSize=" + pageSize;
+        return get(url);
+    }
+
+    public static Map<String, Object> getPointRank(int pageNum, int pageSize) {
+        String url = "/api/bbs/points/rank?pageNum=" + pageNum + "&pageSize=" + pageSize;
+        return get(url);
+    }
+
+    public static List<Map<String, Object>> getWeeklyPointRank() {
+        String url = "/api/bbs/points/rank/weekly";
+        return getList(url);
+    }
+
+    public static Map<String, Object> getLevelConfig() {
+        String url = "/api/bbs/points/level/config";
+        return get(url);
+    }
+
+    public static Map<String, Object> getMyPrivileges() {
+        String url = "/api/bbs/points/level/my-privileges";
+        return get(url);
+    }
+
+    public static List<Map<String, Object>> getPointRules() {
+        String url = "/api/bbs/points/rules";
+        return getList(url);
+    }
+
+    public static Map<String, Object> getAiUsage() {
+        String url = "/api/bbs/points/ai-usage";
+        return get(url);
+    }
+
+    // ==================== 草稿箱 API ====================
+
+    public static List<Map<String, Object>> getDraftList() {
+        String url = "/api/bbs/draft/list";
+        return getList(url);
+    }
+
+    public static Map<String, Object> getDraft(Long draftId) {
+        String url = "/api/bbs/draft/" + draftId;
+        return get(url);
+    }
+
+    public static Map<String, Object> saveDraft(Long id, String title, Long boardId, String boardName,
+                                                  String content, String imageUrls, String attachmentInfos) {
+        String url = "/api/bbs/draft/save";
+        DataRequest req = new DataRequest();
+        req.add("id", id);
+        req.add("title", title);
+        req.add("boardId", boardId);
+        req.add("boardName", boardName);
+        req.add("content", content);
+        req.add("imageUrls", imageUrls);
+        req.add("attachmentInfos", attachmentInfos);
+        DataResponse<Object> dataResponse = request(url, req);
+        if (dataResponse != null && dataResponse.getCode() == 0 && dataResponse.getData() != null) {
+            if (dataResponse.getData() instanceof Map) {
+                return (Map<String, Object>) dataResponse.getData();
+            }
+        }
+        return null;
+    }
+
+    public static Map<String, Object> deleteDraft(Long draftId) {
+        String url = "/api/bbs/draft/delete";
+        DataRequest req = new DataRequest();
+        req.add("id", draftId);
+        DataResponse<Object> dataResponse = request(url, req);
+        if (dataResponse != null && dataResponse.getCode() == 0) {
+            return dataResponse.getData() instanceof Map ? (Map<String, Object>) dataResponse.getData() : null;
+        }
+        return null;
     }
 }

@@ -30,6 +30,8 @@
                         <ToggleButton fx:id="titleSearchBtn" selected="true" text="标题检索" toggleGroup="$searchModeGroup"/>
                         <ToggleButton fx:id="fulltextSearchBtn" text="全文检索" toggleGroup="$searchModeGroup"/>
                         <ToggleButton fx:id="aiSearchBtn" text="AI 检索" toggleGroup="$searchModeGroup"/>
+                        <Label fx:id="aiSearchLimitLabel" managed="false" visible="false" text=""
+                               style="-fx-font-size: 11px; -fx-text-fill: #52c41a; -fx-background-color: #f6ffed; -fx-padding: 2 6; -fx-background-radius: 4;"/>
                     </children>
                 </HBox>
                 <HBox alignment="CENTER_LEFT" spacing="10.0">

@@ -227,6 +227,7 @@ public class PasswordChangeController extends ToolController {
     }
 
     private void goToLogin() {
+        com.teach.javafx.util.PrivilegeCache.getInstance().clear();
         AppStore.setJwt(null);
         AppStore.setMainFrameController(null);
         try {

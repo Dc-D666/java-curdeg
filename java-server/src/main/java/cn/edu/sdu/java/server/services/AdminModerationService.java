@@ -143,14 +143,8 @@ public class AdminModerationService {
      */
     private void updateUserPostCount(Integer userId, int delta) {
         try {
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-                int newCount = Math.max(0, (user.getPostCount() != null ? user.getPostCount() : 0) + delta);
-                user.setPostCount(newCount);
-                userRepository.save(user);
-                log.info("用户 {} 的发帖数更新为 {}", userId, newCount);
-            }
+            userRepository.updatePostCount(userId, delta);
+            log.info("用户 {} 的发帖数更新，变化量 {}", userId, delta);
         } catch (Exception e) {
             log.error("更新用户发帖数失败", e);
         }

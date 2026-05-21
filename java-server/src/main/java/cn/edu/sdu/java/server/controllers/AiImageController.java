@@ -40,7 +40,8 @@ public class AiImageController {
             .build();
         
         try {
-            AiImageResponse result = aiImageService.generateImage(request);
+            Integer userId = CommonMethod.getPersonId();
+            AiImageResponse result = aiImageService.generateImage(request, userId);
             if (result.isSuccess()) {
                 return CommonMethod.getReturnData(result, "AI图片生成完成");
             } else {

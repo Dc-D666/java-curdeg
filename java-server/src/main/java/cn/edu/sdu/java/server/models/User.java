@@ -5,27 +5,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-
-/*
- * User用户表实体类 保存每个允许登录的信息人员的账号信息，
- * Integer personId 用户表 user 主键 person_id
- * UserType userType 关联到用户类型对象
- * Person person 关联到该用户所用的Person对象，账户所对应的人员信息 person_id 关联 person 表主键 person_id
- * String userName 登录账号 和Person 中的num属性相同
- * String password 用户密码 非对称加密，这能加密，无法解码
- *
- * 【新增】社区业务扩展字段：
- * String studentId 学号（社区用户唯一标识）
- * String nickname 昵称（社区展示名）
- * String avatarUrl 头像URL
- * String signature 个性签名
- * Integer postCount 发帖数
- * Integer commentCount 回帖数
- * Integer violationCount 违规记录数
- * Boolean isBanned 是否被禁言
- */
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDate;
 @Getter
 @Setter
 @Entity
@@ -101,6 +84,27 @@ public class User {
 
     @Column(name = "following_count")
     private Integer followingCount = 0;
+
+    @Column(name = "points", nullable = false)
+    private Integer points = 0;
+
+    @Column(name = "level", nullable = false)
+    private Integer level = 0;
+
+    @Column(name = "consecutive_login_days", nullable = false)
+    private Integer consecutiveLoginDays = 0;
+
+    @Column(name = "last_login_date")
+    private LocalDate lastLoginDate;
+
+    @Column(name = "profile_completed_reward", nullable = false)
+    private Boolean profileCompletedReward = false;
+
+    @Column(name = "level_protected_until")
+    private LocalDate levelProtectedUntil;
+
+    @Column(name = "version", nullable = false)
+    private Integer version = 0;
 
     // ==================== 临时字段（不映射到数据库） ====================
 

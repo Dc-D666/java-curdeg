@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/java-server/src/main/resources/sql/32_add_point_level_system.sql" value="b4c80735-bc5b-44e2-bf01-f3332c38e4bf" />
+    <file url="file://$PROJECT_DIR$/java-server/src/main/resources/sql/33_add_comment_moderation.sql" value="b4c80735-bc5b-44e2-bf01-f3332c38e4bf" />
+    <file url="file://$PROJECT_DIR$/java-server/src/main/resources/sql/34_add_draft_box.sql" value="b4c80735-bc5b-44e2-bf01-f3332c38e4bf" />
+  </component>
+</project>

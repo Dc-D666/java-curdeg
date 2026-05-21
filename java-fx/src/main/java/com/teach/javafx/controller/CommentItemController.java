@@ -6,6 +6,7 @@ import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.AttachmentUtil;
 import com.teach.javafx.util.FollowStateManager;
+import com.teach.javafx.util.NicknameStyleUtil;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -45,6 +46,8 @@ public class CommentItemController {
     private Button replyButton;
     @FXML
     private Button reportButton;
+    @FXML
+    private Label violationTag;
     @FXML
     private VBox replyVBox;
     @FXML
@@ -99,8 +102,13 @@ public class CommentItemController {
             authorText = comment.getAuthorNickname() != null ? comment.getAuthorNickname() : "未知";
         }
         authorLabel.setText(authorText);
+        NicknameStyleUtil.applyStyle(authorLabel, comment.getAuthorNicknameStyle());
 
         contentLabel.setText(comment.getContent());
+
+        boolean isViolation = "reject".equals(comment.getModerationStatus());
+        violationTag.setVisible(isViolation);
+        violationTag.setManaged(isViolation);
 
         timeLabel.setText(comment.getCreateTime() != null ? dateFormat.format(comment.getCreateTime()) : "");
 

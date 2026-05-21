@@ -51,7 +51,13 @@ public class UserHomeController extends ToolController {
     private Label followerCountLabel;
     @javafx.fxml.FXML
     private Label followingCountLabel;
-    
+    @javafx.fxml.FXML
+    private Label pointsLabel;
+    @javafx.fxml.FXML
+    private Label levelLabel;
+    @javafx.fxml.FXML
+    private ImageView levelIconImageView;
+
     @javafx.fxml.FXML
     private VBox actionButtonsVBox;
     @javafx.fxml.FXML
@@ -183,26 +189,25 @@ public class UserHomeController extends ToolController {
             actionButtonsVBox.setManaged(true);
             boolean canReport = currentUserId != null && !currentUserBanned && !isCurrentUser;
             reportButton.setVisible(canReport);
-            reportButton.setManaged(canReport);
         }
     }
     
     private void loadUserProfile() {
         refreshProgressIndicator.setVisible(true);
         refreshButton.setDisable(true);
-        
+
         Task<Map<String, Object>> task = new Task<>() {
             @Override
             protected Map<String, Object> call() {
                 return HttpRequestUtil.getUserProfile(userId);
             }
         };
-        
+
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 refreshProgressIndicator.setVisible(false);
                 refreshButton.setDisable(false);
-                
+
                 Map<String, Object> userData = task.getValue();
                 if (userData != null) {
                     currentProfileData = userData;
@@ -210,11 +215,12 @@ public class UserHomeController extends ToolController {
                 } else {
                     showErrorAlert("加载用户信息失败");
                 }
-                
+
                 loadUserPosts();
+                loadPointsData();
             });
         });
-        
+
         task.setOnFailed(event -> {
             Platform.runLater(() -> {
                 refreshProgressIndicator.setVisible(false);
@@ -222,7 +228,7 @@ public class UserHomeController extends ToolController {
                 showErrorAlert("加载用户信息失败");
             });
         });
-        
+
         new Thread(task).start();
     }
     
@@ -306,7 +312,66 @@ public class UserHomeController extends ToolController {
             loadFollowState();
         }
     }
-    
+
+    private void loadPointsData() {
+        Task<Map<String, Object>> task = new Task<>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getMyPoints();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> data = task.getValue();
+                if (data != null) {
+                    Object pointsObj = data.get("points");
+                    Object levelObj = data.get("level");
+                    Object levelNameObj = data.get("levelName");
+                    Object iconPathObj = data.get("iconPath");
+                    Object nicknameStyleObj = data.get("nicknameStyle");
+
+                    int points = pointsObj instanceof Number ? ((Number) pointsObj).intValue() : 0;
+                    int level = levelObj instanceof Number ? ((Number) levelObj).intValue() : 0;
+                    String levelName = levelNameObj instanceof String ? (String) levelNameObj : "";
+                    String iconPath = iconPathObj instanceof String ? (String) iconPathObj : null;
+                    String nicknameStyle = nicknameStyleObj instanceof String ? (String) nicknameStyleObj : "normal";
+
+                    if (pointsLabel != null) {
+                        pointsLabel.setText(String.valueOf(points));
+                    }
+                    if (levelLabel != null) {
+                        levelLabel.setText(levelName != null && !levelName.isEmpty() ? levelName : "Lv." + level);
+                    }
+
+                    if (iconPath != null && !iconPath.isEmpty() && levelIconImageView != null) {
+                        try {
+                            String fullIconUrl = iconPath.startsWith("/") ? HttpRequestUtil.serverUrl + iconPath : iconPath;
+                            Image iconImage = new Image(fullIconUrl, true);
+                            levelIconImageView.setImage(iconImage);
+                        } catch (Exception e) {
+                        }
+                    }
+
+                    applyNicknameStyle(nicknameStyle);
+                }
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void applyNicknameStyle(String style) {
+        if (nicknameLabel == null) return;
+        if ("bold_red".equals(style)) {
+            nicknameLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #e53935;");
+        } else if ("bold".equals(style)) {
+            nicknameLabel.setStyle("-fx-font-weight: bold;");
+        } else {
+            nicknameLabel.setStyle("");
+        }
+    }
+
     private void loadFollowState() {
         if (currentUserId == null) {
             isFollowing = false;
@@ -347,12 +412,11 @@ public class UserHomeController extends ToolController {
             followButton.setText("已关注");
             followButton.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
             messageButton.setVisible(true);
-            messageButton.setStyle("-fx-background-color: #52c41a; -fx-text-fill: white;");
+            messageButton.setStyle("-fx-background-color: #15803d; -fx-text-fill: white;");
         } else {
             followButton.setText("关注");
             followButton.setStyle("");
             messageButton.setVisible(false);
-            messageButton.setManaged(false);
         }
     }
     

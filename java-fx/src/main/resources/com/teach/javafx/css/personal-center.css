@@ -332,6 +332,8 @@
     -fx-padding: 9 20;
     -fx-background-radius: 6;
     -fx-cursor: hand;
+    -fx-pref-width: 100;
+    -fx-min-width: 100;
 }
 
 .btn-edit {

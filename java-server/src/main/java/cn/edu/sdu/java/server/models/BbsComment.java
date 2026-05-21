@@ -52,6 +52,35 @@ public class BbsComment {
     @Column(nullable = false)
     private Integer status = 1;
 
+    // ==================== 审核相关字段 ====================
+
+    @Column(name = "moderation_status", nullable = false)
+    private String moderationStatus = "pass";
+
+    @Column(name = "moderation_violation_level")
+    private String moderationViolationLevel;
+
+    @Column(name = "moderation_violation_type")
+    private String moderationViolationType;
+
+    @Column(name = "moderation_violation_fragments", columnDefinition = "TEXT")
+    private String moderationViolationFragments;
+
+    @Column(name = "moderation_suggestion", columnDefinition = "TEXT")
+    private String moderationSuggestion;
+
+    @Column(name = "moderation_confidence")
+    private Integer moderationConfidence;
+
+    @Column(name = "moderation_remark", columnDefinition = "TEXT")
+    private String moderationRemark;
+
+    @Column(name = "moderation_time")
+    private String moderationTime;
+
+    @Column(name = "moderator_id")
+    private Integer moderatorId;
+
     @Column(name = "create_time", updatable = false)
     private String createTime;
 
@@ -62,6 +91,9 @@ public class BbsComment {
 
     @Transient
     private String authorNickname;
+
+    @Transient
+    private String authorNicknameStyle;
 
     @Transient
     private String authorAvatarUrl;

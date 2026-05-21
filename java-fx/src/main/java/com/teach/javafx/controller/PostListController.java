@@ -9,25 +9,36 @@ import com.teach.javafx.models.Post;
 import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.FollowStateManager;
+import com.teach.javafx.util.NicknameStyleUtil;
+import com.teach.javafx.util.PrivilegeCache;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.collections.FXCollections;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class PostListController extends ToolController {
+
+    @FXML
+    private ScrollPane mainScrollPane;
     @FXML
     private ComboBox<Board> boardComboBox;
     @FXML
@@ -39,25 +50,11 @@ public class PostListController extends ToolController {
     @FXML
     private Button refreshButton;
     @FXML
-    private TableView<Post> postTableView;
+    private VBox postListVBox;
     @FXML
-    private TableColumn<Post, String> titleColumn;
-    @FXML
-    private TableColumn<Post, String> authorColumn;
-    @FXML
-    private TableColumn<Post, String> createTimeColumn;
-    @FXML
-    private TableColumn<Post, Integer> likeCountColumn;
-    @FXML
-    private TableColumn<Post, Integer> commentCountColumn;
-    @FXML
-    private TableColumn<Post, String> statusColumn;
-    @FXML
-    private TableColumn<Post, String> moderationStatusColumn;
+    private ProgressIndicator refreshProgressIndicator;
     @FXML
     private Label pageInfoLabel;
-    @FXML
-    private ComboBox<Integer> pageSizeComboBox;
     @FXML
     private Button prevButton;
     @FXML
@@ -73,182 +70,22 @@ public class PostListController extends ToolController {
 
     @FXML
     public void initialize() {
-        titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
-        authorColumn.setCellFactory(param -> new TableCell<Post, String>() {
-            private final ImageView imageView = new ImageView();
-            private final Label label = new Label();
-            private final HBox hbox = new HBox(5, imageView, label);
-            private Consumer<Boolean> listener = null;
-            private Long currentUserId = null;
-            
-            {
-                imageView.setFitWidth(24);
-                imageView.setFitHeight(24);
-                imageView.setPreserveRatio(true);
-                imageView.setSmooth(true);
-                imageView.setCache(true);
-            }
-            
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getTableRow() == null) {
-                    if (listener != null && currentUserId != null) {
-                        FollowStateManager.getInstance().unregisterListener(currentUserId, listener);
-                        listener = null;
-                        currentUserId = null;
-                    }
-                    setGraphic(null);
-                } else {
-                    Post post = getTableView().getItems().get(getIndex());
-                    String avatarUrl = post.getAuthorAvatarUrl();
-                    String nickname = post.getAuthorNickname();
-                    
-                    if (avatarUrl != null && !avatarUrl.isBlank()) {
-                        try {
-                            String fullAvatarUrl = avatarUrl.startsWith("/") ? 
-                                HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
-                            Image image = new Image(fullAvatarUrl, true);
-                            imageView.setImage(image);
-                        } catch (Exception e) {
-                            imageView.setImage(null);
-                        }
-                    } else {
-                        imageView.setImage(null);
-                    }
-                    
-                    StringBuilder displayText = new StringBuilder();
-                    if (nickname != null) {
-                        displayText.append(nickname);
-                    }
-                    
-                    Long userId = post.getUserId();
-                    if (userId != null) {
-                        if (listener != null && !userId.equals(currentUserId)) {
-                            FollowStateManager.getInstance().unregisterListener(currentUserId, listener);
-                            listener = null;
-                        }
-                        
-                        Boolean isFollowed = FollowStateManager.getInstance().getFollowState(userId);
-                        if (isFollowed != null && isFollowed) {
-                            displayText.append(" (已关注)");
-                        } else if (followingUserIds.contains(userId.intValue())) {
-                            displayText.append(" (已关注)");
-                        }
-                        
-                        if (listener == null || !userId.equals(currentUserId)) {
-                            currentUserId = userId;
-                            final Long finalUserId = userId;
-                            listener = (followed) -> {
-                                Platform.runLater(() -> {
-                                    Post currentPost = getTableView().getItems().get(getIndex());
-                                    if (currentPost != null && finalUserId.equals(currentPost.getUserId())) {
-                                        StringBuilder newDisplayText = new StringBuilder();
-                                        String newNickname = currentPost.getAuthorNickname();
-                                        if (newNickname != null) {
-                                            newDisplayText.append(newNickname);
-                                        }
-                                        if (followed) {
-                                            newDisplayText.append(" (已关注)");
-                                        }
-                                        label.setText(newDisplayText.toString());
-                                    }
-                                });
-                            };
-                            FollowStateManager.getInstance().registerListener(userId, listener);
-                        }
-                    }
-                    
-                    label.setText(displayText.toString());
-                    setGraphic(hbox);
-                }
-            }
-        });
-        authorColumn.setCellValueFactory(new PropertyValueFactory<>("authorNickname"));
-        
-        createTimeColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getCreateTime() != null) {
-                return new javafx.beans.property.SimpleStringProperty(dateFormat.format(cellData.getValue().getCreateTime()));
-            }
-            return new javafx.beans.property.SimpleStringProperty("");
-        });
-        likeCountColumn.setCellValueFactory(new PropertyValueFactory<>("likeCount"));
-        commentCountColumn.setCellValueFactory(new PropertyValueFactory<>("commentCount"));
-        statusColumn.setCellValueFactory(cellData -> {
-            return new javafx.beans.property.SimpleStringProperty(cellData.getValue().getStatusText());
-        });
-        
-        moderationStatusColumn.setCellFactory(param -> new TableCell<Post, String>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || getTableRow() == null) {
-                    setText(null);
-                    setTextFill(Color.BLACK);
-                } else {
-                    Post post = getTableView().getItems().get(getIndex());
-                    String moderationStatus = post.getModerationStatus();
-                    String displayText = post.getModerationStatusText();
-                    
-                    setText(displayText);
-                    
-                    if ("pending".equals(moderationStatus) || "manual".equals(moderationStatus)) {
-                        setTextFill(Color.ORANGE);
-                    } else if ("pass".equals(moderationStatus)) {
-                        setTextFill(Color.GREEN);
-                    } else if ("reject".equals(moderationStatus)) {
-                        setTextFill(Color.RED);
-                    } else {
-                        setText(null);
-                    }
-                }
-            }
-        });
-
-        boardComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue != null) {
-                currentBoardId = newValue.getId();
-                System.out.println("Board selected: " + newValue.getName() + ", id=" + currentBoardId);
-            } else {
-                currentBoardId = null;
-                System.out.println("Board deselected");
-            }
-            currentPageNum = 1;
-            loadPostList();
-        });
-
-        postTableView.setRowFactory(tv -> {
-            TableRow<Post> row = new TableRow<>();
-            row.setPrefHeight(36);
-            row.setMinHeight(36);
-            row.setMaxHeight(36);
-            row.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2 && !row.isEmpty()) {
-                    Post post = row.getItem();
-                    openPostDetail(post.getId());
-                }
-            });
-            return row;
-        });
-
         searchButton.setOnAction(event -> {
             String input = keywordTextField.getText();
             if (tryOpenPostFromLink(input)) {
                 return;
             }
             currentKeyword = input;
-            System.out.println("Search clicked, keyword=" + currentKeyword);
             currentPageNum = 1;
             loadPostList();
         });
-        
+
         keywordTextField.setOnAction(event -> {
             String input = keywordTextField.getText();
             if (tryOpenPostFromLink(input)) {
                 return;
             }
             currentKeyword = input;
-            System.out.println("Enter pressed, keyword=" + currentKeyword);
             currentPageNum = 1;
             loadPostList();
         });
@@ -256,7 +93,6 @@ public class PostListController extends ToolController {
         publishButton.setOnAction(event -> openPublishPost());
 
         refreshButton.setOnAction(event -> {
-            // 重置并重新加载
             currentPageNum = 1;
             loadPostList(refreshButton);
         });
@@ -273,23 +109,23 @@ public class PostListController extends ToolController {
             loadPostList();
         });
 
-        pageSizeComboBox.setItems(FXCollections.observableArrayList(10, 20, 50));
-        pageSizeComboBox.setValue(currentPageSize);
-        pageSizeComboBox.valueProperty().addListener((observable, oldValue, newValue) -> {
+        boardComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
-                currentPageSize = newValue;
-                currentPageNum = 1;
-                loadPostList();
+                currentBoardId = newValue.getId();
+            } else {
+                currentBoardId = null;
             }
+            currentPageNum = 1;
+            loadPostList();
         });
 
         publishButton.setVisible(false);
-        
+
         loadBoardList();
         loadCurrentUser();
         loadPostList();
     }
-    
+
     private void loadCurrentUser() {
         Task<User> task = new Task<User>() {
             @Override
@@ -297,7 +133,7 @@ public class PostListController extends ToolController {
                 return HttpRequestUtil.getCurrentUser();
             }
         };
-        
+
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 currentUser = task.getValue();
@@ -305,13 +141,13 @@ public class PostListController extends ToolController {
                 loadFollowingList();
             });
         });
-        
+
         task.setOnFailed(event -> {
             Platform.runLater(() -> {
                 updatePublishButtonVisibility();
             });
         });
-        
+
         new Thread(task).start();
     }
 
@@ -335,17 +171,24 @@ public class PostListController extends ToolController {
                         }
                     }
                 }
-                postTableView.refresh();
             });
         });
 
         new Thread(task).start();
     }
-    
+
     private void updatePublishButtonVisibility() {
         boolean isLoggedIn = currentUser != null;
         boolean isBanned = isLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
-        publishButton.setVisible(isLoggedIn && !isBanned);
+        boolean canPostByLevel = PrivilegeCache.getInstance().canPost();
+        publishButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
+        if (isLoggedIn && !isBanned && !canPostByLevel) {
+            publishButton.setText("等级不足");
+            publishButton.setStyle("-fx-background-color: #d9d9d9; -fx-text-fill: #999;");
+        } else {
+            publishButton.setText("发帖");
+            publishButton.setStyle("");
+        }
     }
 
     private void loadBoardList() {
@@ -389,7 +232,8 @@ public class PostListController extends ToolController {
             refreshBtn.setDisable(true);
             refreshBtn.setText("刷新中");
         }
-        
+        refreshProgressIndicator.setVisible(true);
+
         Task<PageResult<Post>> task = new Task<PageResult<Post>>() {
             @Override
             protected PageResult<Post> call() {
@@ -403,27 +247,35 @@ public class PostListController extends ToolController {
                     refreshBtn.setDisable(false);
                     refreshBtn.setText("刷新");
                 }
-                
+                refreshProgressIndicator.setVisible(false);
+
                 PageResult<Post> pageResult = task.getValue();
-                System.out.println("loadPostList succeeded: pageResult=" + pageResult);
-                if (pageResult != null) {
-                    System.out.println("  list=" + pageResult.getList() + ", size=" + (pageResult.getList() != null ? pageResult.getList().size() : "null"));
-                    System.out.println("  total=" + pageResult.getTotal() + ", pageNum=" + pageResult.getPageNum());
-                }
-                if (pageResult != null && pageResult.getList() != null) {
-                    postTableView.getItems().clear();
-                    postTableView.getItems().addAll(pageResult.getList());
-                    System.out.println("  Table updated with " + pageResult.getList().size() + " items");
-                    
+                postListVBox.getChildren().clear();
+
+                if (pageResult != null && pageResult.getList() != null && !pageResult.getList().isEmpty()) {
+                    for (Post post : pageResult.getList()) {
+                        addPostCard(post);
+                    }
+
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " 页");
-                    
-                    prevButton.setDisable(currentPageNum <= 1);
                     int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + totalPages + " 页");
+
+                    prevButton.setDisable(currentPageNum <= 1);
                     nextButton.setDisable(currentPageNum >= totalPages);
                 } else {
-                    System.out.println("  No data to display");
+                    Label emptyLabel = new Label("暂无帖子~");
+                    emptyLabel.setStyle("-fx-text-fill: #999; -fx-padding: 40 0; -fx-font-size: 14;");
+                    emptyLabel.setMaxWidth(Double.MAX_VALUE);
+                    emptyLabel.setAlignment(javafx.geometry.Pos.CENTER);
+                    postListVBox.getChildren().add(emptyLabel);
+
+                    pageInfoLabel.setText("共 0 条");
+                    prevButton.setDisable(true);
+                    nextButton.setDisable(true);
                 }
+
+                mainScrollPane.setVvalue(0);
             });
         });
 
@@ -433,11 +285,124 @@ public class PostListController extends ToolController {
                     refreshBtn.setDisable(false);
                     refreshBtn.setText("刷新");
                 }
+                refreshProgressIndicator.setVisible(false);
                 showError("加载帖子列表失败");
             });
         });
 
         new Thread(task).start();
+    }
+
+    private void addPostCard(Post post) {
+        VBox card = new VBox(6);
+        card.getStyleClass().add("profile-card");
+        card.setStyle("-fx-padding: 16; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;");
+
+        // 标题行
+        HBox titleRow = new HBox(10);
+        titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        String title = post.getTitle() != null ? post.getTitle() : "";
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #1a1a2e; -fx-wrap-text: true;");
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(titleLabel, Priority.ALWAYS);
+
+        // 审核状态标签
+        String moderationStatus = post.getModerationStatus();
+        if (moderationStatus != null && !"pass".equals(moderationStatus)) {
+            Label statusLabel = new Label(post.getModerationStatusText());
+            if ("pending".equals(moderationStatus) || "manual".equals(moderationStatus)) {
+                statusLabel.setStyle("-fx-text-fill: #d97706; -fx-font-size: 12; -fx-background-color: #fef3c7; -fx-padding: 2 8; -fx-background-radius: 10;");
+            } else if ("reject".equals(moderationStatus)) {
+                statusLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 12; -fx-background-color: #fee2e2; -fx-padding: 2 8; -fx-background-radius: 10;");
+            }
+            titleRow.getChildren().addAll(titleLabel, statusLabel);
+        } else {
+            titleRow.getChildren().add(titleLabel);
+        }
+
+        // 作者与元数据行
+        HBox metaRow = new HBox(12);
+        metaRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        // 作者头像
+        ImageView avatarView = new ImageView();
+        avatarView.setFitWidth(24);
+        avatarView.setFitHeight(24);
+        avatarView.setPreserveRatio(true);
+        avatarView.setSmooth(true);
+        String avatarUrl = post.getAuthorAvatarUrl();
+        if (avatarUrl != null && !avatarUrl.isBlank()) {
+            try {
+                String fullAvatarUrl = avatarUrl.startsWith("/") ? HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                Image image = new Image(fullAvatarUrl, true);
+                avatarView.setImage(image);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
+        // 作者昵称
+        String nickname = post.getAuthorNickname() != null ? post.getAuthorNickname() : "未知用户";
+        Label nicknameLabel = new Label(nickname);
+        nicknameLabel.setStyle("-fx-font-size: 13; -fx-text-fill: #4b5563;");
+        NicknameStyleUtil.applyStyle(nicknameLabel, post.getAuthorNicknameStyle());
+
+        Long userId = post.getUserId();
+        if (userId != null && followingUserIds.contains(userId.intValue())) {
+            Label followedLabel = new Label("已关注");
+            followedLabel.setStyle("-fx-text-fill: #10b981; -fx-font-size: 11; -fx-background-color: #d1fae5; -fx-padding: 1 6; -fx-background-radius: 8;");
+            metaRow.getChildren().addAll(avatarView, nicknameLabel, followedLabel);
+        } else {
+            metaRow.getChildren().addAll(avatarView, nicknameLabel);
+        }
+
+        // 板块标签
+        String boardName = post.getBoardName();
+        if (boardName != null && !boardName.isBlank()) {
+            Label boardLabel = new Label(boardName);
+            boardLabel.setStyle("-fx-text-fill: #6366f1; -fx-font-size: 11; -fx-background-color: #eef2ff; -fx-padding: 1 8; -fx-background-radius: 8;");
+            metaRow.getChildren().add(boardLabel);
+        }
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        metaRow.getChildren().add(spacer);
+
+        // 创建时间
+        Date createTime = post.getCreateTime();
+        if (createTime != null) {
+            Label timeLabel = new Label(dateFormat.format(createTime));
+            timeLabel.setStyle("-fx-text-fill: #9ca3af; -fx-font-size: 12;");
+            metaRow.getChildren().add(timeLabel);
+        }
+
+        // 统计行
+        HBox statsRow = new HBox(18);
+        statsRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        int likeCount = post.getLikeCount() != null ? post.getLikeCount() : 0;
+        Label likeLabel = new Label("赞 " + likeCount);
+        likeLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12;");
+
+        int commentCount = post.getCommentCount() != null ? post.getCommentCount() : 0;
+        Label commentLabel = new Label("评 " + commentCount);
+        commentLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12;");
+
+        statsRow.getChildren().addAll(likeLabel, commentLabel);
+
+        card.getChildren().addAll(titleRow, metaRow, statsRow);
+
+        // 点击打开帖子详情
+        card.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                openPostDetail(post.getId());
+            }
+        });
+
+        postListVBox.getChildren().add(card);
     }
 
     private void openPostDetail(Long postId) {
@@ -447,7 +412,7 @@ public class PostListController extends ToolController {
                 javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
                 PostDetailController controller = fxmlLoader.getController();
                 controller.setPostId(postId);
-                
+
                 String tabName = "post-detail-" + postId;
                 AppStore.getMainFrameController().changeContentWithScene(tabName, "帖子详情", scene, controller);
             } catch (Exception e) {
@@ -478,7 +443,6 @@ public class PostListController extends ToolController {
 
         String trimmedInput = input.trim();
 
-        // 从文本中提取 bbs://post/{id} 链接（可以包含其他文本）
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("bbs://post/(\\d+)");
         java.util.regex.Matcher matcher = pattern.matcher(trimmedInput);
 
@@ -488,7 +452,6 @@ public class PostListController extends ToolController {
                 openPostDetail(postId);
                 return true;
             } catch (NumberFormatException e) {
-                // 解析失败，继续正常搜索
                 return false;
             }
         }

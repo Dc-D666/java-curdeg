@@ -29,6 +29,7 @@ public class Post {
     private Date updateTime;
     
     private String authorNickname;
+    private String authorNicknameStyle;
     private String authorAvatarUrl;
     private String boardName;
     private String moderationTime;
@@ -163,6 +164,14 @@ public class Post {
 
     public void setAuthorNickname(String authorNickname) {
         this.authorNickname = authorNickname;
+    }
+
+    public String getAuthorNicknameStyle() {
+        return authorNicknameStyle;
+    }
+
+    public void setAuthorNicknameStyle(String authorNicknameStyle) {
+        this.authorNicknameStyle = authorNicknameStyle;
     }
 
     public String getAuthorAvatarUrl() {

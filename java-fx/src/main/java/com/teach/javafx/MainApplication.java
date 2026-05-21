@@ -21,10 +21,13 @@ public class MainApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/login-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 320, 240);
+        Scene scene = new Scene(fxmlLoader.load(), 600, 800);
         applyTheme(scene);
         stage.setTitle("学生交流社区");
         stage.setScene(scene);
+        stage.setWidth(600);
+        stage.setHeight(800);
+        stage.centerOnScreen();
         stage.show();
         stage.setOnCloseRequest(event -> {
             if (canClose) {
@@ -78,14 +81,9 @@ public class MainApplication extends Application {
         if (maximize) {
             mainStage.setMaximized(true);
         } else {
-            mainStage.setWidth(500);
-            mainStage.setHeight(600);
-            javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
-            javafx.geometry.Rectangle2D bounds = screen.getVisualBounds();
-            double x = (bounds.getWidth() - 500) / 2;
-            double y = (bounds.getHeight() - 600) / 2;
-            mainStage.setX(x);
-            mainStage.setY(y);
+            mainStage.setWidth(600);
+            mainStage.setHeight(800);
+            mainStage.centerOnScreen();
         }
         mainStage.show();
     }
@@ -96,12 +94,9 @@ public class MainApplication extends Application {
         mainStage.setTitle(name);
         applyTheme(scene);
         mainStage.setScene(scene);
-        double x = (stageWidth - 320) / 2;
-        double y = (stageHeight - 240) / 2;
-        mainStage.setX(x);
-        mainStage.setY(y);
-        mainStage.setWidth(320);
-        mainStage.setHeight(240);
+        mainStage.setWidth(600);
+        mainStage.setHeight(800);
+        mainStage.centerOnScreen();
         mainStage.show();
     }
 

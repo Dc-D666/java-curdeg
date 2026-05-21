@@ -29,6 +29,7 @@ import javafx.util.StringConverter;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class PersonalProfileController extends ToolController {
@@ -98,6 +99,14 @@ public class PersonalProfileController extends ToolController {
     private VBox followingCountBox;
     @FXML
     private VBox followerCountBox;
+    @FXML
+    private VBox pointsBox;
+    @FXML
+    private Label pointsLabel;
+    @FXML
+    private Label levelLabel;
+    @FXML
+    private ImageView levelIconImageView;
 
     private User currentUser;
     private String originalNickname;
@@ -255,6 +264,7 @@ public class PersonalProfileController extends ToolController {
         setupCardClickHandler(postCountBox, "my-posts", "我的帖子");
         setupCardClickHandler(followingCountBox, "my-following", "我的关注");
         setupCardClickHandler(followerCountBox, "my-followers", "我的粉丝");
+        setupCardClickHandler(pointsBox, "point-history", "山竹瓣明细");
     }
     
     private void setupCardClickHandler(javafx.scene.layout.VBox card, String pageName, String title) {
@@ -289,6 +299,7 @@ public class PersonalProfileController extends ToolController {
                 currentUser = task.getValue();
                 if (currentUser != null) {
                     updateUI(currentUser);
+                    loadPointsData();
                 } else {
                     showError("加载用户数据失败");
                 }
@@ -300,6 +311,60 @@ public class PersonalProfileController extends ToolController {
         });
 
         new Thread(task).start();
+    }
+
+    private void loadPointsData() {
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getMyPoints();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> data = task.getValue();
+                if (data != null) {
+                    Object pointsObj = data.get("points");
+                    Object levelObj = data.get("level");
+                    Object levelNameObj = data.get("levelName");
+                    Object iconPathObj = data.get("iconPath");
+                    Object nicknameStyleObj = data.get("nicknameStyle");
+
+                    int points = pointsObj instanceof Number ? ((Number) pointsObj).intValue() : 0;
+                    int level = levelObj instanceof Number ? ((Number) levelObj).intValue() : 0;
+                    String levelName = levelNameObj instanceof String ? (String) levelNameObj : "";
+                    String iconPath = iconPathObj instanceof String ? (String) iconPathObj : null;
+                    String nicknameStyle = nicknameStyleObj instanceof String ? (String) nicknameStyleObj : "normal";
+
+                    pointsLabel.setText(String.valueOf(points));
+                    levelLabel.setText(levelName != null && !levelName.isEmpty() ? levelName : "Lv." + level);
+
+                    if (iconPath != null && !iconPath.isEmpty()) {
+                        try {
+                            String fullIconUrl = iconPath.startsWith("/") ? HttpRequestUtil.serverUrl + iconPath : iconPath;
+                            Image iconImage = new Image(fullIconUrl, true);
+                            levelIconImageView.setImage(iconImage);
+                        } catch (Exception e) {
+                        }
+                    }
+
+                    applyNicknameStyle(nicknameStyle);
+                }
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void applyNicknameStyle(String style) {
+        if ("bold_red".equals(style)) {
+            nicknameTextField.setStyle("-fx-font-weight: bold; -fx-text-fill: #e53935;");
+        } else if ("bold".equals(style)) {
+            nicknameTextField.setStyle("-fx-font-weight: bold;");
+        } else {
+            nicknameTextField.setStyle("");
+        }
     }
 
     private void updateUI(User user) {

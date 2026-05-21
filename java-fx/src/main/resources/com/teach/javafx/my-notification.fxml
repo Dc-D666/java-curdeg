@@ -15,17 +15,15 @@
    <top>
       <VBox spacing="0" styleClass="notification-toolbar" BorderPane.alignment="CENTER">
          <padding>
-            <Insets bottom="14" left="20" right="20" top="14" />
+            <Insets bottom="12" left="20" right="20" top="14" />
          </padding>
-         <!-- Title row -->
          <HBox alignment="CENTER_LEFT" spacing="10">
             <children>
                <Label text="我的通知" styleClass="page-title" />
                <Region HBox.hgrow="ALWAYS" />
-               <Label fx:id="unreadBadge" styleClass="unread-badge" text="0 条未读" />
+               <Label fx:id="unreadBadge" styleClass="unread-badge" text="未读 0" />
             </children>
          </HBox>
-         <!-- Tab + Action row -->
          <HBox alignment="CENTER_LEFT" spacing="0" style="-fx-padding: 10 0 0 0;">
             <children>
                <HBox fx:id="tabGroup" styleClass="tab-group">
@@ -44,19 +42,18 @@
    </top>
    <center>
       <StackPane BorderPane.alignment="CENTER">
-         <!-- Notification list -->
          <ListView fx:id="notificationListView" styleClass="notification-list" />
-         <!-- Loading overlay -->
          <VBox fx:id="loadingPane" alignment="CENTER" spacing="10" visible="false" managed="false" styleClass="loading-pane">
             <children>
                <ProgressIndicator styleClass="loading-spinner" />
                <Label text="加载中..." styleClass="loading-text" />
             </children>
          </VBox>
-         <!-- Empty state -->
          <VBox fx:id="emptyPane" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="empty-pane">
             <children>
-               <Label text="🔔" styleClass="empty-icon" />
+               <StackPane styleClass="empty-icon-box">
+                  <Label text="!" styleClass="empty-icon-text" />
+               </StackPane>
                <Label text="暂无通知" styleClass="empty-title" />
                <Label text="当您收到新通知时会在这里显示" styleClass="empty-subtitle" />
                <Button fx:id="emptyRefreshButton" text="刷新" styleClass="empty-button" />

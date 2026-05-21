@@ -2,8 +2,10 @@
 package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.configs.AiImageConfig;
+import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.request.AiImageRequest;
 import cn.edu.sdu.java.server.payload.response.AiImageResponse;
+import cn.edu.sdu.java.server.repositorys.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -24,18 +26,40 @@ public class AiImageService {
     private final AiImageConfig aiImageConfig;
     private final ObjectMapper objectMapper;
     private final BbsFileService bbsFileService;
+    private final UserRepository userRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public AiImageService(RestTemplate restTemplate, AiImageConfig aiImageConfig, 
-                         ObjectMapper objectMapper, BbsFileService bbsFileService) {
+                         ObjectMapper objectMapper, BbsFileService bbsFileService,
+                         UserRepository userRepository, LevelPrivilegeService levelPrivilegeService) {
         this.restTemplate = restTemplate;
         this.aiImageConfig = aiImageConfig;
         this.objectMapper = objectMapper;
         this.bbsFileService = bbsFileService;
+        this.userRepository = userRepository;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     public AiImageResponse generateImage(AiImageRequest request) {
+        return generateImage(request, null);
+    }
+
+    public AiImageResponse generateImage(AiImageRequest request, Integer userId) {
         log.info("===== 开始AI图片生成 =====");
         log.info("请求 - prompt={}, size={}", request.getPrompt(), request.getSize());
+        
+        if (userId != null) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null) {
+                int imageLimit = levelPrivilegeService.getAiImageLimit(user.getLevel());
+                if (imageLimit <= 0) {
+                    return AiImageResponse.error("您当前等级不具备AI图片生成权限");
+                }
+                if (!levelPrivilegeService.checkAiUsageLimit(userId, "image", imageLimit)) {
+                    return AiImageResponse.error("您今日AI配图次数已达上限(" + imageLimit + "次)，请明日再来");
+                }
+            }
+        }
         
         try {
             String imageUrlFromAi = callAiForImage(request);

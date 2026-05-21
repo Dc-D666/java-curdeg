@@ -16,12 +16,14 @@ public class Comment {
     private Date updateTime;
     
     private String authorNickname;
+    private String authorNicknameStyle;
     private String authorAvatarUrl;
     
     private String imageUrls;
     private String attachmentInfos;
     private Integer likeCount;
     private Integer status;
+    private String moderationStatus;
     
     private List<Comment> replyList;
 
@@ -116,6 +118,14 @@ public class Comment {
         this.authorNickname = authorNickname;
     }
 
+    public String getAuthorNicknameStyle() {
+        return authorNicknameStyle;
+    }
+
+    public void setAuthorNicknameStyle(String authorNicknameStyle) {
+        this.authorNicknameStyle = authorNicknameStyle;
+    }
+
     public String getAuthorAvatarUrl() {
         return authorAvatarUrl;
     }
@@ -154,6 +164,14 @@ public class Comment {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public String getModerationStatus() {
+        return moderationStatus;
+    }
+
+    public void setModerationStatus(String moderationStatus) {
+        this.moderationStatus = moderationStatus;
     }
 
     public List<Comment> getReplyList() {

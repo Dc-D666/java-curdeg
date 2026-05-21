@@ -56,4 +56,9 @@ public class BbsCommentController {
     public DataResponse getLikeStatus(@PathVariable Long id) {
         return bbsCommentService.getLikeStatus(id);
     }
+
+    @GetMapping("/{id}/likers")
+    public DataResponse getCommentLikers(@PathVariable Long id) {
+        return bbsCommentService.getCommentLikers(id);
+    }
 }

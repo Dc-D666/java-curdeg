@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -24,6 +25,11 @@ public interface BbsLikeRepository extends JpaRepository<BbsLike, Long> {
 
     @Query("SELECT COUNT(l) FROM BbsLike l WHERE l.postId IN (SELECT p.id FROM BbsPost p WHERE p.authorId = :authorId)")
     long countLikesByAuthorId(@Param("authorId") Integer authorId);
+
+    @Query(value = "SELECT u.person_id as userId, u.nickname as nickname, u.avatar_url as avatarUrl " +
+           "FROM bbs_like l JOIN user u ON l.user_id = u.person_id " +
+           "WHERE l.post_id = :postId ORDER BY l.create_time DESC", nativeQuery = true)
+    List<Map<String, Object>> findLikersByPostId(@Param("postId") Long postId);
 
     // ==================== 统计功能扩展 ====================
 

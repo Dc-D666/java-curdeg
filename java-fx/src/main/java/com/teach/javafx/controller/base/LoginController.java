@@ -8,6 +8,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
@@ -103,6 +104,17 @@ public class LoginController {
         try {
             Scene scene = new Scene(fxmlLoader.load(), -1, -1);
             MainApplication.resetStage("学生交流社区 - 注册", scene, false);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @FXML
+    protected void onForgotPasswordClick() {
+        FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("base/forgot-password.fxml"));
+        try {
+            Scene scene = new Scene(fxmlLoader.load(), -1, -1);
+            MainApplication.resetStage("学生交流社区 - 忘记密码", scene, false);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

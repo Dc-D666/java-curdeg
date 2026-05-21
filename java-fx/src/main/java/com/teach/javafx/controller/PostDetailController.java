@@ -10,6 +10,8 @@ import com.teach.javafx.models.User;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.AttachmentUtil;
 import com.teach.javafx.util.FollowStateManager;
+import com.teach.javafx.util.NicknameStyleUtil;
+import com.teach.javafx.util.PrivilegeCache;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -271,7 +273,9 @@ public class PostDetailController extends ToolController {
                     } else {
                         authorImageView.setImage(null);
                     }
-                    authorLabel.setText("作者：" + (currentPost.getAuthorNickname() != null ? currentPost.getAuthorNickname() : "未知"));
+                    String authorNickname = currentPost.getAuthorNickname() != null ? currentPost.getAuthorNickname() : "未知";
+                    authorLabel.setText("作者：" + authorNickname);
+                    NicknameStyleUtil.applyStyle(authorLabel, currentPost.getAuthorNicknameStyle());
                     if (currentPost.getCreateTime() != null) {
                         createTimeLabel.setText("发布时间：" + dateFormat.format(currentPost.getCreateTime()));
                     }
@@ -477,6 +481,9 @@ public class PostDetailController extends ToolController {
         // 检查是否是违规帖
         boolean isRejected = currentPost != null && "reject".equals(currentPost.getModerationStatus());
         
+        // 检查等级发帖权限
+        boolean canPostByLevel = PrivilegeCache.getInstance().canPost();
+        
         // 重置所有菜单和按钮为不可见
         submitCommentButton.setVisible(false);
         likeButton.setVisible(false);
@@ -501,14 +508,14 @@ public class PostDetailController extends ToolController {
             }
         } else {
             // 正常显示按钮和菜单
-            submitCommentButton.setVisible(isLoggedIn && !isBanned);
+            submitCommentButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
             likeButton.setVisible(isLoggedIn && !isBanned);
             favoriteButton.setVisible(isLoggedIn && !isBanned);
             shareButton.setVisible(isLoggedIn && !isBanned);
             reportButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
             followButton.setVisible(isLoggedIn && !isBanned && !isAuthor);
-            addImageButton.setVisible(isLoggedIn && !isBanned);
-            addAttachmentButton.setVisible(isLoggedIn && !isBanned);
+            addImageButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
+            addAttachmentButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
             
             boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
             if (canEditDelete) {
@@ -521,6 +528,15 @@ public class PostDetailController extends ToolController {
             }
             if (isLoggedIn && !isBanned) {
                 summaryButton.setVisible(true);
+            }
+            
+            // 如果等级不足，显示评论限制提示
+            if (isLoggedIn && !isBanned && !canPostByLevel) {
+                commentTextArea.setPromptText("⚠️ 当前等级禁止评论，请提升等级后再试");
+                commentTextArea.setDisable(true);
+            } else {
+                commentTextArea.setPromptText("发表评论，支持添加图片和附件...");
+                commentTextArea.setDisable(false);
             }
         }
     }

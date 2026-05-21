@@ -3,9 +3,11 @@ package cn.edu.sdu.java.server.services;
 import cn.edu.sdu.java.server.configs.ModerationConfig;
 import cn.edu.sdu.java.server.models.BbsComment;
 import cn.edu.sdu.java.server.models.BbsPost;
+import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.payload.response.ContentSummaryResponse;
 import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
+import cn.edu.sdu.java.server.repositorys.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -44,19 +46,36 @@ public class ContentSummaryService {
     private final ObjectMapper objectMapper;
     private final BbsPostRepository bbsPostRepository;
     private final BbsCommentRepository bbsCommentRepository;
+    private final UserRepository userRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public ContentSummaryService(RestTemplate restTemplate, ModerationConfig moderationConfig,
                                  ObjectMapper objectMapper, BbsPostRepository bbsPostRepository,
-                                 BbsCommentRepository bbsCommentRepository) {
+                                 BbsCommentRepository bbsCommentRepository,
+                                 UserRepository userRepository, LevelPrivilegeService levelPrivilegeService) {
         this.restTemplate = restTemplate;
         this.moderationConfig = moderationConfig;
         this.objectMapper = objectMapper;
         this.bbsPostRepository = bbsPostRepository;
         this.bbsCommentRepository = bbsCommentRepository;
+        this.userRepository = userRepository;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     public ContentSummaryResponse summarizePost(Long postId) {
+        return summarizePost(postId, null);
+    }
+
+    public ContentSummaryResponse summarizePost(Long postId, Integer userId) {
         log.info("===== 开始总结帖子内容，postId={} =====", postId);
+        
+        if (userId != null) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null && !levelPrivilegeService.canUseAiSummary(user.getLevel())) {
+                return ContentSummaryResponse.error("您当前等级不具备AI总结权限");
+            }
+        }
+
         try {
             BbsPost post = bbsPostRepository.findById(postId).orElse(null);
             if (post == null) {
@@ -82,7 +101,19 @@ public class ContentSummaryService {
     }
 
     public ContentSummaryResponse summarizePostWithComments(Long postId) {
+        return summarizePostWithComments(postId, null);
+    }
+
+    public ContentSummaryResponse summarizePostWithComments(Long postId, Integer userId) {
         log.info("===== 开始总结帖子和评论，postId={} =====", postId);
+        
+        if (userId != null) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user != null && !levelPrivilegeService.canUseAiSummary(user.getLevel())) {
+                return ContentSummaryResponse.error("您当前等级不具备AI总结权限");
+            }
+        }
+
         try {
             BbsPost post = bbsPostRepository.findById(postId).orElse(null);
             if (post == null) {

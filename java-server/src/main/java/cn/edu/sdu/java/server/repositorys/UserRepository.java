@@ -6,26 +6,14 @@ import cn.edu.sdu.java.server.models.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-/*
- * User 数据操作接口，主要实现User数据的查询操作
- * Optional<User> findByUserName(String userName);  根据username查询获得Option<User>对象,  命名规范
- * Optional<User> findByPersonNum(String perNum);  根据关联的Person的num查询获得Option<User>对象  命名规范
- * Optional<User> findByPersonPersonId(Integer personId); 根据关联的Person的personId查询获得Option<User>对象  命名规范
- * Integer getMaxId()  user 表中的最大的user_id;    JPQL 注解
- * Optional<User> findByUserId(Integer userId);  根据userId查询获得Option<User>对象,  命名规范
- * Boolean existsByUserName(String userName);  判断userName的用户是否存在 命名规范
- *
- * 【新增】社区业务查询方法：
- * Optional<User> findByStudentId(String studentId);  根据学号查询
- * Boolean existsByStudentId(String studentId);  判断学号是否已存在
- * Page<User> findByNicknameContainingOrStudentIdContaining(String nickname, String studentId, Pageable pageable);  模糊查询用户列表
- */
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
@@ -96,4 +84,74 @@ public interface UserRepository extends JpaRepository<User, Integer> {
            "OR u.person_id IN (SELECT l.user_id FROM bbs_like l WHERE l.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
            "OR u.person_id IN (SELECT f.user_id FROM bbs_favorite f WHERE f.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))", nativeQuery = true)
     Long countMonthlyActiveUsers();
+
+    // ==================== 积分/等级系统查询方法 ====================
+
+    List<User> findAllByOrderByPointsDesc(Pageable pageable);
+
+    @Query("SELECT COUNT(u) + 1 FROM User u WHERE u.points > :points")
+    Integer findUserRankByPoints(@Param("points") Integer points);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE User u SET u.points = :points WHERE u.personId = :userId")
+    int updatePointsOnly(@Param("userId") Integer userId, @Param("points") Integer points);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET level = :level WHERE person_id = :userId", nativeQuery = true)
+    void updateLevel(@Param("userId") Integer userId, @Param("level") Integer level);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET post_count = post_count + :delta WHERE person_id = :userId", nativeQuery = true)
+    void updatePostCount(@Param("userId") Integer userId, @Param("delta") Integer delta);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET following_count = following_count + :delta WHERE person_id = :userId", nativeQuery = true)
+    void updateFollowingCount(@Param("userId") Integer userId, @Param("delta") Integer delta);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET follower_count = follower_count + :delta WHERE person_id = :userId", nativeQuery = true)
+    void updateFollowerCount(@Param("userId") Integer userId, @Param("delta") Integer delta);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET comment_count = comment_count + :delta WHERE person_id = :userId", nativeQuery = true)
+    void updateCommentCount(@Param("userId") Integer userId, @Param("delta") Integer delta);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET level_protected_until = :protectedUntil WHERE person_id = :userId", nativeQuery = true)
+    void updateLevelProtectedUntil(@Param("userId") Integer userId, @Param("protectedUntil") java.time.LocalDate protectedUntil);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET last_login_time = :lastLoginTime, login_count = :loginCount, consecutive_login_days = :consecutiveDays, last_login_date = :lastLoginDate WHERE person_id = :userId", nativeQuery = true)
+    void updateLoginInfo(@Param("userId") Integer userId, @Param("lastLoginTime") String lastLoginTime, @Param("loginCount") Integer loginCount, @Param("consecutiveDays") Integer consecutiveDays, @Param("lastLoginDate") String lastLoginDate);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET nickname = :nickname, avatar_url = :avatarUrl, signature = :signature WHERE person_id = :userId", nativeQuery = true)
+    void updateProfile(@Param("userId") Integer userId, @Param("nickname") String nickname, @Param("avatarUrl") String avatarUrl, @Param("signature") String signature);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET password = :password WHERE person_id = :userId", nativeQuery = true)
+    void updatePassword(@Param("userId") Integer userId, @Param("password") String password);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET profile_completed_reward = :reward WHERE person_id = :userId", nativeQuery = true)
+    void updateProfileCompletedReward(@Param("userId") Integer userId, @Param("reward") Integer reward);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE user SET user_name = :userName WHERE person_id = :userId", nativeQuery = true)
+    void updateUserName(@Param("userId") Integer userId, @Param("userName") String userName);
+
+    @Query("SELECT u FROM User u WHERE u.person.email = :email")
+    Optional<User> findByPersonEmail(@Param("email") String email);
 }

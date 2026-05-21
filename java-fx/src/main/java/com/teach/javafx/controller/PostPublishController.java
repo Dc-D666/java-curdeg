@@ -7,6 +7,7 @@ import com.teach.javafx.models.Board;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.AttachmentUtil;
+import com.teach.javafx.util.PrivilegeCache;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -27,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class PostPublishController extends ToolController {
     @FXML
@@ -45,6 +47,8 @@ public class PostPublishController extends ToolController {
     private Button selectImageButton;
     @FXML
     private Button aiImageButton;
+    @FXML
+    private Label aiImageLimitLabel;
     @FXML
     private Label imageUploadStatusLabel;
     @FXML
@@ -101,20 +105,22 @@ public class PostPublishController extends ToolController {
     // 存储的图片URL列表
     private List<String> imageUrls = new ArrayList<>();
     private final List<Path> selectedAttachments = new ArrayList<>();
-    
-    // 草稿相关
+
+    // 草稿相关 - 支持多草稿
+    private Long currentDraftId = null;
     private static final String DRAFT_FILE_NAME = "post_draft.txt";
     private Path draftFilePath;
-    
+
     private com.teach.javafx.controller.base.MainFrameController mainFrameController;
-    
-    // 自动保存定时器（简化实现）
+
+    // 自动保存
     private boolean autoSaveEnabled = true;
     private long lastAutoSaveTime = 0;
     private static final long AUTO_SAVE_INTERVAL = 60000; // 60秒
 
     @FXML
     public void initialize() {
+        checkPostPrivilege();
         loadBoardList();
         initDraftPath();
         
@@ -140,6 +146,53 @@ public class PostPublishController extends ToolController {
         updateWordCount();
     }
     
+    private void checkPostPrivilege() {
+        String restrictionMsg = PrivilegeCache.getInstance().getPostRestrictionMessage();
+        if (restrictionMsg != null) {
+            publishButton.setDisable(true);
+            publishButton.setText("禁止发帖");
+            publishButton.setStyle("-fx-background-color: #d9d9d9; -fx-text-fill: #999;");
+            
+            // 在标题栏下方显示限制提示
+            javafx.scene.control.Label restrictionLabel = new javafx.scene.control.Label("⚠️ " + restrictionMsg);
+            restrictionLabel.setStyle("-fx-text-fill: #ff4d4f; -fx-font-size: 13px; -fx-padding: 4 0;");
+            
+            // 将提示标签插入到第一个位置（标题栏之前）
+            javafx.scene.layout.VBox parent = (javafx.scene.layout.VBox) publishButton.getParent().getParent();
+            if (parent != null) {
+                parent.getChildren().add(0, restrictionLabel);
+            }
+        }
+        updateAiImageLimitLabel();
+    }
+
+    private void updateAiImageLimitLabel() {
+        int remaining = PrivilegeCache.getInstance().getAiImageRemaining();
+        int limit = PrivilegeCache.getInstance().getAiImageLimit();
+        if (limit > 0) {
+            aiImageLimitLabel.setText("今日剩余 " + remaining + "/" + limit + " 次");
+            aiImageLimitLabel.setVisible(true);
+            aiImageLimitLabel.setManaged(true);
+            if (remaining <= 0) {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+                aiImageButton.setDisable(true);
+            } else if (remaining <= 2) {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #faad14; -fx-background-color: #fffbe6; -fx-padding: 2 6; -fx-background-radius: 4;");
+            } else {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #52c41a; -fx-background-color: #f6ffed; -fx-padding: 2 6; -fx-background-radius: 4;");
+            }
+        } else if (limit == 0) {
+            aiImageLimitLabel.setText("当前等级无AI配图权限");
+            aiImageLimitLabel.setVisible(true);
+            aiImageLimitLabel.setManaged(true);
+            aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+            aiImageButton.setDisable(true);
+        } else {
+            aiImageLimitLabel.setVisible(false);
+            aiImageLimitLabel.setManaged(false);
+        }
+    }
+
     private void initDraftPath() {
         String userHome = System.getProperty("user.home");
         draftFilePath = Paths.get(userHome, ".trae_bbs", DRAFT_FILE_NAME);
@@ -288,36 +341,71 @@ public class PostPublishController extends ToolController {
     private void saveDraftManually() {
         saveDraft(true);
     }
-    
+
     private void saveDraft(boolean showNotification) {
-        try {
-            Path parentDir = draftFilePath.getParent();
-            if (parentDir != null && !Files.exists(parentDir)) {
-                Files.createDirectories(parentDir);
-            }
-            
-            StringBuilder sb = new StringBuilder();
-            sb.append("--- TITLE ---\n");
-            sb.append(titleTextField.getText()).append("\n");
-            sb.append("--- CONTENT ---\n");
-            sb.append(contentTextArea.getText()).append("\n");
-            sb.append("--- IMAGE_URLS ---\n");
-            sb.append(String.join(",", imageUrls)).append("\n");
-            
-            Files.writeString(draftFilePath, sb.toString());
-            
-            if (showNotification) {
-                showInfo("草稿已保存");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            if (showNotification) {
-                showError("保存草稿失败：" + e.getMessage());
-            }
+        String title = titleTextField.getText();
+        String content = contentTextArea.getText();
+        String imageUrlsStr = String.join(",", imageUrls);
+        String attachmentInfosStr = buildAttachmentInfosString();
+        final Long draftId = currentDraftId;
+
+        Long boardId = null;
+        String boardName = null;
+        Board selectedBoard = boardComboBox.getValue();
+        if (selectedBoard != null) {
+            boardId = selectedBoard.getId();
+            boardName = selectedBoard.getName();
         }
+        final Long fBoardId = boardId;
+        final String fBoardName = boardName;
+
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.saveDraft(draftId, title, fBoardId, fBoardName,
+                        content, imageUrlsStr, attachmentInfosStr);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                if (result != null && result.containsKey("data")) {
+                    Object data = result.get("data");
+                    if (data instanceof Map) {
+                        Object idObj = ((Map) data).get("id");
+                        if (idObj instanceof Number) {
+                            currentDraftId = ((Number) idObj).longValue();
+                        }
+                    }
+                }
+                if (showNotification) {
+                    showInfo("草稿已存入草稿箱");
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                if (showNotification) {
+                    showError("保存草稿失败");
+                }
+            });
+        });
+
+        new Thread(task).start();
     }
-    
+
     private void deleteDraft() {
+        if (currentDraftId != null && currentDraftId > 0) {
+            Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+                @Override
+                protected Map<String, Object> call() {
+                    return HttpRequestUtil.deleteDraft(currentDraftId);
+                }
+            };
+            new Thread(task).start();
+        }
         try {
             if (Files.exists(draftFilePath)) {
                 Files.delete(draftFilePath);
@@ -325,6 +413,72 @@ public class PostPublishController extends ToolController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void loadDraft(Long draftId) {
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getDraft(draftId);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                if (result != null && result.containsKey("data")) {
+                    Object dataObj = result.get("data");
+                    if (dataObj instanceof Map) {
+                        Map<String, Object> draft = (Map<String, Object>) dataObj;
+                        currentDraftId = draftId;
+
+                        Object titleObj = draft.get("title");
+                        if (titleObj != null) titleTextField.setText(titleObj.toString());
+
+                        Object contentObj = draft.get("content");
+                        if (contentObj != null) contentTextArea.setText(contentObj.toString());
+
+                        Object imageUrlsObj = draft.get("imageUrls");
+                        if (imageUrlsObj != null && !imageUrlsObj.toString().isEmpty()) {
+                            String[] urls = imageUrlsObj.toString().split(",");
+                            for (String url : urls) {
+                                if (!url.trim().isEmpty()) addImageUrl(url.trim());
+                            }
+                        }
+
+                        Object boardIdObj = draft.get("boardId");
+                        if (boardIdObj instanceof Number) {
+                            selectBoard(((Number) boardIdObj).longValue());
+                        }
+
+                        updateWordCount();
+                    }
+                }
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void selectBoard(Long boardId) {
+        for (Board b : boardComboBox.getItems()) {
+            if (b.getId() != null && b.getId().equals(boardId)) {
+                boardComboBox.getSelectionModel().select(b);
+                break;
+            }
+        }
+    }
+
+    private String buildAttachmentInfosString() {
+        if (selectedAttachments.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < selectedAttachments.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("{\"path\":\"").append(selectedAttachments.get(i).toString().replace("\\", "\\\\")).append("\"}");
+        }
+        sb.append("]");
+        return sb.toString();
     }
     
     private void loadBoardList() {

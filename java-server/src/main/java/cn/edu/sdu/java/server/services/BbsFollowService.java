@@ -23,11 +23,13 @@ public class BbsFollowService {
     private final BbsFollowRepository bbsFollowRepository;
     private final UserRepository userRepository;
     private final BbsNotificationRepository bbsNotificationRepository;
+    private final PointService pointService;
 
-    public BbsFollowService(BbsFollowRepository bbsFollowRepository, UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository) {
+    public BbsFollowService(BbsFollowRepository bbsFollowRepository, UserRepository userRepository, BbsNotificationRepository bbsNotificationRepository, PointService pointService) {
         this.bbsFollowRepository = bbsFollowRepository;
         this.userRepository = userRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
+        this.pointService = pointService;
     }
 
     private void fillUserInfo(Map<String, Object> userMap, User user) {
@@ -57,48 +59,49 @@ public class BbsFollowService {
             return CommonMethod.getReturnMessageError("不能关注自己");
         }
 
-        Optional<User> followingUserOptional = userRepository.findById(followingId);
-        if (followingUserOptional.isEmpty()) {
-            return CommonMethod.getReturnMessageError("被关注用户不存在");
-        }
-
         Optional<User> currentUserOptional = userRepository.findById(currentUserId);
         if (currentUserOptional.isEmpty()) {
             return CommonMethod.getReturnMessageError("当前用户不存在");
         }
-
         User currentUser = currentUserOptional.get();
-        User followingUser = followingUserOptional.get();
 
         boolean alreadyFollowed = bbsFollowRepository.existsByFollowerIdAndFollowingId(currentUserId, followingId);
 
         if (alreadyFollowed) {
             bbsFollowRepository.deleteByFollowerIdAndFollowingId(currentUserId, followingId);
-            currentUser.setFollowingCount(Math.max(0, currentUser.getFollowingCount() - 1));
-            followingUser.setFollowerCount(Math.max(0, followingUser.getFollowerCount() - 1));
+            userRepository.updateFollowingCount(currentUserId, -1);
+            userRepository.updateFollowerCount(followingId, -1);
         } else {
             BbsFollow follow = new BbsFollow();
             follow.setFollowerId(currentUserId);
             follow.setFollowingId(followingId);
             bbsFollowRepository.saveAndFlush(follow);
-            currentUser.setFollowingCount(currentUser.getFollowingCount() + 1);
-            followingUser.setFollowerCount(followingUser.getFollowerCount() + 1);
-            
+            userRepository.updateFollowingCount(currentUserId, 1);
+
             BbsNotification notification = new BbsNotification();
             notification.setReceiverId(followingId.longValue());
             notification.setType(5);
             notification.setTitle("新增粉丝通知");
             notification.setContent("用户【" + currentUser.getNickname() + "】关注了你");
             bbsNotificationRepository.saveAndFlush(notification);
+
+            // 被关注积分奖励 - 使用原生SQL更新follower_count避免乐观锁冲突
+            pointService.addPoints(followingId, "RECEIVED_FOLLOW", "被关注", follow.getId(), "FOLLOW");
+            userRepository.updateFollowerCount(followingId, 1);
         }
 
-        userRepository.saveAndFlush(currentUser);
-        userRepository.saveAndFlush(followingUser);
+        // 获取最新的计数
+        Integer followingCount = userRepository.findById(currentUserId)
+                .map(User::getFollowingCount)
+                .orElse(0);
+        Integer followerCount = userRepository.findById(followingId)
+                .map(User::getFollowerCount)
+                .orElse(0);
 
         Map<String, Object> result = new HashMap<>();
         result.put("followed", !alreadyFollowed);
-        result.put("followingCount", currentUser.getFollowingCount());
-        result.put("followerCount", followingUser.getFollowerCount());
+        result.put("followingCount", followingCount);
+        result.put("followerCount", followerCount);
 
         return CommonMethod.getReturnData(result);
     }

@@ -9,6 +9,7 @@ import cn.edu.sdu.java.server.models.User;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import cn.edu.sdu.java.server.repositorys.BbsFollowRepository;
 import cn.edu.sdu.java.server.payload.response.ModerationResult;
 import cn.edu.sdu.java.server.repositorys.BbsModerationLogRepository;
@@ -16,14 +17,11 @@ import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
 import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
 import cn.edu.sdu.java.server.util.DateTimeTool;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Slf4j
 @Service
@@ -36,6 +34,8 @@ public class PostModerationService {
     private final ContentModerationService contentModerationService;
     private final ObjectMapper objectMapper;
     private final BbsFollowRepository bbsFollowRepository;
+    private final PointService pointService;
+    private final LevelPrivilegeService levelPrivilegeService;
 
     public PostModerationService(BbsPostRepository bbsPostRepository,
                                   BbsNotificationRepository bbsNotificationRepository,
@@ -43,7 +43,9 @@ public class PostModerationService {
                                   UserRepository userRepository,
                                   ContentModerationService contentModerationService,
                                   ObjectMapper objectMapper,
-                                  BbsFollowRepository bbsFollowRepository) {
+                                  BbsFollowRepository bbsFollowRepository,
+                                  PointService pointService,
+                                  LevelPrivilegeService levelPrivilegeService) {
         this.bbsPostRepository = bbsPostRepository;
         this.bbsNotificationRepository = bbsNotificationRepository;
         this.bbsModerationLogRepository = bbsModerationLogRepository;
@@ -51,6 +53,8 @@ public class PostModerationService {
         this.contentModerationService = contentModerationService;
         this.objectMapper = objectMapper;
         this.bbsFollowRepository = bbsFollowRepository;
+        this.pointService = pointService;
+        this.levelPrivilegeService = levelPrivilegeService;
     }
 
     @Async
@@ -142,12 +146,14 @@ public class PostModerationService {
         } else if ("pass".equals(newStatus)) {
             post.setStatus(1);
             log.info("帖子设为可见（status=1）");
-            
+
             // 如果之前不是可见的，需要增加用户发帖数
             if (oldPostStatus == null || oldPostStatus != 1) {
                 updateUserPostCount(post.getAuthorId().intValue(), 1);
                 // 发送关注者通知
                 sendFollowerNotifications(post);
+                // 发布帖子积分奖励
+                pointService.addPoints(post.getAuthorId().intValue(), "PUBLISH_POST", "发布帖子", post.getId(), "POST");
             }
         } else if ("manual".equals(newStatus)) {
             log.info("保持帖子不可见，等待人工审核（status保持0）");
@@ -175,14 +181,8 @@ public class PostModerationService {
      */
     private void updateUserPostCount(Integer userId, int delta) {
         try {
-            Optional<User> userOptional = userRepository.findById(userId);
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-                int newCount = Math.max(0, (user.getPostCount() != null ? user.getPostCount() : 0) + delta);
-                user.setPostCount(newCount);
-                userRepository.save(user);
-                log.info("用户 {} 的发帖数更新为 {}", userId, newCount);
-            }
+            userRepository.updatePostCount(userId, delta);
+            log.info("用户 {} 的发帖数更新，变化量 {}", userId, delta);
         } catch (Exception e) {
             log.error("更新用户发帖数失败", e);
         }
@@ -276,6 +276,45 @@ public class PostModerationService {
             }
         } catch (Exception e) {
             log.error("发送管理员通知失败", e);
+        }
+    }
+
+    @Transactional
+    public void processNewPost(BbsPost post) {
+        if (post.getAuthorId() == null) return;
+        Optional<User> userOptional = userRepository.findById(post.getAuthorId().intValue());
+        if (userOptional.isEmpty()) return;
+
+        User user = userOptional.get();
+        int level = user.getLevel() != null ? user.getLevel() : 0;
+
+        if (levelPrivilegeService.canSkipModeration(level)) {
+            // 高等级用户跳过审核，直接通过
+            post.setStatus(1);
+            post.setModerationStatus("pass");
+            bbsPostRepository.save(post);
+
+            // 异步进行宽松审核
+            CompletableFuture.runAsync(() -> {
+                try {
+                    ModerationResult result = contentModerationService.moderateContent(post.getTitle(), post.getContent());
+                    if ("reject".equals(result.getAuditResult())) {
+                        // 宽松审核发现问题，回退状态
+                        post.setStatus(0);
+                        post.setModerationStatus("reject");
+                        post.setModerationViolationLevel(result.getViolationLevel());
+                        post.setModerationViolationType(result.getViolationType());
+                        post.setModerationSuggestion(result.getSuggestion());
+                        bbsPostRepository.save(post);
+                        updateUserPostCount(post.getAuthorId().intValue(), -1);
+                    }
+                } catch (Exception e) {
+                    log.error("宽松审核失败", e);
+                }
+            });
+
+            // 直接通过也奖励积分
+            pointService.addPoints(post.getAuthorId().intValue(), "PUBLISH_POST", "发布帖子", post.getId(), "POST");
         }
     }
 }
