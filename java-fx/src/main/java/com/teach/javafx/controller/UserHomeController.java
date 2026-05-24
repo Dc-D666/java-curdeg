@@ -317,7 +317,11 @@ public class UserHomeController extends ToolController {
         Task<Map<String, Object>> task = new Task<>() {
             @Override
             protected Map<String, Object> call() {
-                return HttpRequestUtil.getMyPoints();
+                if (isCurrentUser) {
+                    return HttpRequestUtil.getMyPoints();
+                } else {
+                    return HttpRequestUtil.getUserPoints(userId);
+                }
             }
         };
 
@@ -353,7 +357,9 @@ public class UserHomeController extends ToolController {
                         }
                     }
 
-                    applyNicknameStyle(nicknameStyle);
+                    if (isCurrentUser) {
+                        applyNicknameStyle(nicknameStyle);
+                    }
                 }
             });
         });

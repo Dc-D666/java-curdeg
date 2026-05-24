@@ -165,11 +165,13 @@
                   <FlowPane fx:id="commentAttachmentPreviewPane" hgap="8.0" vgap="0.0" prefHeight="40.0" styleClass="composer-preview" />
                </content>
             </ScrollPane>
+            <VBox fx:id="mentionPopup" spacing="5.0" visible="false" managed="false" 
+                  style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-width: 1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-padding: 8;" />
             <HBox spacing="10.0" alignment="CENTER_LEFT" styleClass="comment-composer">
                <children>
                   <Button fx:id="addImageButton" mnemonicParsing="false" styleClass="secondary-button" text="添加图片" />
                   <Button fx:id="addAttachmentButton" mnemonicParsing="false" styleClass="secondary-button" text="添加附件" />
-                  <TextArea fx:id="commentTextArea" prefRowCount="2" HBox.hgrow="ALWAYS" promptText="发表评论，支持添加图片..." />
+                  <TextArea fx:id="commentTextArea" prefRowCount="2" HBox.hgrow="ALWAYS" promptText="发表评论，@用户可通知对方..." />
                   <Button fx:id="submitCommentButton" mnemonicParsing="false" styleClass="primary-button" text="发布评论" />
                </children>
             </HBox>

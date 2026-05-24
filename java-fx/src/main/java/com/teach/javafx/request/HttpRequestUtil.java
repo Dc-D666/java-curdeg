@@ -297,6 +297,10 @@ public class HttpRequestUtil {
     }
 
     public static PageResult<Post> getPostList(Long boardId, String keyword, int pageNum, int pageSize) {
+        return getPostList(boardId, keyword, pageNum, pageSize, null);
+    }
+
+    public static PageResult<Post> getPostList(Long boardId, String keyword, int pageNum, int pageSize, String sort) {
         java.util.List<String> params = new java.util.ArrayList<>();
         
         if (boardId != null) {
@@ -308,6 +312,9 @@ public class HttpRequestUtil {
             } catch (Exception e) {
                 params.add("keyword=" + keyword);
             }
+        }
+        if (sort != null && !sort.isEmpty()) {
+            params.add("sort=" + sort);
         }
         params.add("pageNum=" + pageNum);
         params.add("pageSize=" + pageSize);
@@ -1193,8 +1200,12 @@ public class HttpRequestUtil {
     }
 
     public static java.util.List<com.teach.javafx.models.Post> getHotPostStatistics() {
+        return getHotPostStatistics("comprehensive");
+    }
+    
+    public static java.util.List<com.teach.javafx.models.Post> getHotPostStatistics(String sortBy) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(serverUrl + "/api/bbs/statistics/hot-post"))
+                .uri(URI.create(serverUrl + "/api/bbs/statistics/hot-post?sortBy=" + sortBy))
                 .GET()
                 .headers("Content-Type", "application/json");
         
@@ -1220,8 +1231,12 @@ public class HttpRequestUtil {
     }
 
     public static java.util.List<com.teach.javafx.models.User> getActiveUserStatistics() {
+        return getActiveUserStatistics("comprehensive");
+    }
+    
+    public static java.util.List<com.teach.javafx.models.User> getActiveUserStatistics(String sortBy) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(serverUrl + "/api/bbs/statistics/active-user"))
+                .uri(URI.create(serverUrl + "/api/bbs/statistics/active-user?sortBy=" + sortBy))
                 .GET()
                 .headers("Content-Type", "application/json");
         
@@ -3051,6 +3066,35 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return null;
     }
 
+    public static List<Map<String, Object>> searchUsersByNickname(String keyword) {
+        String url = serverUrl + "/api/bbs/user/search/nickname?keyword=" + 
+                     java.net.URLEncoder.encode(keyword, java.nio.charset.StandardCharsets.UTF_8);
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("searchUsersByNickname response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<DataResponse<List<Map<String, Object>>>>(){}.getType();
+                DataResponse<List<Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
+                if (dataResponse != null && dataResponse.getCode() == 0) {
+                    return dataResponse.getData();
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return new ArrayList<>();
+    }
+
     public static Map<String, Object> checkFollowStatus(Integer userId) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
                 .uri(URI.create(serverUrl + "/api/bbs/follow/check/" + userId))
@@ -3249,6 +3293,11 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return get(url);
     }
 
+    public static Map<String, Object> getUserPoints(Integer userId) {
+        String url = "/api/bbs/points/user/" + userId;
+        return get(url);
+    }
+
     public static Map<String, Object> getPointHistory(int pageNum, int pageSize) {
         String url = "/api/bbs/points/me/history?pageNum=" + pageNum + "&pageSize=" + pageSize;
         return get(url);
@@ -3323,6 +3372,37 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         DataResponse<Object> dataResponse = request(url, req);
         if (dataResponse != null && dataResponse.getCode() == 0) {
             return dataResponse.getData() instanceof Map ? (Map<String, Object>) dataResponse.getData() : null;
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getRecommendations() {
+        String url = "/api/bbs/recommendation/list";
+        return get(url);
+    }
+
+    public static boolean recordBrowse(Long postId) {
+        String url = "/api/bbs/recommendation/browse";
+        DataRequest req = new DataRequest();
+        req.add("postId", postId);
+        DataResponse<Object> dataResponse = request(url, req);
+        return dataResponse != null && dataResponse.getCode() == 0;
+    }
+
+    public static boolean clearBrowseHistory() {
+        String url = "/api/bbs/recommendation/clear-history";
+        DataResponse<Object> dataResponse = request(url, new DataRequest());
+        return dataResponse != null && dataResponse.getCode() == 0;
+    }
+
+    public static Map<String, Object> getBrowseHistoryList(int page, int size) {
+        String url = "/api/bbs/recommendation/browse-history";
+        DataRequest request = new DataRequest();
+        request.add("page", page);
+        request.add("size", size);
+        DataResponse<Object> response = request(url, request);
+        if (response != null && response.getCode() == 0 && response.getData() != null) {
+            return (Map<String, Object>) response.getData();
         }
         return null;
     }

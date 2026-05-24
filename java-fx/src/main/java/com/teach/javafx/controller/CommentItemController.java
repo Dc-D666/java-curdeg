@@ -19,6 +19,8 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 
 import java.awt.Desktop;
 import java.net.URI;
@@ -54,6 +56,8 @@ public class CommentItemController {
     private FlowPane commentImagesVBox;
     @FXML
     private VBox commentAttachmentsVBox;
+    @FXML
+    private TextFlow contentTextFlow;
 
     private Comment comment;
     private User currentUser;
@@ -104,7 +108,16 @@ public class CommentItemController {
         authorLabel.setText(authorText);
         NicknameStyleUtil.applyStyle(authorLabel, comment.getAuthorNicknameStyle());
 
-        contentLabel.setText(comment.getContent());
+        // 替换原来的Label为TextFlow，支持@用户高亮
+        if (contentLabel != null) {
+            contentLabel.setVisible(false);
+            contentLabel.setManaged(false);
+        }
+        if (contentTextFlow != null) {
+            renderCommentContent(comment.getContent());
+        } else if (contentLabel != null) {
+            contentLabel.setText(comment.getContent());
+        }
 
         boolean isViolation = "reject".equals(comment.getModerationStatus());
         violationTag.setVisible(isViolation);
@@ -570,8 +583,153 @@ public class CommentItemController {
     }
     
     private void openUserHome(Integer userId, String nickname) {
+        System.out.println("openUserHome called: userId=" + userId + ", nickname=" + nickname);
+        System.out.println("MainFrameController: " + com.teach.javafx.AppStore.getMainFrameController());
+        
         if (com.teach.javafx.AppStore.getMainFrameController() != null) {
             com.teach.javafx.AppStore.getMainFrameController().openUserHome(userId, nickname);
+            System.out.println("openUserHome successful");
+        } else {
+            System.out.println("ERROR: MainFrameController is null");
         }
+    }
+
+    private void renderCommentContent(String content) {
+        if (contentTextFlow == null || content == null) {
+            return;
+        }
+        contentTextFlow.getChildren().clear();
+        
+        // 确保TextFlow有合适的样式
+        contentTextFlow.setStyle("-fx-font-size: 14px; -fx-line-spacing: 4px;");
+        
+        // 使用正则表达式查找@用户，支持中文、字母、数字和空格分隔的单词
+        // 但只在后面是空格、@或行尾时才匹配，避免把普通中文当成用户名
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([\\u4e00-\\u9fa5a-zA-Z0-9]+(?:\\s+[\\u4e00-\\u9fa5a-zA-Z0-9]+)*?)(?=\\s|@|$)");
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+        int lastIndex = 0;
+        
+        boolean hasMention = false;
+        
+        while (matcher.find()) {
+            hasMention = true;
+            // 添加@符号前的普通文本
+            if (matcher.start() > lastIndex) {
+                String normalText = content.substring(lastIndex, matcher.start());
+                if (!normalText.isEmpty()) {
+                    Text normalTextNode = new Text(normalText);
+                    normalTextNode.setStyle("-fx-font-size: 14px; -fx-text-fill: #2f3a4f;");
+                    normalTextNode.getStyleClass().clear();
+                    contentTextFlow.getChildren().add(normalTextNode);
+                }
+            }
+            
+            // 提取当前匹配的用户名（去掉末尾空格）
+            final String fullMentionText = matcher.group().trim();
+            final String currentNickname = matcher.group(1).trim();
+            
+            // 先尝试从后端返回的mentionedUsers中查找用户
+            Integer foundUserId = null;
+            if (comment.getMentionedUsers() != null) {
+                for (java.util.Map<String, Object> userInfo : comment.getMentionedUsers()) {
+                    if (currentNickname.equals(userInfo.get("nickname"))) {
+                        Object idObj = userInfo.get("personId");
+                        if (idObj instanceof Integer) {
+                            foundUserId = (Integer) idObj;
+                        } else if (idObj instanceof Long) {
+                            foundUserId = ((Long) idObj).intValue();
+                        } else if (idObj instanceof Double) {
+                            foundUserId = ((Double) idObj).intValue();
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // 添加@用户的高亮文本
+            Text mentionTextNode = new Text(fullMentionText);
+            mentionTextNode.setStyle("-fx-font-size: 14px; -fx-text-fill: #1890ff; -fx-cursor: hand; -fx-font-weight: 500;");
+            mentionTextNode.getStyleClass().clear();
+            
+            final Integer finalFoundUserId = foundUserId;
+            final String finalNickname = currentNickname;
+            mentionTextNode.setOnMouseClicked(event -> {
+                System.out.println("Mention clicked: " + finalNickname);
+                if (finalFoundUserId != null) {
+                    // 如果已经有用户ID，直接打开用户主页
+                    openUserHome(finalFoundUserId, finalNickname);
+                } else if (finalNickname != null && !finalNickname.isEmpty()) {
+                    // 否则调用API查找用户并打开主页
+                    findUserAndOpenHome(finalNickname);
+                }
+            });
+            contentTextFlow.getChildren().add(mentionTextNode);
+            
+            lastIndex = matcher.end();
+        }
+        
+        // 如果没有@用户，直接显示普通文本
+        if (!hasMention) {
+            Text textNode = new Text(content);
+            textNode.setStyle("-fx-font-size: 14px; -fx-text-fill: #2f3a4f;");
+            textNode.getStyleClass().clear();
+            contentTextFlow.getChildren().add(textNode);
+            return;
+        }
+        
+        // 添加剩余的普通文本
+        if (lastIndex < content.length()) {
+            String remainingText = content.substring(lastIndex);
+            if (!remainingText.isEmpty()) {
+                Text remainingTextNode = new Text(remainingText);
+                remainingTextNode.setStyle("-fx-font-size: 14px; -fx-text-fill: #2f3a4f;");
+                remainingTextNode.getStyleClass().clear();
+                contentTextFlow.getChildren().add(remainingTextNode);
+            }
+        }
+    }
+
+    private void findUserAndOpenHome(String nickname) {
+        // 在后台线程中搜索用户
+        new Thread(() -> {
+            try {
+                java.util.List<java.util.Map<String, Object>> users = com.teach.javafx.request.HttpRequestUtil.searchUsersByNickname(nickname);
+                if (users != null && !users.isEmpty()) {
+                    // 找到第一个匹配的用户
+                    java.util.Map<String, Object> user = users.get(0);
+                    // 兼容Long和Integer类型
+                    Object idObj = user.get("personId");
+                    final Integer finalUserId;
+                    if (idObj instanceof Integer) {
+                        finalUserId = (Integer) idObj;
+                    } else if (idObj instanceof Long) {
+                        finalUserId = ((Long) idObj).intValue();
+                    } else if (idObj instanceof Double) {
+                        finalUserId = ((Double) idObj).intValue();
+                    } else {
+                        finalUserId = null;
+                    }
+                    final String finalUserNickname = (String) user.get("nickname");
+                    
+                    // 在FX线程中打开用户主页
+                    javafx.application.Platform.runLater(() -> {
+                        if (finalUserId != null) {
+                            openUserHome(finalUserId, finalUserNickname);
+                        } else {
+                            showInfo("无法获取用户信息");
+                        }
+                    });
+                } else {
+                    javafx.application.Platform.runLater(() -> {
+                        showInfo("未找到用户 @" + nickname);
+                    });
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                javafx.application.Platform.runLater(() -> {
+                    showInfo("查找用户失败：" + e.getMessage());
+                });
+            }
+        }).start();
     }
 }

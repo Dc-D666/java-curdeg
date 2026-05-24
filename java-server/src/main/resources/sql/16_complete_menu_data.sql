@@ -58,6 +58,9 @@ INSERT IGNORE INTO menu (id, pid, name, title, user_type_ids) VALUES (307, 300, 
 -- 二级菜单：修改密码 (pid=300)
 INSERT IGNORE INTO menu (id, pid, name, title, user_type_ids) VALUES (308, 300, 'password-change', '修改密码', '1,2,3');
 
+-- 二级菜单：浏览历史 (pid=300)
+INSERT IGNORE INTO menu (id, pid, name, title, user_type_ids) VALUES (310, 300, 'browse-history', '浏览历史', '1,2,3');
+
 -- ===============================================================
 -- 3. 系统管理一级菜单及二级菜单（仅管理员）
 -- ===============================================================

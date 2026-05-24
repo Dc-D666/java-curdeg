@@ -92,4 +92,10 @@ public class BbsUserController {
     public DataResponse fixPostCount() {
         return bbsUserService.fixPostCountInconsistency();
     }
+
+    @GetMapping("/search/nickname")
+    @PreAuthorize("isAuthenticated()")
+    public DataResponse searchUsersByNickname(@RequestParam String keyword) {
+        return bbsUserService.searchUsersByNickname(keyword);
+    }
 }

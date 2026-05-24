@@ -7,6 +7,7 @@
 <?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.TextFlow?>
 
 <VBox fx:controller="com.teach.javafx.controller.CommentItemController" spacing="8.0" styleClass="comment-card" stylesheets="@css/bbs-comments.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
    <padding>
@@ -21,7 +22,8 @@
             <Button fx:id="followButton" mnemonicParsing="false" styleClass="mini-button" text="关注" />
          </children>
       </HBox>
-      <Label fx:id="contentLabel" wrapText="true" styleClass="comment-content" text="评论内容" />
+      <Label fx:id="contentLabel" wrapText="true" styleClass="comment-content" text="评论内容" visible="false" managed="false" />
+      <TextFlow fx:id="contentTextFlow" />
       <FlowPane fx:id="commentImagesVBox" hgap="8.0" vgap="8.0" />
       <VBox fx:id="commentAttachmentsVBox" spacing="6.0" />
       <HBox fx:id="bottomBox" spacing="10.0" alignment="CENTER_LEFT" styleClass="comment-actions">

@@ -214,10 +214,10 @@ public class SystemSettingsController extends ToolController {
 
     private void applySettings() {
         MainApplication.applyCurrentTheme();
-        
-        if (MainApplication.getMainScene() != null) {
-            StyleManager.applyFontSizeToScene(MainApplication.getMainScene());
-        }
+        // 暂时禁用自动应用字体大小，避免样式问题，改为提示用户重启后生效
+        // if (MainApplication.getMainScene() != null) {
+        //     StyleManager.applyFontSizeToScene(MainApplication.getMainScene());
+        // }
     }
 
     @FXML

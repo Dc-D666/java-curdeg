@@ -72,7 +72,15 @@ public class AdminModerationService {
                     avatarUrl = "https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg";
                 }
                 post.setAuthorAvatarUrl(avatarUrl);
+            } else {
+                // 即使找不到作者，也设置默认头像和昵称
+                post.setAuthorNickname("未知用户");
+                post.setAuthorAvatarUrl("https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg");
             }
+        } else {
+            // 如果没有作者ID，也设置默认头像
+            post.setAuthorNickname("未知用户");
+            post.setAuthorAvatarUrl("https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg");
         }
         if (post.getBoardId() != null) {
             Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());

@@ -12,6 +12,8 @@ public class Comment {
     private Long replyToUserId;
     private String replyToUserNickname;
     private String content;
+    private String contentHtml;
+    private java.util.List<java.util.Map<String, Object>> mentionedUsers;
     private Date createTime;
     private Date updateTime;
     
@@ -94,6 +96,22 @@ public class Comment {
         this.content = content;
     }
 
+    public String getContentHtml() {
+        return contentHtml;
+    }
+
+    public void setContentHtml(String contentHtml) {
+        this.contentHtml = contentHtml;
+    }
+
+    public java.util.List<java.util.Map<String, Object>> getMentionedUsers() {
+        return mentionedUsers;
+    }
+
+    public void setMentionedUsers(java.util.List<java.util.Map<String, Object>> mentionedUsers) {
+        this.mentionedUsers = mentionedUsers;
+    }
+
     public Date getCreateTime() {
         return createTime;
     }
@@ -127,7 +145,24 @@ public class Comment {
     }
 
     public String getAuthorAvatarUrl() {
-        return authorAvatarUrl;
+        // 使用原来的默认头像
+        String defaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+        
+        if (authorAvatarUrl == null || authorAvatarUrl.isBlank()) {
+            return defaultUrl;
+        }
+        
+        // 清理所有特殊字符
+        String clean = authorAvatarUrl.trim()
+            .replace("`", "")
+            .replace("\"", "")
+            .replace("'", "");
+        
+        if (clean.isBlank()) {
+            return defaultUrl;
+        }
+        
+        return clean;
     }
 
     public void setAuthorAvatarUrl(String authorAvatarUrl) {

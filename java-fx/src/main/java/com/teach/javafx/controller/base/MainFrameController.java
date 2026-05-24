@@ -23,6 +23,7 @@ import com.teach.javafx.request.DataRequest;
 import com.teach.javafx.request.DataResponse;
 import com.teach.javafx.request.LoginRequest;
 import com.teach.javafx.util.BackgroundStyle;
+import com.teach.javafx.util.NotificationCounter;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -407,18 +408,23 @@ public class MainFrameController {
         if(tab == null) {
             content = contentMap.get(actualName);
             if(content == null) {
-                String resourcePath = actualName + ".fxml";
-                System.out.println("Trying to load: " + resourcePath);
-                System.out.println("Current class: " + MainApplication.class.getName());
-                System.out.println("ClassLoader: " + MainApplication.class.getClassLoader());
+                java.net.URL resource = null;
                 
                 // 尝试多个可能的路径
-                java.net.URL resource = MainApplication.class.getResource(resourcePath);
-                if (resource == null) {
-                    resource = MainApplication.class.getResource("/com/teach/javafx/" + resourcePath);
-                }
-                if (resource == null) {
-                    resource = MainApplication.class.getResource("/" + resourcePath);
+                String[] possiblePaths = {
+                    actualName + ".fxml",
+                    "/com/teach/javafx/" + actualName + ".fxml",
+                    "/com/teach/javafx/base/" + actualName + ".fxml",
+                    "base/" + actualName + ".fxml"
+                };
+                
+                for (String path : possiblePaths) {
+                    System.out.println("Trying to load: " + path);
+                    resource = MainApplication.class.getResource(path);
+                    if (resource != null) {
+                        System.out.println("Found resource at: " + path);
+                        break;
+                    }
                 }
                 
                 System.out.println("Resource found: " + resource);
@@ -430,6 +436,10 @@ public class MainFrameController {
                         java.util.Enumeration<java.net.URL> resources = MainApplication.class.getClassLoader().getResources("com/teach/javafx/*.fxml");
                         while (resources.hasMoreElements()) {
                             System.out.println("  - " + resources.nextElement());
+                        }
+                        resources = MainApplication.class.getClassLoader().getResources("com/teach/javafx/base/*.fxml");
+                        while (resources.hasMoreElements()) {
+                            System.out.println("  - base/" + resources.nextElement());
                         }
                     } catch (Exception e) {
                         System.out.println("  Error listing resources: " + e.getMessage());
@@ -875,6 +885,11 @@ public class MainFrameController {
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 Long count = task.getValue();
+                // 立即更新 NotificationCounter 的缓存，确保所有地方使用最新值
+                if (count != null) {
+                    NotificationCounter.updateNotificationCount(count);
+                }
+                
                 if (count != null && count > 0) {
                     unreadNotificationLabel.setText("(" + count + " 条未读)");
                 } else {

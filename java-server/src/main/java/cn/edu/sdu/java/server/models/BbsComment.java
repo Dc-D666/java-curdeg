@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -100,6 +101,12 @@ public class BbsComment {
 
     @Transient
     private List<BbsComment> replyList;
+
+    @Transient
+    private String contentHtml;
+
+    @Transient
+    private List<Map<String, Object>> mentionedUsers;
 
     @PrePersist
     protected void onCreate() {

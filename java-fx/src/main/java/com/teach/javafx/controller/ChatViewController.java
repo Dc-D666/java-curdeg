@@ -317,32 +317,44 @@ public class ChatViewController extends ToolController {
             imgView.setFitWidth(200);
             imgView.setPreserveRatio(true);
             try {
-                String imgUrlStr = finalImageUrl != null ? finalImageUrl : content;
-                String fullImgUrl = imgUrlStr.startsWith("http") ? imgUrlStr : HttpRequestUtil.serverUrl + imgUrlStr;
-                imgView.setImage(new Image(fullImgUrl, true));
+                // 确定图片URL
+                String imgUrlStr = finalImageUrl;
+                String textToShow = textContent;
                 
-                // 创建一个容器放文本和图片
-                VBox bubbleContent = new VBox();
-                bubbleContent.setSpacing(8);
-                bubbleContent.setStyle("-fx-background-color: " + (isOwn ? "#95ec69" : "white") + 
-                    "; -fx-text-fill: #333; -fx-padding: 10 14; -fx-background-radius: 8; -fx-font-size: 14px;" +
-                    (!isOwn ? " -fx-border-color: #e8e8e8; -fx-border-radius: 8;" : ""));
-                
-                // 如果还有文字内容，先添加文字
-                if (textContent != null && !textContent.isEmpty() && !textContent.equals("null")) {
-                    Label textLabel = new Label();
-                    textLabel.setWrapText(true);
-                    textLabel.setMaxWidth(400);
-                    textLabel.setText(textContent);
-                    textLabel.setStyle("-fx-text-fill: #333; -fx-font-size: 14px;");
-                    bubbleContent.getChildren().add(textLabel);
+                // 如果是纯图片类型，或者content看起来像是图片路径但没有单独的imageUrl字段
+                if (imgUrlStr == null && content != null && !content.isEmpty() && 
+                    (content.startsWith("/uploads/") || content.startsWith("http"))) {
+                    imgUrlStr = content;
+                    textToShow = null;
                 }
                 
-                // 添加图片
-                imgView.setStyle("-fx-padding: 0;");
-                bubbleContent.getChildren().add(imgView);
-                
-                messageBox.getChildren().add(bubbleContent);
+                if (imgUrlStr != null) {
+                    String fullImgUrl = imgUrlStr.startsWith("http") ? imgUrlStr : HttpRequestUtil.serverUrl + imgUrlStr;
+                    imgView.setImage(new Image(fullImgUrl, true));
+                    
+                    // 创建一个容器放文本和图片
+                    VBox bubbleContent = new VBox();
+                    bubbleContent.setSpacing(8);
+                    bubbleContent.setStyle("-fx-background-color: " + (isOwn ? "#95ec69" : "white") + 
+                        "; -fx-text-fill: #333; -fx-padding: 10 14; -fx-background-radius: 8; -fx-font-size: 14px;" +
+                        (!isOwn ? " -fx-border-color: #e8e8e8; -fx-border-radius: 8;" : ""));
+                    
+                    // 如果还有文字内容，先添加文字
+                    if (textToShow != null && !textToShow.isEmpty() && !textToShow.equals("null")) {
+                        Label textLabel = new Label();
+                        textLabel.setWrapText(true);
+                        textLabel.setMaxWidth(400);
+                        textLabel.setText(textToShow);
+                        textLabel.setStyle("-fx-text-fill: #333; -fx-font-size: 14px;");
+                        bubbleContent.getChildren().add(textLabel);
+                    }
+                    
+                    // 添加图片
+                    imgView.setStyle("-fx-padding: 0;");
+                    bubbleContent.getChildren().add(imgView);
+                    
+                    messageBox.getChildren().add(bubbleContent);
+                }
             } catch (Exception e) {
                 Label failLabel = new Label("[图片加载失败]");
                 failLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 12px;");
@@ -424,6 +436,14 @@ public class ChatViewController extends ToolController {
                 return HttpRequestUtil.markMessagesAsRead(conversationId);
             }
         };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                // 标记已读后立即获取最新的未读计数，确保红点一次性消失
+                com.teach.javafx.util.NotificationCounter.refreshCounts();
+            });
+        });
+        
         new Thread(task).start();
     }
 

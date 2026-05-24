@@ -35,11 +35,31 @@
                             <children>
                                 <Label text="板块：" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #4b5563;" />
                                 <ComboBox fx:id="boardComboBox" prefWidth="150.0" styleClass="form-select" />
+                                <Label text="排序：" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #4b5563;" />
+                                <ComboBox fx:id="sortComboBox" prefWidth="120.0" styleClass="form-select" />
                                 <TextField fx:id="keywordTextField" promptText="搜索帖子标题或内容...或在此粘贴分享链接" styleClass="form-input" HBox.hgrow="ALWAYS" />
                                 <Button fx:id="searchButton" mnemonicParsing="false" styleClass="primary-button" text="搜索" />
                                 <Button fx:id="refreshButton" mnemonicParsing="false" styleClass="btn-secondary" text="刷新" />
                             </children>
                         </HBox>
+                    </children>
+                </VBox>
+
+                <VBox fx:id="recommendVBox" spacing="14.0" styleClass="profile-card" visible="false">
+                    <children>
+                        <HBox alignment="CENTER_LEFT" spacing="10.0">
+                            <children>
+                                <Label styleClass="section-title" text="为你推荐" />
+                            </children>
+                        </HBox>
+
+                        <Separator />
+
+                        <VBox fx:id="recommendContentVBox">
+                            <padding>
+                                <Insets bottom="6.0" left="2.0" right="2.0" top="2.0" />
+                            </padding>
+                        </VBox>
                     </children>
                 </VBox>
 

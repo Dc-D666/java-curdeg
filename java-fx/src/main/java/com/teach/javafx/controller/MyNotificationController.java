@@ -656,6 +656,13 @@ public class MyNotificationController extends ToolController {
                 updateTabStyles();
                 rebuildDisplayList();
                 loadUnreadCount();
+                
+                // 立即更新 NotificationCounter 的缓存
+                long currentCount = com.teach.javafx.util.NotificationCounter.getNotificationCount();
+                if (currentCount > 0) {
+                    com.teach.javafx.util.NotificationCounter.updateNotificationCount(currentCount - 1);
+                }
+                
                 if (AppStore.getMainFrameController() != null) {
                     AppStore.getMainFrameController().loadUnreadNotificationCount();
                 }
@@ -686,6 +693,10 @@ public class MyNotificationController extends ToolController {
                 updateTabStyles();
                 rebuildDisplayList();
                 loadUnreadCount();
+                
+                // 立即更新 NotificationCounter 的缓存，确保红点立即消失
+                com.teach.javafx.util.NotificationCounter.updateNotificationCount(0);
+                
                 if (AppStore.getMainFrameController() != null) {
                     AppStore.getMainFrameController().loadUnreadNotificationCount();
                 }

@@ -20,6 +20,8 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -31,8 +33,10 @@ import javafx.scene.layout.VBox;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class PostListController extends ToolController {
@@ -41,6 +45,8 @@ public class PostListController extends ToolController {
     private ScrollPane mainScrollPane;
     @FXML
     private ComboBox<Board> boardComboBox;
+    @FXML
+    private ComboBox<String> sortComboBox;
     @FXML
     private TextField keywordTextField;
     @FXML
@@ -51,6 +57,10 @@ public class PostListController extends ToolController {
     private Button refreshButton;
     @FXML
     private VBox postListVBox;
+    @FXML
+    private VBox recommendVBox;
+    @FXML
+    private VBox recommendContentVBox;
     @FXML
     private ProgressIndicator refreshProgressIndicator;
     @FXML
@@ -64,9 +74,11 @@ public class PostListController extends ToolController {
     private int currentPageSize = 20;
     private Long currentBoardId = null;
     private String currentKeyword = null;
+    private String currentSort = "latest";
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private User currentUser;
     private Set<Integer> followingUserIds = new HashSet<>();
+    private Map<String, Object> recommendationsCache = null;
 
     @FXML
     public void initialize() {
@@ -119,11 +131,47 @@ public class PostListController extends ToolController {
             loadPostList();
         });
 
+        sortComboBox.getItems().addAll(
+                "最新发布",
+                "最新回复",
+                "最多浏览",
+                "最多点赞",
+                "精华帖优先"
+        );
+        sortComboBox.getSelectionModel().selectFirst();
+        sortComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                currentSort = mapSortValue(newValue);
+            } else {
+                currentSort = "latest";
+            }
+            currentPageNum = 1;
+            loadPostList();
+        });
+
         publishButton.setVisible(false);
 
         loadBoardList();
         loadCurrentUser();
+        loadRecommendations();
         loadPostList();
+    }
+
+    private String mapSortValue(String displayValue) {
+        switch (displayValue) {
+            case "最新发布":
+                return "latest";
+            case "最新回复":
+                return "latest_reply";
+            case "最多浏览":
+                return "most_view";
+            case "最多点赞":
+                return "most_like";
+            case "精华帖优先":
+                return "featured_first";
+            default:
+                return "latest";
+        }
     }
 
     private void loadCurrentUser() {
@@ -171,6 +219,24 @@ public class PostListController extends ToolController {
                         }
                     }
                 }
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void loadRecommendations() {
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getRecommendations();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                recommendationsCache = task.getValue();
+                addRecommendationSection();
             });
         });
 
@@ -237,7 +303,7 @@ public class PostListController extends ToolController {
         Task<PageResult<Post>> task = new Task<PageResult<Post>>() {
             @Override
             protected PageResult<Post> call() {
-                return HttpRequestUtil.getPostList(currentBoardId, currentKeyword, currentPageNum, currentPageSize);
+                return HttpRequestUtil.getPostList(currentBoardId, currentKeyword, currentPageNum, currentPageSize, currentSort);
             }
         };
 
@@ -296,15 +362,51 @@ public class PostListController extends ToolController {
     private void addPostCard(Post post) {
         VBox card = new VBox(6);
         card.getStyleClass().add("profile-card");
-        card.setStyle("-fx-padding: 16; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;");
+
+        // 根据帖子类型设置不同的样式
+        boolean isTop = post.getIsTop() != null && post.getIsTop();
+        boolean isFeatured = post.getIsFeatured() != null && post.getIsFeatured();
+
+        String baseStyle = "-fx-padding: 16; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;";
+        if (isTop && isFeatured) {
+            // 既是置顶又是精华
+            card.setStyle(baseStyle + "-fx-background-color: linear-gradient(to right, #fef3c7, #fce7f3); -fx-border-color: #f59e0b, #ec4899; -fx-border-width: 2;");
+        } else if (isTop) {
+            // 置顶帖
+            card.setStyle(baseStyle + "-fx-background-color: #fef3c7; -fx-border-color: #f59e0b; -fx-border-width: 2;");
+        } else if (isFeatured) {
+            // 精华帖
+            card.setStyle(baseStyle + "-fx-background-color: #fce7f3; -fx-border-color: #ec4899; -fx-border-width: 2;");
+        } else {
+            // 普通帖
+            card.setStyle(baseStyle + "-fx-border-color: #e5e7eb;");
+        }
 
         // 标题行
         HBox titleRow = new HBox(10);
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
+        // 帖子类型标签
+        if (isTop || isFeatured) {
+            HBox tagBox = new HBox(6);
+            tagBox.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            if (isTop) {
+                Label topLabel = new Label("置顶");
+                topLabel.setStyle("-fx-text-fill: #d97706; -fx-font-size: 11; -fx-font-weight: bold; -fx-background-color: #f59e0b; -fx-text-fill: white; -fx-padding: 2 10; -fx-background-radius: 12;");
+                tagBox.getChildren().add(topLabel);
+            }
+            if (isFeatured) {
+                Label featuredLabel = new Label("精华");
+                featuredLabel.setStyle("-fx-text-fill: #db2777; -fx-font-size: 11; -fx-font-weight: bold; -fx-background-color: #ec4899; -fx-text-fill: white; -fx-padding: 2 10; -fx-background-radius: 12;");
+                tagBox.getChildren().add(featuredLabel);
+            }
+            titleRow.getChildren().add(tagBox);
+        }
+
         String title = post.getTitle() != null ? post.getTitle() : "";
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: #1a1a2e; -fx-wrap-text: true;");
+        String titleColor = (isTop || isFeatured) ? "#0f172a" : "#1a1a2e";
+        titleLabel.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: " + titleColor + "; -fx-wrap-text: true;");
         titleLabel.setWrapText(true);
         titleLabel.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(titleLabel, Priority.ALWAYS);
@@ -333,15 +435,14 @@ public class PostListController extends ToolController {
         avatarView.setFitHeight(24);
         avatarView.setPreserveRatio(true);
         avatarView.setSmooth(true);
+        // 正常加载用户自己设置的头像
         String avatarUrl = post.getAuthorAvatarUrl();
-        if (avatarUrl != null && !avatarUrl.isBlank()) {
-            try {
-                String fullAvatarUrl = avatarUrl.startsWith("/") ? HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
-                Image image = new Image(fullAvatarUrl, true);
-                avatarView.setImage(image);
-            } catch (Exception e) {
-                // ignore
-            }
+        String fullAvatarUrl = avatarUrl.startsWith("/") ? HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+        try {
+            Image image = new Image(fullAvatarUrl, true);
+            avatarView.setImage(image);
+        } catch (Exception e) {
+            // ignore
         }
 
         // 作者昵称
@@ -457,5 +558,141 @@ public class PostListController extends ToolController {
         }
 
         return false;
+    }
+
+    private void addRecommendationSection() {
+        if (recommendationsCache == null) {
+            recommendVBox.setVisible(false);
+            return;
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> browseRecommendations = (List<Map<String, Object>>) recommendationsCache.get("browseRecommendations");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> followingPosts = (List<Map<String, Object>>) recommendationsCache.get("followingPosts");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> similarPosts = (List<Map<String, Object>>) recommendationsCache.get("similarPosts");
+
+        if ((browseRecommendations == null || browseRecommendations.isEmpty()) &&
+            (followingPosts == null || followingPosts.isEmpty()) &&
+            (similarPosts == null || similarPosts.isEmpty())) {
+            recommendVBox.setVisible(false);
+            return;
+        }
+
+        recommendContentVBox.getChildren().clear();
+
+        TabPane tabPane = new TabPane();
+        tabPane.setStyle("-fx-background-color: transparent; -fx-padding: 0;");
+
+        if (browseRecommendations != null && !browseRecommendations.isEmpty()) {
+            Tab browseTab = new Tab("根据浏览历史");
+            browseTab.setContent(createRecommendList(browseRecommendations));
+            tabPane.getTabs().add(browseTab);
+        }
+
+        if (followingPosts != null && !followingPosts.isEmpty()) {
+            Tab followingTab = new Tab("关注的人");
+            followingTab.setContent(createRecommendList(followingPosts));
+            tabPane.getTabs().add(followingTab);
+        }
+
+        if (similarPosts != null && !similarPosts.isEmpty()) {
+            Tab similarTab = new Tab("相似帖子");
+            similarTab.setContent(createRecommendList(similarPosts));
+            tabPane.getTabs().add(similarTab);
+        }
+
+        tabPane.getSelectionModel().selectFirst();
+        recommendContentVBox.getChildren().add(tabPane);
+        recommendVBox.setVisible(true);
+    }
+
+    private VBox createRecommendList(List<Map<String, Object>> posts) {
+        VBox container = new VBox(8);
+        container.setStyle("-fx-padding: 10; -fx-background-color: #fafafa;");
+
+        for (Map<String, Object> postData : posts) {
+            VBox card = createRecommendCard(postData);
+            container.getChildren().add(card);
+        }
+
+        ScrollPane scrollPane = new ScrollPane(container);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-fit-to-width: true;");
+        scrollPane.setPrefHeight(250);
+        scrollPane.setMaxHeight(250);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+
+        VBox wrapper = new VBox();
+        wrapper.getChildren().add(scrollPane);
+        return wrapper;
+    }
+
+    private VBox createRecommendCard(Map<String, Object> postData) {
+        VBox card = new VBox(5);
+        card.setStyle("-fx-padding: 12; -fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-cursor: hand;");
+
+        Long postId = postData.get("id") instanceof Number ? ((Number) postData.get("id")).longValue() : null;
+        String title = postData.get("title") != null ? postData.get("title").toString() : "";
+        String authorNickname = postData.get("authorNickname") != null ? postData.get("authorNickname").toString() : "";
+        String boardName = postData.get("boardName") != null ? postData.get("boardName").toString() : "";
+        Integer likeCount = postData.get("likeCount") instanceof Number ? ((Number) postData.get("likeCount")).intValue() : 0;
+        Integer commentCount = postData.get("commentCount") instanceof Number ? ((Number) postData.get("commentCount")).intValue() : 0;
+
+        HBox headerRow = new HBox(10);
+        headerRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #1a1a2e;");
+        titleLabel.setMaxWidth(500);
+        titleLabel.setWrapText(true);
+        titleLabel.setEllipsisString("...");
+        HBox.setHgrow(titleLabel, Priority.ALWAYS);
+
+        headerRow.getChildren().add(titleLabel);
+
+        HBox metaRow = new HBox(15);
+        metaRow.setStyle("-fx-padding: 3 0 0 0;");
+
+        if (!authorNickname.isEmpty()) {
+            Label authorLabel = new Label(authorNickname);
+            authorLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #6366f1;");
+            metaRow.getChildren().add(authorLabel);
+        }
+
+        if (!boardName.isEmpty()) {
+            Label boardLabel = new Label(boardName);
+            boardLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #9ca3af;");
+            metaRow.getChildren().add(boardLabel);
+        }
+
+        Label statsLabel = new Label("👍 " + likeCount + "  💬 " + commentCount);
+        statsLabel.setStyle("-fx-font-size: 12; -fx-text-fill: #9ca3af;");
+        metaRow.getChildren().add(statsLabel);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        metaRow.getChildren().add(spacer);
+
+        card.getChildren().addAll(headerRow, metaRow);
+
+        final Long finalPostId = postId;
+        card.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1) {
+                if (finalPostId != null) {
+                    openPostDetail(finalPostId);
+                }
+            }
+        });
+
+        card.setOnMouseEntered(event -> {
+            card.setStyle("-fx-padding: 12; -fx-background-color: #f5f5f5; -fx-background-radius: 8; -fx-border-color: #d1d5db; -fx-border-radius: 8; -fx-cursor: hand;");
+        });
+
+        card.setOnMouseExited(event -> {
+            card.setStyle("-fx-padding: 12; -fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-cursor: hand;");
+        });
+
+        return card;
     }
 }

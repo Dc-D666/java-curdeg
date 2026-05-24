@@ -75,19 +75,34 @@ public class BbsPostService {
     }
 
     private void fillPostAuthorInfo(BbsPost post) {
+        log.info("[fillPostAuthorInfo] 开始填充帖子ID: {}, 作者ID: {}", post.getId(), post.getAuthorId());
+        String originalDefaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
         if (post.getAuthorId() != null) {
             Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
+            log.info("[fillPostAuthorInfo] 查找作者ID: {}, 是否找到: {}", post.getAuthorId().intValue(), authorOptional.isPresent());
             if (authorOptional.isPresent()) {
                 User author = authorOptional.get();
+                log.info("[fillPostAuthorInfo] 作者昵称: {}, 头像URL: {}", author.getNickname(), author.getAvatarUrl());
                 post.setAuthorNickname(author.getNickname());
                 int authorLevel = author.getLevel() != null ? author.getLevel() : 0;
                 post.setAuthorNicknameStyle(levelPrivilegeService.getNicknameStyle(authorLevel));
                 String avatarUrl = author.getAvatarUrl();
                 if (avatarUrl == null || avatarUrl.isBlank()) {
-                    avatarUrl = "https://img.phb123.com/uploads/allimg/22060G55A40-L.jpeg";
+                    avatarUrl = originalDefaultUrl;
                 }
                 post.setAuthorAvatarUrl(avatarUrl);
+                log.info("[fillPostAuthorInfo] 设置后的头像URL: {}", avatarUrl);
+            } else {
+                // 即使找不到作者，也设置默认头像和昵称
+                post.setAuthorNickname("未知用户");
+                post.setAuthorAvatarUrl(originalDefaultUrl);
+                log.info("[fillPostAuthorInfo] 未找到作者，设置默认头像");
             }
+        } else {
+            // 如果没有作者ID，也设置默认头像
+            post.setAuthorNickname("未知用户");
+            post.setAuthorAvatarUrl(originalDefaultUrl);
+            log.info("[fillPostAuthorInfo] 无作者ID，设置默认头像");
         }
         if (post.getBoardId() != null) {
             Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
@@ -109,6 +124,7 @@ public class BbsPostService {
         Integer pageSize = dataRequest.getInteger("pageSize");
         Long boardId = dataRequest.getLong("boardId");
         String keyword = dataRequest.getString("keyword");
+        String sort = dataRequest.getString("sort");
 
         if (pageNum == null || pageNum < 1) {
             pageNum = 1;
@@ -126,8 +142,16 @@ public class BbsPostService {
         Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
-        Page<BbsPost> postPage = bbsPostRepository.findPostsByConditionWithModeration(
-                boardId, keyword, currentUserIdLong, isAdmin, pageable);
+        Page<BbsPost> postPage;
+
+        if (sort != null && !sort.isBlank()) {
+            String validSort = getValidSortValue(sort);
+            postPage = bbsPostRepository.findPostsWithSort(
+                    boardId, keyword, currentUserIdLong, isAdmin, validSort, pageable);
+        } else {
+            postPage = bbsPostRepository.findPostsByConditionWithModeration(
+                    boardId, keyword, currentUserIdLong, isAdmin, pageable);
+        }
 
         postPage.getContent().forEach(post -> {
             fillPostAuthorInfo(post);
@@ -135,6 +159,23 @@ public class BbsPostService {
         });
 
         return CommonMethod.getReturnData(postPage);
+    }
+
+    private String getValidSortValue(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return "latest";
+        }
+        String lowerSort = sort.toLowerCase().trim();
+        switch (lowerSort) {
+            case "latest":
+            case "latest_reply":
+            case "most_view":
+            case "most_like":
+            case "featured_first":
+                return lowerSort;
+            default:
+                return "latest";
+        }
     }
 
     private void applyContentPriority(BbsPost post) {
