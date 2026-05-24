@@ -312,7 +312,7 @@
                                                 <children>
                                                     <HBox alignment="CENTER_LEFT" spacing="8.0">
                                                         <children>
-                                                            <Label styleClass="suggestion-icon" text="📊" />
+                                                            <Label styleClass="suggestion-icon" text="#" />
                                                             <Label styleClass="suggestion-title" text="内容质量" />
                                                         </children>
                                                     </HBox>
@@ -323,7 +323,7 @@
                                                 <children>
                                                     <HBox alignment="CENTER_LEFT" spacing="8.0">
                                                         <children>
-                                                            <Label styleClass="suggestion-icon" text="⚠️" />
+                                                            <Label styleClass="suggestion-icon" text="!" />
                                                             <Label styleClass="suggestion-title" text="注意事项" />
                                                         </children>
                                                     </HBox>
@@ -348,21 +348,21 @@
                         <children>
                             <VBox alignment="CENTER" onMouseClicked="#onQuickActionPosts" spacing="8.0" styleClass="quick-action-item">
                                 <children>
-                                    <Label styleClass="quick-action-icon" text="📋" />
+                                    <Label styleClass="quick-action-icon" text="[Post]" />
                                     <Label styleClass="quick-action-title" text="帖子管理" />
                                     <Label styleClass="quick-action-desc" text="查看所有帖子" />
                                 </children>
                             </VBox>
                             <VBox alignment="CENTER" onMouseClicked="#onQuickActionReports" spacing="8.0" styleClass="quick-action-item">
                                 <children>
-                                    <Label styleClass="quick-action-icon" text="🚨" />
+                                    <Label styleClass="quick-action-icon" text="[Report]" />
                                     <Label styleClass="quick-action-title" text="举报处理" />
                                     <Label styleClass="quick-action-desc" text="处理用户举报" />
                                 </children>
                             </VBox>
                             <VBox alignment="CENTER" onMouseClicked="#onQuickActionModeration" spacing="8.0" styleClass="quick-action-item">
                                 <children>
-                                    <Label styleClass="quick-action-icon" text="✅" />
+                                    <Label styleClass="quick-action-icon" text="[User]" />
                                     <Label styleClass="quick-action-title" text="内容审核" />
                                     <Label styleClass="quick-action-desc" text="审核待发布内容" />
                                 </children>

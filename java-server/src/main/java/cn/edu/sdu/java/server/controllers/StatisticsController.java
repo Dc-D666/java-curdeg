@@ -50,8 +50,28 @@ public class StatisticsController {
 
     @GetMapping("/hot-post")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
-    public DataResponse getHotPostStatistics() {
-        List<BbsPost> posts = bbsPostRepository.findTop10ByStatusOrderByLikeCountDescCommentCountDesc(1);
+    public DataResponse getHotPostStatistics(@RequestParam(defaultValue = "comprehensive") String sortBy) {
+        List<BbsPost> posts;
+        
+        // 根据排序参数选择不同的查询方法
+        switch (sortBy) {
+            case "likes":
+                posts = bbsPostRepository.findTop20ByStatusOrderByLikeCountDesc(1);
+                break;
+            case "comments":
+                posts = bbsPostRepository.findTop20ByStatusOrderByCommentCountDesc(1);
+                break;
+            case "views":
+                posts = bbsPostRepository.findTop20ByStatusOrderByViewCountDesc(1);
+                break;
+            case "favorites":
+                posts = bbsPostRepository.findTop20ByStatusOrderByFavoriteCountDesc(1);
+                break;
+            case "comprehensive":
+            default:
+                posts = bbsPostRepository.findTop10ByStatusOrderByLikeCountDescCommentCountDesc(1);
+                break;
+        }
         
         for (BbsPost post : posts) {
             if (post.getAuthorId() != null) {
@@ -67,8 +87,22 @@ public class StatisticsController {
 
     @GetMapping("/active-user")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
-    public DataResponse getActiveUserStatistics() {
-        List<User> users = userRepository.findTop10ByIsBannedOrderByPostCountDescCommentCountDesc(false);
+    public DataResponse getActiveUserStatistics(@RequestParam(defaultValue = "comprehensive") String sortBy) {
+        List<User> users;
+        
+        // 根据排序参数选择不同的查询方法
+        switch (sortBy) {
+            case "posts":
+                users = userRepository.findTop20ByIsBannedOrderByPostCountDesc(false);
+                break;
+            case "comments":
+                users = userRepository.findTop20ByIsBannedOrderByCommentCountDesc(false);
+                break;
+            case "comprehensive":
+            default:
+                users = userRepository.findTop10ByIsBannedOrderByPostCountDescCommentCountDesc(false);
+                break;
+        }
         
         for (User user : users) {
             user.setPassword(null);

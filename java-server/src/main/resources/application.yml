@@ -62,7 +62,7 @@ moderation:
   enabled: true
   api:
     url: https://xplt.sdu.edu.cn:4000/v1/chat/completions
-    key: sk-oXWyxru5nwdf-iDN6a8sJw
+    key: sk-NnGunsuM6UNzJxLUIPR7ew
     model: SDU-AI/DeepSeek-V4-Flash
     timeout: 60000
 # AI图片生成配置

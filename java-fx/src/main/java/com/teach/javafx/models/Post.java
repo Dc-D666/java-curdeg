@@ -175,7 +175,30 @@ public class Post {
     }
 
     public String getAuthorAvatarUrl() {
-        return authorAvatarUrl;
+        // 先打印原始值，帮我们调试问题
+        System.out.println("[Post.java] 原始authorAvatarUrl: " + authorAvatarUrl);
+        
+        // 使用原来的默认头像
+        String defaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+        
+        if (authorAvatarUrl == null || authorAvatarUrl.isBlank()) {
+            System.out.println("[Post.java] 使用默认头像: " + defaultUrl);
+            return defaultUrl;
+        }
+        
+        // 清理所有特殊字符
+        String clean = authorAvatarUrl.trim()
+            .replace("`", "")
+            .replace("\"", "")
+            .replace("'", "");
+        
+        if (clean.isBlank()) {
+            System.out.println("[Post.java] 清理后为空，使用默认头像: " + defaultUrl);
+            return defaultUrl;
+        }
+        
+        System.out.println("[Post.java] 清理后的头像URL: " + clean);
+        return clean;
     }
 
     public void setAuthorAvatarUrl(String authorAvatarUrl) {

@@ -25,9 +25,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class BbsCommentService {
@@ -73,6 +75,7 @@ public class BbsCommentService {
     }
 
     private void fillCommentAuthorInfo(BbsComment comment) {
+        String originalDefaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
         if (comment.getAuthorId() != null) {
             Optional<User> authorOptional = userRepository.findById(comment.getAuthorId().intValue());
             if (authorOptional.isPresent()) {
@@ -82,11 +85,80 @@ public class BbsCommentService {
                 comment.setAuthorNicknameStyle(levelPrivilegeService.getNicknameStyle(authorLevel));
                 String avatarUrl = author.getAvatarUrl();
                 if (avatarUrl == null || avatarUrl.isBlank()) {
-                    avatarUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+                    avatarUrl = originalDefaultUrl;
                 }
                 comment.setAuthorAvatarUrl(avatarUrl);
+            } else {
+                // 即使找不到作者，也设置默认头像和昵称
+                comment.setAuthorNickname("未知用户");
+                comment.setAuthorAvatarUrl(originalDefaultUrl);
+            }
+        } else {
+            // 如果没有作者ID，也设置默认头像
+            comment.setAuthorNickname("未知用户");
+            comment.setAuthorAvatarUrl(originalDefaultUrl);
+        }
+        // 处理@用户高亮，放到contentHtml字段中，并保存被@的用户信息
+        if (comment.getContent() != null) {
+            comment.setContentHtml(renderMentionedUsers(comment.getContent()));
+            comment.setMentionedUsers(getMentionedUsersList(comment.getContent()));
+        }
+    }
+    
+    private List<Map<String, Object>> getMentionedUsersList(String content) {
+        List<Map<String, Object>> mentionedUsers = new ArrayList<>();
+        if (content == null || content.isBlank()) {
+            return mentionedUsers;
+        }
+        String pattern = "@([\\u4e00-\\u9fa5a-zA-Z0-9]+(?:\\s+[\\u4e00-\\u9fa5a-zA-Z0-9]+)*?)(?=\\s|@|$)";
+        java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
+        java.util.regex.Matcher matcher = regex.matcher(content);
+        
+        Set<String> processedNicknames = new HashSet<>();
+        while (matcher.find()) {
+            String username = matcher.group(1).trim();
+            if (processedNicknames.contains(username)) {
+                continue;
+            }
+            processedNicknames.add(username);
+            Optional<User> user = userRepository.findByNickname(username);
+            if (user.isPresent()) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("nickname", user.get().getNickname());
+                userInfo.put("personId", user.get().getPersonId());
+                mentionedUsers.add(userInfo);
             }
         }
+        return mentionedUsers;
+    }
+
+    private String renderMentionedUsers(String content) {
+        if (content == null || content.isBlank()) {
+            return content;
+        }
+        // 使用正则表达式匹配@用户名，支持中文、字母、数字和空格分隔的单词
+        // 但只在后面是空格、@或行尾时才匹配，避免把普通中文当成用户名
+        String pattern = "@([\\u4e00-\\u9fa5a-zA-Z0-9]+(?:\\s+[\\u4e00-\\u9fa5a-zA-Z0-9]+)*?)(?=\\s|@|$)";
+        java.util.regex.Pattern regex = java.util.regex.Pattern.compile(pattern);
+        java.util.regex.Matcher matcher = regex.matcher(content);
+        
+        StringBuffer result = new StringBuffer();
+        while (matcher.find()) {
+            String mention = matcher.group();
+            String username = mention.substring(1); // 去掉@符号
+            // 查找用户是否存在
+            Optional<User> user = userRepository.findByNickname(username);
+            if (user.isPresent()) {
+                // 如果用户存在，创建高亮链接
+                String highlighted = "<span style=\"color: #409eff; cursor: pointer; text-decoration: underline;\" onclick=\"window.open('/user/" + user.get().getPersonId() + "')\">" + mention + "</span>";
+                matcher.appendReplacement(result, java.util.regex.Matcher.quoteReplacement(highlighted));
+            } else {
+                // 用户不存在，保持原样
+                matcher.appendReplacement(result, java.util.regex.Matcher.quoteReplacement(mention));
+            }
+        }
+        matcher.appendTail(result);
+        return result.toString();
     }
 
     public DataResponse getCommentsByPost(Long postId) {
@@ -283,6 +355,9 @@ public class BbsCommentService {
                 createNotification(post.getAuthorId(), 4, postTitle,
                     "用户「" + currentUserNickname + "」评论了您的帖子，帖子ID：" + postId);
             }
+
+            // 解析@用户并发送通知
+            parseAndNotifyMentions(filteredContent, currentUserNickname, postTitle, postId, comment.getId(), currentUserId);
 
             // 评论积分奖励
             pointService.addPoints(currentUserId, "PUBLISH_COMMENT", "发布评论", comment.getId(), "COMMENT");
@@ -557,5 +632,45 @@ public class BbsCommentService {
 
         List<Map<String, Object>> likers = bbsCommentLikeRepository.findLikersByCommentId(commentId);
         return CommonMethod.getReturnData(likers);
+    }
+
+    private void parseAndNotifyMentions(String content, String currentUserNickname, 
+                                       String postTitle, Long postId, Long commentId, 
+                                       Integer currentUserId) {
+        if (content == null || content.isEmpty()) {
+            return;
+        }
+        
+        // 使用正则匹配@用户名
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([^\\s@]+)");
+        java.util.regex.Matcher matcher = pattern.matcher(content);
+        Set<String> mentionedNicknames = new HashSet<>();
+        
+        while (matcher.find()) {
+            String nickname = matcher.group(1);
+            if (nickname != null && !nickname.trim().isEmpty()) {
+                mentionedNicknames.add(nickname.trim());
+            }
+        }
+        
+        if (mentionedNicknames.isEmpty()) {
+            return;
+        }
+        
+        // 查找被@的用户并发送通知
+        for (String nickname : mentionedNicknames) {
+            // 通过昵称查找用户
+            Optional<User> mentionedUserOpt = userRepository.findByNickname(nickname);
+            if (mentionedUserOpt.isPresent()) {
+                User mentionedUser = mentionedUserOpt.get();
+                Integer mentionedUserId = mentionedUser.getPersonId();
+                // 不通知自己
+                if (!mentionedUserId.equals(currentUserId)) {
+                    // 发送通知，类型用5表示@提及
+                    createNotification(mentionedUserId.longValue(), 5, postTitle,
+                        "用户「" + currentUserNickname + "」在评论中@了您，帖子ID：" + postId);
+                }
+            }
+        }
     }
 }

@@ -669,7 +669,7 @@ public class BbsUserService {
         }
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
-        Page<BbsPost> postPage = bbsPostRepository.findMyVisibleAndRejectedPosts(userId.longValue(), pageable);
+        Page<BbsPost> postPage = bbsPostRepository.findUserVisiblePosts(userId.longValue(), pageable);
 
         for (BbsPost post : postPage.getContent()) {
             Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
@@ -957,5 +957,49 @@ public class BbsUserService {
         result.put("totalUsers", allUsers.size());
         result.put("fixedUsers", fixedCount);
         return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse searchUsersByNickname(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return CommonMethod.getReturnData(new ArrayList<>());
+        }
+        
+        String searchKeyword = keyword.trim();
+        List<User> users = new ArrayList<>();
+        
+        // 首先尝试完全匹配
+        Optional<User> exactMatchUser = userRepository.findByNickname(searchKeyword);
+        if (exactMatchUser.isPresent()) {
+            users.add(exactMatchUser.get());
+        }
+        
+        // 然后添加前缀匹配的用户（排除已添加的完全匹配）
+        List<User> prefixUsers = userRepository.searchUsersByNicknamePrefix(searchKeyword);
+        for (User user : prefixUsers) {
+            boolean alreadyAdded = users.stream().anyMatch(u -> u.getPersonId().equals(user.getPersonId()));
+            if (!alreadyAdded) {
+                users.add(user);
+            }
+        }
+        
+        Integer currentUserId = CommonMethod.getPersonId();
+        
+        List<Map<String, Object>> resultList = new ArrayList<>();
+        for (User user : users) {
+            // 不显示被封禁的用户
+            if (user.getIsBanned() != null && user.getIsBanned()) {
+                continue;
+            }
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("personId", user.getPersonId());
+            userMap.put("nickname", user.getNickname());
+            userMap.put("avatarUrl", user.getAvatarUrl());
+            resultList.add(userMap);
+            // 最多返回10个用户
+            if (resultList.size() >= 10) {
+                break;
+            }
+        }
+        return CommonMethod.getReturnData(resultList);
     }
 }

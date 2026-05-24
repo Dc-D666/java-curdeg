@@ -9,6 +9,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class StatisticsController extends ToolController {
     
@@ -283,7 +285,9 @@ public class StatisticsController extends ToolController {
         moderationDaysChoice.setOnAction(e -> loadModerationTrendChart());
         
         activeUserSortChoice.setOnAction(e -> loadActiveUsers());
-        hotPostSortChoice.setOnAction(e -> loadHotPosts());
+        hotPostSortChoice.setOnAction(e -> {
+            loadHotPosts();
+        });
     }
     
     private void loadAllData() {
@@ -398,17 +402,15 @@ public class StatisticsController extends ToolController {
     private VBox createStatCard(String title, String value, String color) {
         VBox card = new VBox(8);
         card.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-padding: 20; -fx-alignment: center;");
-        
-        Text titleText = new Text(title);
-        titleText.setFont(new Font(14));
-        titleText.setFill(Color.web("#7f8c8d"));
-        
-        Text valueText = new Text(value);
-        valueText.setFont(new Font(28));
-        valueText.setFill(Color.web(color));
-        valueText.setStyle("-fx-font-weight: bold;");
-        
-        card.getChildren().addAll(titleText, valueText);
+
+        // 使用 Label 替代 Text 并使用内联样式固定字体大小
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
+
+        Label valueLabel = new Label(value);
+        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+
+        card.getChildren().addAll(titleLabel, valueLabel);
         return card;
     }
     
@@ -558,7 +560,24 @@ public class StatisticsController extends ToolController {
         Task<List<User>> task = new Task<>() {
             @Override
             protected List<User> call() {
-                return HttpRequestUtil.getActiveUserStatistics();
+                // 获取当前选择的排序方式
+                String sortBy = activeUserSortChoice.getValue();
+                String sortParam;
+                
+                switch (sortBy) {
+                    case "发帖数":
+                        sortParam = "posts";
+                        break;
+                    case "评论数":
+                        sortParam = "comments";
+                        break;
+                    case "综合":
+                    default:
+                        sortParam = "comprehensive";
+                        break;
+                }
+                
+                return HttpRequestUtil.getActiveUserStatistics(sortParam);
             }
         };
         
@@ -659,7 +678,30 @@ public class StatisticsController extends ToolController {
         Task<List<Post>> task = new Task<>() {
             @Override
             protected List<Post> call() {
-                return HttpRequestUtil.getHotPostStatistics();
+                // 获取当前选择的排序方式
+                String sortBy = hotPostSortChoice.getValue();
+                String sortParam;
+                
+                switch (sortBy) {
+                    case "点赞数":
+                        sortParam = "likes";
+                        break;
+                    case "评论数":
+                        sortParam = "comments";
+                        break;
+                    case "浏览数":
+                        sortParam = "views";
+                        break;
+                    case "收藏数":
+                        sortParam = "favorites";
+                        break;
+                    case "综合":
+                    default:
+                        sortParam = "comprehensive";
+                        break;
+                }
+                
+                return HttpRequestUtil.getHotPostStatistics(sortParam);
             }
         };
         
@@ -938,8 +980,9 @@ public class StatisticsController extends ToolController {
     
     private void updatePieChart(PieChart chart, List<Map<String, Object>> data, String nameKey, String countKey) {
         chart.getData().clear();
-        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
         
+        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
+
         for (int i = 0; i < data.size() && i < 10; i++) {
             Map<String, Object> item = data.get(i);
             Object nameObj = item.get(nameKey);
@@ -951,13 +994,16 @@ public class StatisticsController extends ToolController {
                 pieData.add(pieItem);
             }
         }
-        
+
         chart.setData(pieData);
+
+        // 确保图表正确布局
+        chart.setAnimated(false);
+        chart.setLabelsVisible(true);
+        chart.setLegendVisible(true);
         
-        for (int i = 0; i < pieData.size(); i++) {
-            PieChart.Data d = pieData.get(i);
-            d.getNode().setStyle("-fx-pie-color: " + COLORS[i % COLORS.length] + ";");
-        }
+        // 不手动设置颜色，让 JavaFX 使用默认的颜色循环
+        // 这样能保证饼块和图例颜色自动保持一致
     }
     
     private void updateBarChart(BarChart<String, Number> chart, List<Map<String, Object>> data, String nameKey, String countKey, String seriesName) {

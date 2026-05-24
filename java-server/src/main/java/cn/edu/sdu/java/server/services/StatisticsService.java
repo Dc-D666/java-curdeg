@@ -399,9 +399,10 @@ public class StatisticsService {
         List<Object[]> rawData = bbsPostRepository.countPostsByStatus();
         List<Map<String, Object>> result = new ArrayList<>();
         Map<Integer, String> statusMap = new HashMap<>();
+        statusMap.put(0, "待审核");
         statusMap.put(1, "审核通过");
         statusMap.put(2, "审核中");
-        statusMap.put(3, "违规");
+        statusMap.put(3, "审核不通过");
         for (Object[] row : rawData) {
             Map<String, Object> item = new HashMap<>();
             Integer status;
@@ -412,11 +413,9 @@ public class StatisticsService {
             } else {
                 status = 0;
             }
-            if (statusMap.containsKey(status)) {
-                item.put("name", statusMap.get(status));
-                item.put("count", row[1]);
-                result.add(item);
-            }
+            item.put("name", statusMap.getOrDefault(status, "未知状态"));
+            item.put("count", row[1]);
+            result.add(item);
         }
         return result;
     }
@@ -440,49 +439,117 @@ public class StatisticsService {
 
     public List<Map<String, Object>> getCommentTrend(Integer days) {
         List<Object[]> rawData = bbsCommentRepository.countDailyCommentTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示为 0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 
     public List<Map<String, Object>> getLikeTrend(Integer days) {
         List<Object[]> rawData = bbsLikeRepository.countDailyLikeTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示为 0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 
     public List<Map<String, Object>> getFavoriteTrend(Integer days) {
         List<Object[]> rawData = bbsFavoriteRepository.countDailyFavoriteTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示为 0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 
     public List<Map<String, Object>> getFollowTrend(Integer days) {
         List<Object[]> rawData = bbsFollowRepository.countDailyFollowTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Long> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            dataMap.put(date, count);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示为 0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            Long count = dataMap.getOrDefault(dateStr, 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("count", row[1]);
+            item.put("date", dateStr);
+            item.put("count", count);
             result.add(item);
         }
+        
         return result;
     }
 
@@ -542,15 +609,39 @@ public class StatisticsService {
 
     public List<Map<String, Object>> getModerationTrend(Integer days) {
         List<Object[]> rawData = bbsModerationLogRepository.countDailyModerationTrend(days);
-        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 创建日期到数据的映射
+        Map<String, Map<String, Long>> dataMap = new HashMap<>();
         for (Object[] row : rawData) {
+            String date = row[0].toString();
+            Map<String, Long> dayData = new HashMap<>();
+            dayData.put("passed", ((Number) row[1]).longValue());
+            dayData.put("rejected", ((Number) row[2]).longValue());
+            dayData.put("pending", ((Number) row[3]).longValue());
+            dataMap.put(date, dayData);
+        }
+        
+        // 生成完整的日期列表，包括没有数据的日期（显示为 0）
+        List<Map<String, Object>> result = new ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        
+        for (int i = days - 1; i >= 0; i--) {
+            java.time.LocalDate date = today.minusDays(i);
+            String dateStr = date.toString();
+            
+            Map<String, Long> dayData = dataMap.getOrDefault(dateStr, new HashMap<>());
+            long passed = dayData.getOrDefault("passed", 0L);
+            long rejected = dayData.getOrDefault("rejected", 0L);
+            long pending = dayData.getOrDefault("pending", 0L);
+            
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0]);
-            item.put("passed", row[1]);
-            item.put("rejected", row[2]);
-            item.put("pending", row[3]);
+            item.put("date", dateStr);
+            item.put("passed", passed);
+            item.put("rejected", rejected);
+            item.put("pending", pending);
             result.add(item);
         }
+        
         return result;
     }
 

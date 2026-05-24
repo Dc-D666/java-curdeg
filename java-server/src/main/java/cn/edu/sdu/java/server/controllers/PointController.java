@@ -33,6 +33,40 @@ public class PointController {
     private final BbsUserService bbsUserService;
     private final DailyLimitRepository dailyLimitRepository;
 
+    @GetMapping("/user/{userId}")
+    public DataResponse getUserPoints(@PathVariable Integer userId) {
+        User user = bbsUserService.getUserById(userId);
+        if (user == null) return CommonMethod.getReturnMessageError("用户不存在");
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("points", user.getPoints());
+        result.put("level", user.getLevel());
+
+        LevelConfig config = levelPrivilegeService.getLevelConfig(user.getLevel());
+        if (config != null) {
+            result.put("levelName", config.getLevelName());
+            result.put("iconPath", config.getIconPath());
+            result.put("minPoints", config.getMinPoints());
+        }
+
+        Integer rank = pointService.getUserRank(userId);
+        result.put("rank", rank);
+
+        // 计算下一等级所需积分
+        LevelConfig nextConfig = levelPrivilegeService.getNextLevelConfig(user.getLevel());
+        if (nextConfig != null) {
+            result.put("nextLevelPoints", nextConfig.getMinPoints());
+            result.put("currentLevelPoints", config != null ? config.getMinPoints() : 0);
+            result.put("pointsToNext", nextConfig.getMinPoints() - user.getPoints());
+        } else {
+            result.put("nextLevelPoints", 0);
+            result.put("currentLevelPoints", config != null ? config.getMinPoints() : 0);
+            result.put("pointsToNext", 0);
+        }
+
+        return CommonMethod.getReturnData(result);
+    }
+
     @GetMapping("/me")
     public DataResponse getMyPoints() {
         Integer userId = CommonMethod.getPersonId();

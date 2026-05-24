@@ -48,6 +48,7 @@ public class DraftBoxController extends ToolController {
     }
 
     private void loadDrafts() {
+        System.out.println("DraftBoxController.loadDrafts: 开始加载草稿列表");
         Task<List<Map<String, Object>>> task = new Task<List<Map<String, Object>>>() {
             @Override
             protected List<Map<String, Object>> call() {
@@ -58,10 +59,12 @@ public class DraftBoxController extends ToolController {
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 List<Map<String, Object>> drafts = task.getValue();
+                System.out.println("DraftBoxController.loadDrafts: 获得草稿列表, 数量=" + (drafts != null ? drafts.size() : 0));
                 draftListVBox.getChildren().clear();
                 if (drafts != null && !drafts.isEmpty()) {
                     totalLabel.setText("共 " + drafts.size() + " 篇草稿");
                     for (Map<String, Object> draft : drafts) {
+                        System.out.println("DraftBoxController.loadDrafts: 草稿=" + draft);
                         addDraftCard(draft);
                     }
                 } else {
@@ -76,6 +79,10 @@ public class DraftBoxController extends ToolController {
         });
 
         task.setOnFailed(event -> {
+            System.out.println("DraftBoxController.loadDrafts: 加载失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
             Platform.runLater(() -> showError("加载草稿列表失败"));
         });
 
@@ -154,12 +161,22 @@ public class DraftBoxController extends ToolController {
     }
 
     private void editDraft(Long draftId) {
+        System.out.println("DraftBoxController.editDraft: 开始编辑草稿, 草稿ID=" + draftId);
         if (AppStore.getMainFrameController() != null) {
             try {
-                javafx.fxml.FXMLLoader fxmlLoader = new javafx.fxml.FXMLLoader(
+                // 设置 ThreadLocal 传递草稿ID（必须在 FXML 加载前调用）
+                PostPublishController.setPendingDraftId(draftId);
+                
+                javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
                     MainApplication.class.getResource("post-publish.fxml"));
-                javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
-                PostPublishController controller = fxmlLoader.getController();
+                
+                javafx.scene.Parent root = loader.load();
+                PostPublishController controller = loader.getController();
+                
+                // 创建场景
+                javafx.scene.Scene scene = new javafx.scene.Scene(root, 1024, 768);
+                
+                // 加载草稿数据
                 controller.loadDraft(draftId);
 
                 String tabName = "edit-draft-" + draftId;

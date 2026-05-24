@@ -34,12 +34,47 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
                                                        @Param("isAdmin") Boolean isAdmin,
                                                        Pageable pageable);
 
+    @Query(value = "SELECT p.*, COALESCE(MAX(c.create_time), p.create_time) as lastCommentTime FROM bbs_post p " +
+           "LEFT JOIN bbs_comment c ON p.id = c.post_id AND c.status = 1 " +
+           "WHERE " +
+           "((p.status = 1 AND (p.moderation_status = 'pass' OR p.author_id = :currentUserId OR :isAdmin = true)) OR " +
+           "((:isAdmin = true OR p.author_id = :currentUserId) AND p.status = 0 AND p.moderation_status = 'reject')) " +
+           "AND (:boardId IS NULL OR p.board_id = :boardId) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR p.title LIKE CONCAT('%', :keyword, '%')) " +
+           "GROUP BY p.id " +
+           "ORDER BY p.is_top DESC, " +
+           "CASE :sort WHEN 'latest' THEN p.create_time END DESC, " +
+           "CASE :sort WHEN 'latest_reply' THEN COALESCE(MAX(c.create_time), p.create_time) END DESC, " +
+           "CASE :sort WHEN 'most_view' THEN p.view_count END DESC, " +
+           "CASE :sort WHEN 'most_like' THEN p.like_count END DESC, " +
+           "CASE :sort WHEN 'featured_first' THEN p.is_featured END DESC, " +
+           "CASE WHEN :sort = 'featured_first' THEN p.create_time END DESC, " +
+           "p.create_time DESC",
+           countQuery = "SELECT COUNT(DISTINCT p.id) FROM bbs_post p " +
+           "LEFT JOIN bbs_comment c ON p.id = c.post_id AND c.status = 1 " +
+           "WHERE " +
+           "((p.status = 1 AND (p.moderation_status = 'pass' OR p.author_id = :currentUserId OR :isAdmin = true)) OR " +
+           "((:isAdmin = true OR p.author_id = :currentUserId) AND p.status = 0 AND p.moderation_status = 'reject')) " +
+           "AND (:boardId IS NULL OR p.board_id = :boardId) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR p.title LIKE CONCAT('%', :keyword, '%'))",
+           nativeQuery = true)
+    Page<BbsPost> findPostsWithSort(@Param("boardId") Long boardId,
+                                     @Param("keyword") String keyword,
+                                     @Param("currentUserId") Long currentUserId,
+                                     @Param("isAdmin") Boolean isAdmin,
+                                     @Param("sort") String sort,
+                                     Pageable pageable);
+
     Page<BbsPost> findByAuthorIdAndStatusOrderByCreateTimeDesc(Long authorId, Integer status, Pageable pageable);
 
     @Query("SELECT p FROM BbsPost p WHERE p.authorId = :authorId AND " +
            "(p.status = 1 OR (p.status = 0 AND p.moderationStatus = 'reject')) " +
            "ORDER BY p.createTime DESC")
     Page<BbsPost> findMyVisibleAndRejectedPosts(@Param("authorId") Long authorId, Pageable pageable);
+
+    @Query("SELECT p FROM BbsPost p WHERE p.authorId = :authorId AND p.status = 1 " +
+           "ORDER BY p.createTime DESC")
+    Page<BbsPost> findUserVisiblePosts(@Param("authorId") Long authorId, Pageable pageable);
 
     @Query(value = "SELECT DATE(create_time) as date, COUNT(*) as count FROM bbs_post " +
                    "WHERE create_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) " +

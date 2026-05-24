@@ -10,6 +10,7 @@ import cn.edu.sdu.java.server.payload.response.DataResponse;
 import cn.edu.sdu.java.server.services.AiSearchService;
 import cn.edu.sdu.java.server.services.AiWriteService;
 import cn.edu.sdu.java.server.services.BbsPostService;
+import cn.edu.sdu.java.server.services.BbsRecommendationService;
 import cn.edu.sdu.java.server.services.BbsUserService;
 import cn.edu.sdu.java.server.services.ContentSummaryService;
 import cn.edu.sdu.java.server.services.LevelPrivilegeService;
@@ -45,8 +46,9 @@ public class BbsPostController {
     private final LevelPrivilegeService levelPrivilegeService;
     private final ObjectMapper objectMapper;
     private final ExecutorService executorService;
+    private final BbsRecommendationService bbsRecommendationService;
 
-    public BbsPostController(BbsPostService bbsPostService, AiSearchService aiSearchService, ContentSummaryService contentSummaryService, AiWriteService aiWriteService, BbsUserService bbsUserService, LevelPrivilegeService levelPrivilegeService, ObjectMapper objectMapper) {
+    public BbsPostController(BbsPostService bbsPostService, AiSearchService aiSearchService, ContentSummaryService contentSummaryService, AiWriteService aiWriteService, BbsUserService bbsUserService, LevelPrivilegeService levelPrivilegeService, ObjectMapper objectMapper, BbsRecommendationService bbsRecommendationService) {
         this.bbsPostService = bbsPostService;
         this.aiSearchService = aiSearchService;
         this.contentSummaryService = contentSummaryService;
@@ -55,6 +57,7 @@ public class BbsPostController {
         this.levelPrivilegeService = levelPrivilegeService;
         this.objectMapper = objectMapper;
         this.executorService = Executors.newCachedThreadPool();
+        this.bbsRecommendationService = bbsRecommendationService;
     }
 
     @GetMapping("/list")
@@ -78,7 +81,11 @@ public class BbsPostController {
 
     @GetMapping("/{id}")
     public DataResponse getPostDetail(@PathVariable Long id) {
-        return bbsPostService.getPostDetail(id);
+        DataResponse response = bbsPostService.getPostDetail(id);
+        if (response.getCode() == 0) {
+            bbsRecommendationService.recordBrowseHistory(id);
+        }
+        return response;
     }
 
     @PostMapping

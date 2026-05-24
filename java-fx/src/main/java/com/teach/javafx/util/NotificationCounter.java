@@ -22,35 +22,60 @@ public class NotificationCounter {
     public static long getMessageCount() {
         return messageCount;
     }
+    
+    public static void updateNotificationCount(long count) {
+        notificationCount = count;
+        if (onCountChangedCallback != null) {
+            Platform.runLater(onCountChangedCallback);
+        }
+    }
+    
+    public static void updateMessageCount(long count) {
+        messageCount = count;
+        if (onCountChangedCallback != null) {
+            Platform.runLater(onCountChangedCallback);
+        }
+    }
 
     public static void setOnCountChangedCallback(Runnable callback) {
         onCountChangedCallback = callback;
     }
 
     public static void refreshCounts() {
-        try {
-            Long notification = HttpRequestUtil.getUnreadNotificationCount();
-            if (notification != null) {
-                notificationCount = notification;
-            }
+        // 使用Task异步获取计数，避免阻塞UI线程
+        javafx.concurrent.Task<Void> task = new javafx.concurrent.Task<Void>() {
+            @Override
+            protected Void call() {
+                try {
+                    Long notification = HttpRequestUtil.getUnreadNotificationCount();
+                    if (notification != null) {
+                        notificationCount = notification;
+                    }
 
-            Map<String, Object> data = HttpRequestUtil.getUnreadCount();
-            if (data != null && data.containsKey("totalUnread")) {
-                Object count = data.get("totalUnread");
-                if (count instanceof Number) {
-                    messageCount = ((Number) count).longValue();
+                    Map<String, Object> data = HttpRequestUtil.getUnreadCount();
+                    if (data != null && data.containsKey("totalUnread")) {
+                        Object count = data.get("totalUnread");
+                        if (count instanceof Number) {
+                            messageCount = ((Number) count).longValue();
+                        }
+                    }
+                    
+                    System.out.println("Notification count: " + notificationCount + ", Message count: " + messageCount);
+                } catch (Exception e) {
+                    System.err.println("Error refreshing notification counts: " + e.getMessage());
+                    e.printStackTrace();
                 }
+                return null;
             }
-            
-            System.out.println("Notification count: " + notificationCount + ", Message count: " + messageCount);
-            
+        };
+        
+        task.setOnSucceeded(event -> {
             if (onCountChangedCallback != null) {
                 Platform.runLater(onCountChangedCallback);
             }
-        } catch (Exception e) {
-            System.err.println("Error refreshing notification counts: " + e.getMessage());
-            e.printStackTrace();
-        }
+        });
+        
+        new Thread(task).start();
     }
 
     public static void startAutoRefresh() {

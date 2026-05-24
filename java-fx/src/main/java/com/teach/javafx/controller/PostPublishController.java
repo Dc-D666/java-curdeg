@@ -108,18 +108,49 @@ public class PostPublishController extends ToolController {
 
     // 草稿相关 - 支持多草稿
     private Long currentDraftId = null;
-    private static final String DRAFT_FILE_NAME = "post_draft.txt";
+    private static final String DRAFT_FILE_NAME = "post-draft.txt";
     private Path draftFilePath;
+    
+    // 标记是否正在从草稿箱加载草稿
+    private boolean isLoadingFromDraftBox = false;
+    // 保存待加载的草稿信息（等板块列表加载完成后再填充）
+    private Long pendingBoardId = null;
+    private Map<String, Object> pendingDraftData = null;
+    
+    // 用于在加载 FXML 前传递草稿信息的 ThreadLocal
+    private static final ThreadLocal<Long> PENDING_DRAFT_ID = new ThreadLocal<>();
+    
+    /**
+     * 设置待加载的草稿ID（在 FXML 加载前调用）
+     */
+    public static void setPendingDraftId(Long draftId) {
+        System.out.println("PostPublishController.setPendingDraftId: 线程设置草稿ID " + draftId);
+        PENDING_DRAFT_ID.set(draftId);
+    }
 
     private com.teach.javafx.controller.base.MainFrameController mainFrameController;
 
     // 自动保存
     private boolean autoSaveEnabled = true;
+    private boolean isLoadingData = false; // 数据加载中，禁用自动保存
     private long lastAutoSaveTime = 0;
     private static final long AUTO_SAVE_INTERVAL = 60000; // 60秒
 
     @FXML
     public void initialize() {
+        System.out.println("PostPublishController.initialize: 开始初始化");
+        
+        // 检查 ThreadLocal 中是否有待加载的草稿
+        Long pendingId = PENDING_DRAFT_ID.get();
+        if (pendingId != null) {
+            System.out.println("PostPublishController.initialize: 检测到待加载草稿ID=" + pendingId);
+            isLoadingFromDraftBox = true;
+            currentDraftId = pendingId;
+            PENDING_DRAFT_ID.remove(); // 清除 ThreadLocal
+        }
+        
+        System.out.println("PostPublishController.initialize: isLoadingFromDraftBox=" + isLoadingFromDraftBox + ", currentDraftId=" + currentDraftId);
+        
         checkPostPrivilege();
         loadBoardList();
         initDraftPath();
@@ -139,11 +170,17 @@ public class PostPublishController extends ToolController {
         // AI写作助手事件初始化
         setupAiAssistantListeners();
         
-        // 检查是否有草稿需要恢复
-        checkAndRecoverDraft();
+        // 只有不是从草稿箱打开时才检查本地草稿
+        if (!isLoadingFromDraftBox && currentDraftId == null) {
+            System.out.println("PostPublishController.initialize: 检查本地草稿恢复");
+            checkAndRecoverDraft();
+        } else {
+            System.out.println("PostPublishController.initialize: 跳过本地草稿检查");
+        }
         
         // 设置初始字数统计
         updateWordCount();
+        System.out.println("PostPublishController.initialize: 初始化完成");
     }
     
     private void checkPostPrivilege() {
@@ -247,6 +284,7 @@ public class PostPublishController extends ToolController {
     
     private void triggerAutoSave() {
         if (!autoSaveEnabled) return;
+        if (isLoadingData) return; // 正在加载数据，不触发自动保存
         
         long now = System.currentTimeMillis();
         if (now - lastAutoSaveTime > AUTO_SAVE_INTERVAL) {
@@ -343,6 +381,8 @@ public class PostPublishController extends ToolController {
     }
 
     private void saveDraft(boolean showNotification) {
+        System.out.println("PostPublishController.saveDraft: 开始保存草稿");
+        
         String title = titleTextField.getText();
         String content = contentTextArea.getText();
         String imageUrlsStr = String.join(",", imageUrls);
@@ -358,6 +398,11 @@ public class PostPublishController extends ToolController {
         }
         final Long fBoardId = boardId;
         final String fBoardName = boardName;
+        
+        System.out.println("PostPublishController.saveDraft: 草稿ID=" + draftId + 
+                          ", 标题=" + title + 
+                          ", 板块=" + fBoardName + 
+                          ", 内容长度=" + (content != null ? content.length() : 0));
 
         Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
             @Override
@@ -370,15 +415,17 @@ public class PostPublishController extends ToolController {
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 Map<String, Object> result = task.getValue();
-                if (result != null && result.containsKey("data")) {
-                    Object data = result.get("data");
-                    if (data instanceof Map) {
-                        Object idObj = ((Map) data).get("id");
-                        if (idObj instanceof Number) {
-                            currentDraftId = ((Number) idObj).longValue();
-                        }
+                System.out.println("PostPublishController.saveDraft: 服务器返回=" + result);
+                
+                // saveDraft 返回的直接是 data 部分，包含 id
+                if (result != null && result.containsKey("id")) {
+                    Object idObj = result.get("id");
+                    if (idObj instanceof Number) {
+                        currentDraftId = ((Number) idObj).longValue();
+                        System.out.println("PostPublishController.saveDraft: 更新草稿ID为=" + currentDraftId);
                     }
                 }
+                
                 if (showNotification) {
                     showInfo("草稿已存入草稿箱");
                 }
@@ -386,6 +433,10 @@ public class PostPublishController extends ToolController {
         });
 
         task.setOnFailed(event -> {
+            System.out.println("PostPublishController.saveDraft: 保存失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
             Platform.runLater(() -> {
                 if (showNotification) {
                     showError("保存草稿失败");
@@ -416,6 +467,12 @@ public class PostPublishController extends ToolController {
     }
 
     public void loadDraft(Long draftId) {
+        System.out.println("PostPublishController.loadDraft: 开始加载草稿, draftId=" + draftId);
+        // 标记正在从草稿箱加载，避免本地草稿恢复干扰
+        isLoadingFromDraftBox = true;
+        isLoadingData = true; // 开始加载数据，禁用自动保存
+        currentDraftId = draftId;
+        
         Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
             @Override
             protected Map<String, Object> call() {
@@ -425,39 +482,113 @@ public class PostPublishController extends ToolController {
 
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
-                Map<String, Object> result = task.getValue();
-                if (result != null && result.containsKey("data")) {
-                    Object dataObj = result.get("data");
-                    if (dataObj instanceof Map) {
-                        Map<String, Object> draft = (Map<String, Object>) dataObj;
-                        currentDraftId = draftId;
-
-                        Object titleObj = draft.get("title");
-                        if (titleObj != null) titleTextField.setText(titleObj.toString());
-
-                        Object contentObj = draft.get("content");
-                        if (contentObj != null) contentTextArea.setText(contentObj.toString());
-
-                        Object imageUrlsObj = draft.get("imageUrls");
-                        if (imageUrlsObj != null && !imageUrlsObj.toString().isEmpty()) {
-                            String[] urls = imageUrlsObj.toString().split(",");
-                            for (String url : urls) {
-                                if (!url.trim().isEmpty()) addImageUrl(url.trim());
-                            }
-                        }
-
-                        Object boardIdObj = draft.get("boardId");
-                        if (boardIdObj instanceof Number) {
-                            selectBoard(((Number) boardIdObj).longValue());
-                        }
-
-                        updateWordCount();
+                System.out.println("PostPublishController.loadDraft: 服务器返回数据");
+                Map<String, Object> draft = task.getValue();
+                System.out.println("PostPublishController.loadDraft: draft=" + draft);
+                System.out.println("PostPublishController.loadDraft: draft是否为空=" + (draft == null));
+                
+                if (draft != null) {
+                    System.out.println("PostPublishController.loadDraft: draft.size=" + draft.size());
+                    System.out.println("PostPublishController.loadDraft: draft.title=" + draft.get("title"));
+                    System.out.println("PostPublishController.loadDraft: draft.content=" + draft.get("content"));
+                    System.out.println("PostPublishController.loadDraft: draft.id=" + draft.get("id"));
+                    
+                    System.out.println("PostPublishController.loadDraft: 草稿数据=" + draft);
+                    
+                    if (boardComboBox.getItems().isEmpty()) {
+                        System.out.println("PostPublishController.loadDraft: 板块列表未加载，等待中...");
+                        pendingDraftData = draft;
+                    } else {
+                        System.out.println("PostPublishController.loadDraft: 板块列表已加载，直接填充");
+                        fillDraftData(draft);
                     }
+                } else {
+                    System.out.println("PostPublishController.loadDraft: 警告！draft为null，无法加载数据！");
                 }
             });
         });
 
+        task.setOnFailed(event -> {
+            System.out.println("PostPublishController.loadDraft: 加载失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
+        });
+
         new Thread(task).start();
+    }
+    
+    /**
+     * 实际填充草稿数据到界面
+     */
+    private void fillDraftData(Map<String, Object> draft) {
+        System.out.println("PostPublishController.fillDraftData: 开始填充数据");
+        isLoadingData = true; // 设置加载标志，禁用自动保存
+        
+        Object titleObj = draft.get("title");
+        if (titleObj != null) {
+            titleTextField.setText(titleObj.toString());
+            System.out.println("PostPublishController.fillDraftData: 标题已设置: " + titleObj);
+        }
+
+        Object contentObj = draft.get("content");
+        if (contentObj != null) {
+            contentTextArea.setText(contentObj.toString());
+            System.out.println("PostPublishController.fillDraftData: 内容已设置");
+        }
+
+        Object imageUrlsObj = draft.get("imageUrls");
+        if (imageUrlsObj != null && !imageUrlsObj.toString().isEmpty()) {
+            String[] urls = imageUrlsObj.toString().split(",");
+            for (String url : urls) {
+                if (!url.trim().isEmpty()) {
+                    addImageUrl(url.trim());
+                }
+            }
+        }
+        
+        // 加载附件信息
+        Object attachmentInfosObj = draft.get("attachmentInfos");
+        if (attachmentInfosObj != null && !attachmentInfosObj.toString().isEmpty()) {
+            try {
+                String attachmentJson = attachmentInfosObj.toString();
+                // 直接解析草稿中保存的附件路径（草稿保存的是本地路径，不是已上传的AttachmentInfo）
+                if (attachmentJson.startsWith("[")) {
+                    // 使用简单的字符串解析，提取path字段
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"path\":\"([^\"]+)\"");
+                    java.util.regex.Matcher matcher = pattern.matcher(attachmentJson);
+                    while (matcher.find()) {
+                        String pathStr = matcher.group(1);
+                        // 处理转义的反斜杠
+                        pathStr = pathStr.replace("\\\\", "\\");
+                        Path path = Paths.get(pathStr);
+                        // 检查文件是否还存在
+                        if (Files.exists(path)) {
+                            if (!selectedAttachments.contains(path) && selectedAttachments.size() < 5) {
+                                selectedAttachments.add(path);
+                            }
+                        } else {
+                            System.out.println("PostPublishController.fillDraftData: 附件文件不存在，跳过: " + pathStr);
+                        }
+                    }
+                    // 刷新附件预览
+                    refreshAttachmentPreview();
+                }
+            } catch (Exception e) {
+                System.out.println("PostPublishController.fillDraftData: 加载附件信息出错: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        Object boardIdObj = draft.get("boardId");
+        if (boardIdObj instanceof Number) {
+            selectBoard(((Number) boardIdObj).longValue());
+            System.out.println("PostPublishController.fillDraftData: 板块已选择: " + boardIdObj);
+        }
+
+        updateWordCount();
+        isLoadingData = false; // 数据加载完成，启用自动保存
+        System.out.println("PostPublishController.fillDraftData: 数据填充完成");
     }
 
     private void selectBoard(Long boardId) {
@@ -482,6 +613,7 @@ public class PostPublishController extends ToolController {
     }
     
     private void loadBoardList() {
+        System.out.println("PostPublishController.loadBoardList: 开始加载板块列表");
         Task<List<Board>> task = new Task<List<Board>>() {
             @Override
             protected List<Board> call() {
@@ -492,14 +624,26 @@ public class PostPublishController extends ToolController {
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 List<Board> boards = task.getValue();
+                System.out.println("PostPublishController.loadBoardList: 板块列表加载完成，数量=" + (boards != null ? boards.size() : 0));
                 if (boards != null) {
                     boardComboBox.getItems().clear();
                     boardComboBox.getItems().addAll(boards);
+                    
+                    // 检查是否有待加载的草稿数据
+                    if (pendingDraftData != null) {
+                        System.out.println("PostPublishController.loadBoardList: 检测到待加载的草稿数据，正在填充...");
+                        fillDraftData(pendingDraftData);
+                        pendingDraftData = null;
+                    }
                 }
             });
         });
 
         task.setOnFailed(event -> {
+            System.out.println("PostPublishController.loadBoardList: 加载失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
             Platform.runLater(() -> showError("加载板块列表失败"));
         });
 
@@ -1152,5 +1296,49 @@ public class PostPublishController extends ToolController {
             contentTextArea.setText(content);
         }
         updateWordCount();
+    }
+    
+    /**
+     * 设置是否从草稿箱加载的标志
+     */
+    public void setLoadingFromDraftBox(boolean loadingFromDraftBox) {
+        System.out.println("PostPublishController.setLoadingFromDraftBox: 设置 " + loadingFromDraftBox);
+        this.isLoadingFromDraftBox = loadingFromDraftBox;
+    }
+    
+    /**
+     * 设置当前草稿ID
+     */
+    public void setCurrentDraftId(Long currentDraftId) {
+        System.out.println("PostPublishController.setCurrentDraftId: 设置草稿ID " + currentDraftId);
+        this.currentDraftId = currentDraftId;
+    }
+    
+    /**
+     * 使用反射将实体对象转换为 Map
+     */
+    private static Map<String, Object> objectToMap(Object obj) {
+        try {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            java.lang.reflect.Field[] fields = obj.getClass().getDeclaredFields();
+            for (java.lang.reflect.Field field : fields) {
+                field.setAccessible(true);
+                map.put(field.getName(), field.get(obj));
+            }
+            // 也检查父类的字段
+            Class<?> superClass = obj.getClass().getSuperclass();
+            if (superClass != null) {
+                java.lang.reflect.Field[] superFields = superClass.getDeclaredFields();
+                for (java.lang.reflect.Field field : superFields) {
+                    field.setAccessible(true);
+                    map.put(field.getName(), field.get(obj));
+                }
+            }
+            System.out.println("PostPublishController.objectToMap: 转换结果=" + map);
+            return map;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

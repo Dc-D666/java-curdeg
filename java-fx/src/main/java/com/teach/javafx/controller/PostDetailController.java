@@ -151,6 +151,8 @@ public class PostDetailController extends ToolController {
     private Label commentHotspotsTitleLabel;
     @FXML
     private Label commentHotspotsContentLabel;
+    @FXML
+    private VBox mentionPopup;
 
     private Long postId;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
@@ -162,6 +164,8 @@ public class PostDetailController extends ToolController {
     private final List<Path> selectedCommentImages = new ArrayList<>();
     private final List<Path> selectedCommentAttachments = new ArrayList<>();
     private Comment replyingToComment;
+    private List<Map<String, Object>> currentMentionUsers = new ArrayList<>();
+    private int mentionStartIndex = -1;
 
     @FXML
     public void initialize() {
@@ -194,6 +198,9 @@ public class PostDetailController extends ToolController {
         featureButton.setOnAction(event -> toggleFeature());
         summaryButton.setOnAction(event -> handleSummary());
         
+        // 评论输入框@用户功能
+        setupMentionListener();
+        
         submitCommentButton.setVisible(false);
         likeButton.setVisible(false);
         favoriteButton.setVisible(false);
@@ -209,6 +216,161 @@ public class PostDetailController extends ToolController {
         summaryButton.setVisible(false);
         refreshCommentImagePreview();
         refreshCommentAttachmentPreview();
+    }
+    
+    private void setupMentionListener() {
+        // 监听文本变化，检测@符号
+        commentTextArea.textProperty().addListener((obs, oldText, newText) -> {
+            checkForMentionTrigger(newText);
+        });
+        
+        // 监听光标位置变化
+        commentTextArea.caretPositionProperty().addListener((obs, oldPos, newPos) -> {
+            checkForMentionTrigger(commentTextArea.getText());
+        });
+        
+        // 监听ESC键关闭联想框
+        commentTextArea.setOnKeyPressed(event -> {
+            if (event.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                hideMentionPopup();
+            } else if (event.getCode() == javafx.scene.input.KeyCode.ENTER && 
+                       mentionPopup.isVisible() && !currentMentionUsers.isEmpty()) {
+                event.consume();
+                selectMentionUser(0);
+            }
+        });
+    }
+    
+    private void checkForMentionTrigger(String text) {
+        int caretPos = commentTextArea.getCaretPosition();
+        if (caretPos > 0 && caretPos <= text.length()) {
+            // 获取光标位置之前的文本
+            String textBeforeCaret = text.substring(0, caretPos);
+            
+            // 使用正则表达式查找最后一个@提及（只匹配单个单词或连续中文字符，不跨空格）
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("@([\\u4e00-\\u9fa5a-zA-Z0-9]+)$");
+            java.util.regex.Matcher matcher = pattern.matcher(textBeforeCaret);
+            
+            if (matcher.find()) {
+                // 找到有效的@提及
+                mentionStartIndex = matcher.start();
+                String mentionKeyword = matcher.group(1);
+                searchAndShowUsers(mentionKeyword);
+                return;
+            }
+        }
+        hideMentionPopup();
+    }
+    
+    private void searchAndShowUsers(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            hideMentionPopup();
+            return;
+        }
+        
+        Task<List<Map<String, Object>>> task = new Task<>() {
+            @Override
+            protected List<Map<String, Object>> call() {
+                return HttpRequestUtil.searchUsersByNickname(keyword);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                currentMentionUsers = task.getValue();
+                if (currentMentionUsers != null && !currentMentionUsers.isEmpty()) {
+                    showMentionPopup(currentMentionUsers);
+                } else {
+                    hideMentionPopup();
+                }
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> hideMentionPopup());
+        });
+        
+        new Thread(task).start();
+    }
+    
+    private void showMentionPopup(List<Map<String, Object>> users) {
+        mentionPopup.getChildren().clear();
+        
+        for (int i = 0; i < users.size(); i++) {
+            Map<String, Object> user = users.get(i);
+            String nickname = (String) user.get("nickname");
+            String avatarUrl = (String) user.get("avatarUrl");
+            
+            HBox userItem = new HBox(8);
+            userItem.setStyle("-fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;");
+            userItem.setAlignment(Pos.CENTER_LEFT);
+            
+            // 头像
+            ImageView avatarView = new ImageView();
+            avatarView.setFitWidth(32);
+            avatarView.setFitHeight(32);
+            avatarView.setPreserveRatio(true);
+            
+            if (avatarUrl != null && !avatarUrl.isBlank()) {
+                try {
+                    String fullAvatarUrl = avatarUrl.startsWith("/") ? 
+                        HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                    Image avatar = new Image(fullAvatarUrl, true);
+                    avatarView.setImage(avatar);
+                } catch (Exception e) {
+                    // 使用默认头像
+                }
+            }
+            
+            // 昵称
+            Label nameLabel = new Label(nickname != null ? nickname : "用户");
+            nameLabel.setStyle("-fx-font-weight: 500;");
+            
+            userItem.getChildren().addAll(avatarView, nameLabel);
+            
+            final int index = i;
+            userItem.setOnMouseClicked(event -> selectMentionUser(index));
+            userItem.setOnMouseEntered(event -> 
+                userItem.setStyle("-fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4; -fx-background-color: #f0f0f0;"));
+            userItem.setOnMouseExited(event -> 
+                userItem.setStyle("-fx-padding: 8; -fx-cursor: hand; -fx-background-radius: 4;"));
+            
+            mentionPopup.getChildren().add(userItem);
+        }
+        
+        mentionPopup.setVisible(true);
+        mentionPopup.setManaged(true);
+    }
+    
+    private void selectMentionUser(int index) {
+        if (index < 0 || index >= currentMentionUsers.size()) {
+            return;
+        }
+        
+        Map<String, Object> selectedUser = currentMentionUsers.get(index);
+        String nickname = (String) selectedUser.get("nickname");
+        
+        if (nickname != null && mentionStartIndex >= 0) {
+            String currentText = commentTextArea.getText();
+            int caretPos = commentTextArea.getCaretPosition();
+            
+            // 替换@...为@昵称 
+            String newText = currentText.substring(0, mentionStartIndex) + 
+                            "@" + nickname + " " + 
+                            currentText.substring(caretPos);
+            
+            commentTextArea.setText(newText);
+            commentTextArea.positionCaret(mentionStartIndex + nickname.length() + 2);
+        }
+        
+        hideMentionPopup();
+    }
+    
+    private void hideMentionPopup() {
+        mentionPopup.setVisible(false);
+        mentionPopup.setManaged(false);
+        currentMentionUsers.clear();
+        mentionStartIndex = -1;
     }
 
     public void setPostId(Long postId) {
@@ -253,6 +415,12 @@ public class PostDetailController extends ToolController {
         task.setOnSucceeded(event -> {
             Platform.runLater(() -> {
                 currentPost = task.getValue();
+                System.out.println("[PostDetailController] 接收到的Post对象: ");
+                System.out.println("  - id: " + currentPost.getId());
+                System.out.println("  - authorNickname: " + currentPost.getAuthorNickname());
+                System.out.println("  - authorAvatarUrl: '" + currentPost.getAuthorAvatarUrl() + "'");
+                System.out.println("  - authorAvatarUrl length: " + (currentPost.getAuthorAvatarUrl() == null ? "null" : currentPost.getAuthorAvatarUrl().length()));
+                
                 if (currentPost != null) {
                     titleLabel.setText(currentPost.getTitle());
                     
@@ -260,18 +428,27 @@ public class PostDetailController extends ToolController {
                         boardLabel.setText(currentPost.getBoardName());
                     }
                     
+                    // 正常加载用户自己设置的头像
                     String avatarUrl = currentPost.getAuthorAvatarUrl();
-                    if (avatarUrl != null && !avatarUrl.isBlank()) {
-                        try {
-                            String fullAvatarUrl = avatarUrl.startsWith("/") ? 
-                                HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
-                            Image image = new Image(fullAvatarUrl, true);
-                            authorImageView.setImage(image);
-                        } catch (Exception e) {
-                            authorImageView.setImage(null);
-                        }
-                    } else {
-                        authorImageView.setImage(null);
+                    System.out.println("[PostDetailController] 原始头像URL: " + avatarUrl);
+                    System.out.println("[PostDetailController] 清理后头像URL: " + avatarUrl);
+                    String fullAvatarUrl = avatarUrl.startsWith("/") ? HttpRequestUtil.serverUrl + avatarUrl : avatarUrl;
+                    System.out.println("[PostDetailController] 最终加载URL: " + fullAvatarUrl);
+                    try {
+                        Image image = new Image(fullAvatarUrl, true);
+                        image.progressProperty().addListener((obs, old, progress) -> {
+                            System.out.println("[PostDetailController] 头像加载进度: " + progress);
+                        });
+                        image.errorProperty().addListener((obs, old, hasError) -> {
+                            if (hasError && image.getException() != null) {
+                                System.out.println("[PostDetailController] 头像加载错误:");
+                                image.getException().printStackTrace();
+                            }
+                        });
+                        authorImageView.setImage(image);
+                    } catch (Exception e) {
+                        System.out.println("[PostDetailController] 头像加载异常:");
+                        e.printStackTrace();
                     }
                     String authorNickname = currentPost.getAuthorNickname() != null ? currentPost.getAuthorNickname() : "未知";
                     authorLabel.setText("作者：" + authorNickname);
@@ -886,7 +1063,7 @@ public class PostDetailController extends ToolController {
         replyingToComment = null;
         replyTargetBox.setVisible(false);
         replyTargetBox.setManaged(false);
-        commentTextArea.setPromptText("发表评论，支持添加图片和附件...");
+        commentTextArea.setPromptText("发表评论，@用户可通知对方...");
         submitCommentButton.setText("发布评论");
     }
 
