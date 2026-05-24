@@ -1,0 +1,1344 @@
+package com.teach.javafx.controller;
+
+import com.teach.javafx.AppStore;
+import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.models.AttachmentInfo;
+import com.teach.javafx.models.Board;
+import com.teach.javafx.models.Post;
+import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.AttachmentUtil;
+import com.teach.javafx.util.PrivilegeCache;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+public class PostPublishController extends ToolController {
+    @FXML
+    private TextField titleTextField;
+    @FXML
+    private Label titleCountLabel;
+    @FXML
+    private ComboBox<Board> boardComboBox;
+    @FXML
+    private TextArea contentTextArea;
+    @FXML
+    private Label contentCountLabel;
+    @FXML
+    private TextField imageUrlsTextField;
+    @FXML
+    private Button selectImageButton;
+    @FXML
+    private Button aiImageButton;
+    @FXML
+    private Label aiImageLimitLabel;
+    @FXML
+    private Label imageUploadStatusLabel;
+    @FXML
+    private FlowPane imagePreviewPane;
+    @FXML
+    private Button selectAttachmentButton;
+    @FXML
+    private Label attachmentStatusLabel;
+    @FXML
+    private FlowPane attachmentPreviewPane;
+    @FXML
+    private Button publishButton;
+    @FXML
+    private Button cancelButton;
+    @FXML
+    private Button previewButton;
+    @FXML
+    private Button saveDraftButton;
+    
+    // AI写作助手相关控件
+    @FXML
+    private TitledPane aiAssistantPane;
+    @FXML
+    private Button aiHelpWriteButton;
+    @FXML
+    private Button aiContinueButton;
+    @FXML
+    private Button aiPolishButton;
+    @FXML
+    private TextArea aiInstructionTextArea;
+    @FXML
+    private Button aiGenerateButton;
+    @FXML
+    private Label aiStatusLabel;
+    
+    // AI 进度条 - 使用JavaFX自带ProgressBar
+    @FXML
+    private VBox aiProgressContainer;
+    @FXML
+    private ProgressBar aiProgressBar;
+    @FXML
+    private Label aiProgressLabel;
+    
+    // AI 进度条相关
+    private Thread aiProgressThread;
+    private volatile boolean aiRunning = false;
+    private long aiStartTime = 0;
+    private static final long TOTAL_EXPECTED_TIME = 10000; // 假设总共需要10秒
+    
+    // 保存原始内容，用于"弃用"功能
+    private String originalTitle;
+    private String originalContent;
+    
+    // 存储的图片URL列表
+    private List<String> imageUrls = new ArrayList<>();
+    private final List<Path> selectedAttachments = new ArrayList<>();
+
+    // 草稿相关 - 支持多草稿
+    private Long currentDraftId = null;
+    private static final String DRAFT_FILE_NAME = "post-draft.txt";
+    private Path draftFilePath;
+    
+    // 标记是否正在从草稿箱加载草稿
+    private boolean isLoadingFromDraftBox = false;
+    // 保存待加载的草稿信息（等板块列表加载完成后再填充）
+    private Long pendingBoardId = null;
+    private Map<String, Object> pendingDraftData = null;
+    
+    // 用于在加载 FXML 前传递草稿信息的 ThreadLocal
+    private static final ThreadLocal<Long> PENDING_DRAFT_ID = new ThreadLocal<>();
+    
+    /**
+     * 设置待加载的草稿ID（在 FXML 加载前调用）
+     */
+    public static void setPendingDraftId(Long draftId) {
+        System.out.println("PostPublishController.setPendingDraftId: 线程设置草稿ID " + draftId);
+        PENDING_DRAFT_ID.set(draftId);
+    }
+
+    private com.teach.javafx.controller.base.MainFrameController mainFrameController;
+
+    // 自动保存
+    private boolean autoSaveEnabled = true;
+    private boolean isLoadingData = false; // 数据加载中，禁用自动保存
+    private long lastAutoSaveTime = 0;
+    private static final long AUTO_SAVE_INTERVAL = 60000; // 60秒
+
+    @FXML
+    public void initialize() {
+        System.out.println("PostPublishController.initialize: 开始初始化");
+        
+        // 检查 ThreadLocal 中是否有待加载的草稿
+        Long pendingId = PENDING_DRAFT_ID.get();
+        if (pendingId != null) {
+            System.out.println("PostPublishController.initialize: 检测到待加载草稿ID=" + pendingId);
+            isLoadingFromDraftBox = true;
+            currentDraftId = pendingId;
+            PENDING_DRAFT_ID.remove(); // 清除 ThreadLocal
+        }
+        
+        System.out.println("PostPublishController.initialize: isLoadingFromDraftBox=" + isLoadingFromDraftBox + ", currentDraftId=" + currentDraftId);
+        
+        checkPostPrivilege();
+        loadBoardList();
+        initDraftPath();
+        
+        // 字数统计监听器
+        setupWordCountListeners();
+        
+        // 按钮事件
+        publishButton.setOnAction(event -> publishPost());
+        cancelButton.setOnAction(event -> closeTab());
+        selectImageButton.setOnAction(event -> selectAndUploadImage());
+        selectAttachmentButton.setOnAction(event -> selectAttachments());
+        aiImageButton.setOnAction(event -> openAiImageDialog());
+        previewButton.setOnAction(event -> showPreview());
+        saveDraftButton.setOnAction(event -> saveDraftManually());
+        
+        // AI写作助手事件初始化
+        setupAiAssistantListeners();
+        
+        // 只有不是从草稿箱打开时才检查本地草稿
+        if (!isLoadingFromDraftBox && currentDraftId == null) {
+            System.out.println("PostPublishController.initialize: 检查本地草稿恢复");
+            checkAndRecoverDraft();
+        } else {
+            System.out.println("PostPublishController.initialize: 跳过本地草稿检查");
+        }
+        
+        // 设置初始字数统计
+        updateWordCount();
+        System.out.println("PostPublishController.initialize: 初始化完成");
+    }
+    
+    private void checkPostPrivilege() {
+        String restrictionMsg = PrivilegeCache.getInstance().getPostRestrictionMessage();
+        if (restrictionMsg != null) {
+            publishButton.setDisable(true);
+            publishButton.setText("禁止发帖");
+            publishButton.setStyle("-fx-background-color: #d9d9d9; -fx-text-fill: #999;");
+            
+            // 在标题栏下方显示限制提示
+            javafx.scene.control.Label restrictionLabel = new javafx.scene.control.Label("⚠️ " + restrictionMsg);
+            restrictionLabel.setStyle("-fx-text-fill: #ff4d4f; -fx-font-size: 13px; -fx-padding: 4 0;");
+            
+            // 将提示标签插入到第一个位置（标题栏之前）
+            javafx.scene.layout.VBox parent = (javafx.scene.layout.VBox) publishButton.getParent().getParent();
+            if (parent != null) {
+                parent.getChildren().add(0, restrictionLabel);
+            }
+        }
+        updateAiImageLimitLabel();
+    }
+
+    private void updateAiImageLimitLabel() {
+        int remaining = PrivilegeCache.getInstance().getAiImageRemaining();
+        int limit = PrivilegeCache.getInstance().getAiImageLimit();
+        if (limit > 0) {
+            aiImageLimitLabel.setText("今日剩余 " + remaining + "/" + limit + " 次");
+            aiImageLimitLabel.setVisible(true);
+            aiImageLimitLabel.setManaged(true);
+            if (remaining <= 0) {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+                aiImageButton.setDisable(true);
+            } else if (remaining <= 2) {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #faad14; -fx-background-color: #fffbe6; -fx-padding: 2 6; -fx-background-radius: 4;");
+            } else {
+                aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #52c41a; -fx-background-color: #f6ffed; -fx-padding: 2 6; -fx-background-radius: 4;");
+            }
+        } else if (limit == 0) {
+            aiImageLimitLabel.setText("当前等级无AI配图权限");
+            aiImageLimitLabel.setVisible(true);
+            aiImageLimitLabel.setManaged(true);
+            aiImageLimitLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #ff4d4f; -fx-background-color: #fff2f0; -fx-padding: 2 6; -fx-background-radius: 4;");
+            aiImageButton.setDisable(true);
+        } else {
+            aiImageLimitLabel.setVisible(false);
+            aiImageLimitLabel.setManaged(false);
+        }
+    }
+
+    private void initDraftPath() {
+        String userHome = System.getProperty("user.home");
+        draftFilePath = Paths.get(userHome, ".trae_bbs", DRAFT_FILE_NAME);
+    }
+    
+    private void setupWordCountListeners() {
+        // 标题字数统计
+        titleTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+            updateWordCount();
+            triggerAutoSave();
+        });
+        
+        // 内容字数统计
+        contentTextArea.textProperty().addListener((observable, oldValue, newValue) -> {
+            updateWordCount();
+            triggerAutoSave();
+        });
+    }
+    
+    private void updateWordCount() {
+        int titleLen = titleTextField.getText().length();
+        int contentLen = contentTextArea.getText().length();
+        
+        titleCountLabel.setText(titleLen + "/256");
+        contentCountLabel.setText(contentLen + "/20000");
+        
+        // 超过限制时显示警告色
+        if (titleLen > 256) {
+            titleCountLabel.setStyle("-fx-text-fill: #f5222d; -fx-min-width: 60px; -fx-font-weight: bold;");
+        } else {
+            titleCountLabel.setStyle("-fx-text-fill: #666; -fx-min-width: 60px;");
+        }
+        
+        if (contentLen > 20000) {
+            contentCountLabel.setStyle("-fx-text-fill: #f5222d; -fx-font-weight: bold;");
+        } else {
+            contentCountLabel.setStyle("-fx-text-fill: #666;");
+        }
+    }
+    
+    private void setupAiAssistantListeners() {
+        aiInstructionTextArea.textProperty().addListener((observable, oldValue, newValue) -> {
+            aiGenerateButton.setDisable(newValue == null || newValue.trim().isEmpty());
+        });
+        
+        aiHelpWriteButton.setOnAction(event -> fillPresetInstruction("help_write"));
+        aiContinueButton.setOnAction(event -> fillPresetInstruction("continue"));
+        aiPolishButton.setOnAction(event -> fillPresetInstruction("polish"));
+        
+        aiGenerateButton.setOnAction(event -> generateWithAI());
+    }
+    
+    private void triggerAutoSave() {
+        if (!autoSaveEnabled) return;
+        if (isLoadingData) return; // 正在加载数据，不触发自动保存
+        
+        long now = System.currentTimeMillis();
+        if (now - lastAutoSaveTime > AUTO_SAVE_INTERVAL) {
+            saveDraft(false);
+            lastAutoSaveTime = now;
+        }
+    }
+    
+    private void checkAndRecoverDraft() {
+        if (!Files.exists(draftFilePath)) return;
+        
+        try {
+            String content = Files.readString(draftFilePath);
+            if (content == null || content.trim().isEmpty()) return;
+            
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("草稿恢复");
+            alert.setHeaderText("发现未发布的草稿");
+            alert.setContentText("是否恢复上次未发布的草稿？");
+            
+            ButtonType recoverButton = new ButtonType("恢复草稿");
+            ButtonType deleteButton = new ButtonType("删除草稿", ButtonBar.ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(recoverButton, deleteButton);
+            
+            alert.showAndWait().ifPresent(response -> {
+                if (response == recoverButton) {
+                    recoverDraft(content);
+                } else {
+                    deleteDraft();
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void recoverDraft(String content) {
+        try {
+            String[] lines = content.split("\n");
+            String draftTitle = "";
+            String draftContent = "";
+            String draftImageUrls = "";
+            
+            int mode = 0; // 0: title, 1: content, 2: imageUrls
+            StringBuilder contentBuilder = new StringBuilder();
+            
+            for (String line : lines) {
+                if (line.equals("--- TITLE ---")) {
+                    mode = 0;
+                } else if (line.equals("--- CONTENT ---")) {
+                    mode = 1;
+                } else if (line.equals("--- IMAGE_URLS ---")) {
+                    mode = 2;
+                } else {
+                    switch (mode) {
+                        case 0:
+                            draftTitle += line + "\n";
+                            break;
+                        case 1:
+                            contentBuilder.append(line).append("\n");
+                            break;
+                        case 2:
+                            draftImageUrls = line;
+                            break;
+                    }
+                }
+            }
+            
+            if (!draftTitle.isEmpty()) {
+                titleTextField.setText(draftTitle.trim());
+            }
+            if (contentBuilder.length() > 0) {
+                contentTextArea.setText(contentBuilder.toString().trim());
+            }
+            if (!draftImageUrls.isEmpty()) {
+                String[] urls = draftImageUrls.split(",");
+                for (String url : urls) {
+                    if (!url.trim().isEmpty()) {
+                        addImageUrl(url.trim());
+                    }
+                }
+            }
+            
+            updateWordCount();
+            showInfo("草稿已恢复");
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("恢复草稿失败：" + e.getMessage());
+        }
+    }
+    
+    private void saveDraftManually() {
+        saveDraft(true);
+    }
+
+    private void saveDraft(boolean showNotification) {
+        System.out.println("PostPublishController.saveDraft: 开始保存草稿");
+        
+        String title = titleTextField.getText();
+        String content = contentTextArea.getText();
+        String imageUrlsStr = String.join(",", imageUrls);
+        String attachmentInfosStr = buildAttachmentInfosString();
+        final Long draftId = currentDraftId;
+
+        Long boardId = null;
+        String boardName = null;
+        Board selectedBoard = boardComboBox.getValue();
+        if (selectedBoard != null) {
+            boardId = selectedBoard.getId();
+            boardName = selectedBoard.getName();
+        }
+        final Long fBoardId = boardId;
+        final String fBoardName = boardName;
+        
+        System.out.println("PostPublishController.saveDraft: 草稿ID=" + draftId + 
+                          ", 标题=" + title + 
+                          ", 板块=" + fBoardName + 
+                          ", 内容长度=" + (content != null ? content.length() : 0));
+
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.saveDraft(draftId, title, fBoardId, fBoardName,
+                        content, imageUrlsStr, attachmentInfosStr);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Map<String, Object> result = task.getValue();
+                System.out.println("PostPublishController.saveDraft: 服务器返回=" + result);
+                
+                // saveDraft 返回的直接是 data 部分，包含 id
+                if (result != null && result.containsKey("id")) {
+                    Object idObj = result.get("id");
+                    if (idObj instanceof Number) {
+                        currentDraftId = ((Number) idObj).longValue();
+                        System.out.println("PostPublishController.saveDraft: 更新草稿ID为=" + currentDraftId);
+                    }
+                }
+                
+                if (showNotification) {
+                    showInfo("草稿已存入草稿箱");
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            System.out.println("PostPublishController.saveDraft: 保存失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
+            Platform.runLater(() -> {
+                if (showNotification) {
+                    showError("保存草稿失败");
+                }
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void deleteDraft() {
+        if (currentDraftId != null && currentDraftId > 0) {
+            Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+                @Override
+                protected Map<String, Object> call() {
+                    return HttpRequestUtil.deleteDraft(currentDraftId);
+                }
+            };
+            new Thread(task).start();
+        }
+        try {
+            if (Files.exists(draftFilePath)) {
+                Files.delete(draftFilePath);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void loadDraft(Long draftId) {
+        System.out.println("PostPublishController.loadDraft: 开始加载草稿, draftId=" + draftId);
+        // 标记正在从草稿箱加载，避免本地草稿恢复干扰
+        isLoadingFromDraftBox = true;
+        isLoadingData = true; // 开始加载数据，禁用自动保存
+        currentDraftId = draftId;
+        
+        Task<Map<String, Object>> task = new Task<Map<String, Object>>() {
+            @Override
+            protected Map<String, Object> call() {
+                return HttpRequestUtil.getDraft(draftId);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                System.out.println("PostPublishController.loadDraft: 服务器返回数据");
+                Map<String, Object> draft = task.getValue();
+                System.out.println("PostPublishController.loadDraft: draft=" + draft);
+                System.out.println("PostPublishController.loadDraft: draft是否为空=" + (draft == null));
+                
+                if (draft != null) {
+                    System.out.println("PostPublishController.loadDraft: draft.size=" + draft.size());
+                    System.out.println("PostPublishController.loadDraft: draft.title=" + draft.get("title"));
+                    System.out.println("PostPublishController.loadDraft: draft.content=" + draft.get("content"));
+                    System.out.println("PostPublishController.loadDraft: draft.id=" + draft.get("id"));
+                    
+                    System.out.println("PostPublishController.loadDraft: 草稿数据=" + draft);
+                    
+                    if (boardComboBox.getItems().isEmpty()) {
+                        System.out.println("PostPublishController.loadDraft: 板块列表未加载，等待中...");
+                        pendingDraftData = draft;
+                    } else {
+                        System.out.println("PostPublishController.loadDraft: 板块列表已加载，直接填充");
+                        fillDraftData(draft);
+                    }
+                } else {
+                    System.out.println("PostPublishController.loadDraft: 警告！draft为null，无法加载数据！");
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            System.out.println("PostPublishController.loadDraft: 加载失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
+        });
+
+        new Thread(task).start();
+    }
+    
+    /**
+     * 实际填充草稿数据到界面
+     */
+    private void fillDraftData(Map<String, Object> draft) {
+        System.out.println("PostPublishController.fillDraftData: 开始填充数据");
+        isLoadingData = true; // 设置加载标志，禁用自动保存
+        
+        Object titleObj = draft.get("title");
+        if (titleObj != null) {
+            titleTextField.setText(titleObj.toString());
+            System.out.println("PostPublishController.fillDraftData: 标题已设置: " + titleObj);
+        }
+
+        Object contentObj = draft.get("content");
+        if (contentObj != null) {
+            contentTextArea.setText(contentObj.toString());
+            System.out.println("PostPublishController.fillDraftData: 内容已设置");
+        }
+
+        Object imageUrlsObj = draft.get("imageUrls");
+        if (imageUrlsObj != null && !imageUrlsObj.toString().isEmpty()) {
+            String[] urls = imageUrlsObj.toString().split(",");
+            for (String url : urls) {
+                if (!url.trim().isEmpty()) {
+                    addImageUrl(url.trim());
+                }
+            }
+        }
+        
+        // 加载附件信息
+        Object attachmentInfosObj = draft.get("attachmentInfos");
+        if (attachmentInfosObj != null && !attachmentInfosObj.toString().isEmpty()) {
+            try {
+                String attachmentJson = attachmentInfosObj.toString();
+                // 直接解析草稿中保存的附件路径（草稿保存的是本地路径，不是已上传的AttachmentInfo）
+                if (attachmentJson.startsWith("[")) {
+                    // 使用简单的字符串解析，提取path字段
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"path\":\"([^\"]+)\"");
+                    java.util.regex.Matcher matcher = pattern.matcher(attachmentJson);
+                    while (matcher.find()) {
+                        String pathStr = matcher.group(1);
+                        // 处理转义的反斜杠
+                        pathStr = pathStr.replace("\\\\", "\\");
+                        Path path = Paths.get(pathStr);
+                        // 检查文件是否还存在
+                        if (Files.exists(path)) {
+                            if (!selectedAttachments.contains(path) && selectedAttachments.size() < 5) {
+                                selectedAttachments.add(path);
+                            }
+                        } else {
+                            System.out.println("PostPublishController.fillDraftData: 附件文件不存在，跳过: " + pathStr);
+                        }
+                    }
+                    // 刷新附件预览
+                    refreshAttachmentPreview();
+                }
+            } catch (Exception e) {
+                System.out.println("PostPublishController.fillDraftData: 加载附件信息出错: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        Object boardIdObj = draft.get("boardId");
+        if (boardIdObj instanceof Number) {
+            selectBoard(((Number) boardIdObj).longValue());
+            System.out.println("PostPublishController.fillDraftData: 板块已选择: " + boardIdObj);
+        }
+
+        updateWordCount();
+        isLoadingData = false; // 数据加载完成，启用自动保存
+        System.out.println("PostPublishController.fillDraftData: 数据填充完成");
+    }
+
+    private void selectBoard(Long boardId) {
+        for (Board b : boardComboBox.getItems()) {
+            if (b.getId() != null && b.getId().equals(boardId)) {
+                boardComboBox.getSelectionModel().select(b);
+                break;
+            }
+        }
+    }
+
+    private String buildAttachmentInfosString() {
+        if (selectedAttachments.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < selectedAttachments.size(); i++) {
+            if (i > 0) sb.append(",");
+            sb.append("{\"path\":\"").append(selectedAttachments.get(i).toString().replace("\\", "\\\\")).append("\"}");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+    
+    private void loadBoardList() {
+        System.out.println("PostPublishController.loadBoardList: 开始加载板块列表");
+        Task<List<Board>> task = new Task<List<Board>>() {
+            @Override
+            protected List<Board> call() {
+                return HttpRequestUtil.getBoardList();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                List<Board> boards = task.getValue();
+                System.out.println("PostPublishController.loadBoardList: 板块列表加载完成，数量=" + (boards != null ? boards.size() : 0));
+                if (boards != null) {
+                    boardComboBox.getItems().clear();
+                    boardComboBox.getItems().addAll(boards);
+                    
+                    // 检查是否有待加载的草稿数据
+                    if (pendingDraftData != null) {
+                        System.out.println("PostPublishController.loadBoardList: 检测到待加载的草稿数据，正在填充...");
+                        fillDraftData(pendingDraftData);
+                        pendingDraftData = null;
+                    }
+                }
+            });
+        });
+
+        task.setOnFailed(event -> {
+            System.out.println("PostPublishController.loadBoardList: 加载失败!");
+            if (task.getException() != null) {
+                task.getException().printStackTrace();
+            }
+            Platform.runLater(() -> showError("加载板块列表失败"));
+        });
+
+        new Thread(task).start();
+    }
+    
+    private void addImageUrl(String url) {
+        imageUrls.add(url);
+        updateImageUrlsTextField();
+        addImagePreview(url);
+    }
+    
+    private void removeImageUrl(String url) {
+        imageUrls.remove(url);
+        updateImageUrlsTextField();
+        refreshImagePreview();
+    }
+    
+    private void updateImageUrlsTextField() {
+        imageUrlsTextField.setText(String.join(",", imageUrls));
+    }
+    
+    private void addImagePreview(String url) {
+        VBox imageContainer = new VBox(5);
+        imageContainer.setStyle("-fx-alignment: center;");
+        
+        ImageView imageView = new ImageView();
+        imageView.setFitWidth(120);
+        imageView.setFitHeight(120);
+        imageView.setPreserveRatio(true);
+        
+        try {
+            // 处理相对路径，添加serverUrl前缀
+            String fullUrl = url;
+            if (url.startsWith("/")) {
+                fullUrl = HttpRequestUtil.serverUrl + url;
+            } else if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                fullUrl = HttpRequestUtil.serverUrl + "/" + url;
+            }
+            
+            Image image = new Image(fullUrl, true);
+            imageView.setImage(image);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 如果加载失败，不显示图片
+        }
+        
+        Button deleteButton = new Button("删除");
+        deleteButton.setStyle("-fx-background-color: #f5222d; -fx-text-fill: white; -fx-font-size: 11px;");
+        deleteButton.setOnAction(e -> removeImageUrl(url));
+        
+        imageContainer.getChildren().addAll(imageView, deleteButton);
+        imagePreviewPane.getChildren().add(imageContainer);
+    }
+    
+    private void refreshImagePreview() {
+        imagePreviewPane.getChildren().clear();
+        for (String url : imageUrls) {
+            addImagePreview(url);
+        }
+    }
+
+    private void publishPost() {
+        String title = titleTextField.getText().trim();
+        Board selectedBoard = boardComboBox.getValue();
+        String content = contentTextArea.getText().trim();
+        String imageUrlsStr = String.join(",", imageUrls);
+
+        // 验证
+        if (title.isEmpty()) {
+            showError("标题不能为空");
+            return;
+        }
+        if (title.length() > 256) {
+            showError("标题不能超过256字");
+            return;
+        }
+        if (selectedBoard == null) {
+            showError("请选择板块");
+            return;
+        }
+        if (content.isEmpty()) {
+            showError("内容不能为空");
+            return;
+        }
+        if (content.length() > 20000) {
+            showError("内容不能超过20000字");
+            return;
+        }
+
+        Post post = new Post();
+        post.setTitle(title);
+        post.setBoardId(selectedBoard.getId());
+        post.setContent(content);
+        if (!imageUrlsStr.isEmpty()) {
+            post.setImages(imageUrlsStr);
+        }
+        List<Path> attachmentFiles = new ArrayList<>(selectedAttachments);
+
+        publishButton.setDisable(true);
+        publishButton.setText("发布中...");
+        selectAttachmentButton.setDisable(true);
+        Task<Post> task = new Task<Post>() {
+            @Override
+            protected Post call() {
+                if (!attachmentFiles.isEmpty()) {
+                    List<AttachmentInfo> uploadedAttachments = HttpRequestUtil.uploadAttachments(attachmentFiles);
+                    if (uploadedAttachments.size() != attachmentFiles.size()) {
+                        throw new IllegalStateException("附件上传失败");
+                    }
+                    post.setAttachmentInfos(AttachmentUtil.toJson(uploadedAttachments));
+                }
+                return HttpRequestUtil.publishPost(post);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                Post result = task.getValue();
+                if (result != null) {
+                    showInfo("发布成功！");
+                    // 发布成功后删除草稿
+                    deleteDraft();
+                    autoSaveEnabled = false;
+                    closeTab();
+                    if (mainFrameController != null) {
+                        com.teach.javafx.controller.PostListController plc = mainFrameController.getPostListController();
+                        if (plc != null) {
+                            plc.loadPostList();
+                        }
+                    }
+                } else {
+                    showError("发布失败，请稍后重试");
+                }
+                publishButton.setDisable(false);
+                publishButton.setText("发布");
+                selectAttachmentButton.setDisable(false);
+            });
+        });
+
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("发布失败，请检查附件大小或稍后重试");
+                publishButton.setDisable(false);
+                publishButton.setText("发布");
+                selectAttachmentButton.setDisable(false);
+            });
+        });
+
+        new Thread(task).start();
+    }
+
+    private void closeTab() {
+        if (AppStore.getMainFrameController() != null) {
+            AppStore.getMainFrameController().closeCurrentTab();
+        }
+    }
+    
+    private void showPreview() {
+        String title = titleTextField.getText().trim();
+        String content = contentTextArea.getText().trim();
+        Board board = boardComboBox.getValue();
+        
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("帖子预览");
+        alert.setHeaderText("预览您的帖子");
+        
+        String contentText = "标题: " + (title.isEmpty() ? "(未填写)" : title) + "\n";
+        contentText += "板块: " + (board == null ? "(未选择)" : board.getName()) + "\n";
+        contentText += "\n内容:\n" + (content.isEmpty() ? "(未填写)" : content);
+        
+        if (!imageUrls.isEmpty()) {
+            contentText += "\n\n图片数量: " + imageUrls.size();
+        }
+        if (!selectedAttachments.isEmpty()) {
+            contentText += "\n附件数量: " + selectedAttachments.size();
+        }
+        
+        alert.setContentText(contentText);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("提示");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void showError(String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("错误");
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+    
+    private void selectAndUploadImage() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择图片");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("图片文件", "*.jpg", "*.jpeg", "*.png", "*.gif"),
+            new FileChooser.ExtensionFilter("所有文件", "*.*")
+        );
+        
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile == null) {
+            return;
+        }
+        
+        selectImageButton.setDisable(true);
+        selectImageButton.setText("上传中...");
+        imageUploadStatusLabel.setText("正在上传图片...");
+        
+        Task<String> task = new Task<String>() {
+            @Override
+            protected String call() {
+                return HttpRequestUtil.uploadImage(selectedFile.getAbsolutePath());
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                String imageUrl = task.getValue();
+                if (imageUrl != null && !imageUrl.isBlank()) {
+                    addImageUrl(imageUrl);
+                    imageUploadStatusLabel.setText("上传成功！");
+                } else {
+                    showError("图片上传失败，请稍后重试");
+                    imageUploadStatusLabel.setText("上传失败");
+                }
+                selectImageButton.setDisable(false);
+                selectImageButton.setText("选择图片");
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                showError("图片上传失败：" + task.getException().getMessage());
+                imageUploadStatusLabel.setText("上传失败");
+                selectImageButton.setDisable(false);
+                selectImageButton.setText("选择图片");
+            });
+        });
+        
+        new Thread(task).start();
+    }
+
+    private void selectAttachments() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("选择附件");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("所有文件", "*.*"));
+
+        List<File> files = fileChooser.showOpenMultipleDialog(null);
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+
+        for (File file : files) {
+            if (file == null) {
+                continue;
+            }
+            String validationError = validateAttachmentFile(file);
+            if (validationError != null) {
+                showError(validationError);
+                continue;
+            }
+            Path path = file.toPath();
+            if (selectedAttachments.contains(path)) {
+                continue;
+            }
+            if (selectedAttachments.size() >= 5) {
+                showInfo("附件最多添加 5 个");
+                break;
+            }
+            selectedAttachments.add(path);
+        }
+        refreshAttachmentPreview();
+    }
+
+    private String validateAttachmentFile(File file) {
+        if (!file.exists() || !file.isFile()) {
+            return "附件不存在或不是普通文件";
+        }
+        if (file.length() <= 0) {
+            return "附件不能为空";
+        }
+        if (file.length() > 20L * 1024 * 1024) {
+            return "单个附件不能超过 20MB：" + file.getName();
+        }
+        String name = file.getName();
+        int dotIndex = name.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == name.length() - 1) {
+            return "附件必须包含文件扩展名：" + name;
+        }
+        String ext = name.substring(dotIndex + 1).toLowerCase();
+        if (List.of("exe", "bat", "cmd", "msi", "dll", "scr", "com", "jar", "class", "sh", "ps1", "vbs", "reg").contains(ext)) {
+            return "不支持上传可执行或高风险附件：" + name;
+        }
+        return null;
+    }
+
+    private void refreshAttachmentPreview() {
+        attachmentPreviewPane.getChildren().clear();
+        if (selectedAttachments.isEmpty()) {
+            attachmentStatusLabel.setText("最多 5 个附件，单个不超过 20MB");
+            return;
+        }
+        attachmentStatusLabel.setText("已选择 " + selectedAttachments.size() + " 个附件，发布时上传");
+
+        for (Path path : selectedAttachments) {
+            HBox item = new HBox(8);
+            item.setStyle("-fx-alignment: center-left; -fx-background-color: white; -fx-background-radius: 6; -fx-border-color: #d9e2ef; -fx-border-radius: 6; -fx-padding: 6 8;");
+
+            File file = path.toFile();
+            Label nameLabel = new Label(file.getName() + " (" + AttachmentUtil.formatSize(file.length()) + ")");
+            nameLabel.setStyle("-fx-text-fill: #334155;");
+
+            Button removeButton = new Button("删除");
+            removeButton.setStyle("-fx-background-color: transparent; -fx-text-fill: #dc2626;");
+            removeButton.setOnAction(event -> {
+                selectedAttachments.remove(path);
+                refreshAttachmentPreview();
+            });
+
+            item.getChildren().addAll(nameLabel, removeButton);
+            attachmentPreviewPane.getChildren().add(item);
+        }
+    }
+    
+    private void openAiImageDialog() {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/com/teach/javafx/ai-image-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+            AiImageDialogController dialogController = loader.getController();
+            
+            dialogController.setInitialPrompt(titleTextField.getText().trim(), contentTextArea.getText().trim());
+            dialogController.setCallback(imageUrl -> {
+                addImageUrl(imageUrl);
+                showInfo("图片已添加！");
+            });
+            
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("AI一键配图");
+            dialogStage.initModality(javafx.stage.Modality.WINDOW_MODAL);
+            dialogStage.initOwner(aiImageButton.getScene().getWindow());
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(dialogRoot);
+            dialogStage.setScene(scene);
+            dialogStage.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("打开对话框失败：" + e.getMessage());
+        }
+    }
+    
+    // AI写作助手相关方法
+    
+    private void fillPresetInstruction(String operation) {
+        String title = titleTextField.getText().trim();
+        String content = contentTextArea.getText().trim();
+        String instruction = "";
+        
+        switch (operation) {
+            case "help_write":
+                instruction = "请帮我写一篇校园论坛帖子";
+                if (!title.isEmpty()) {
+                    instruction += "，标题是\"" + title + "\"";
+                }
+                if (!content.isEmpty()) {
+                    instruction += "，参考以下内容：" + content;
+                }
+                instruction += "。";
+                break;
+            case "continue":
+                if (content.isEmpty()) {
+                    showError("请先输入一些内容，然后再让AI续写！");
+                    return;
+                }
+                instruction = "请帮我续写以下帖子内容。";
+                if (!title.isEmpty()) {
+                    instruction += " 标题：" + title;
+                }
+                instruction += " 现有内容：" + content;
+                break;
+            case "polish":
+                if (content.isEmpty()) {
+                    showError("请先输入一些内容，然后再让AI润色！");
+                    return;
+                }
+                instruction = "请帮我润色以下帖子内容，让它更有吸引力，语言更流畅。";
+                if (!title.isEmpty()) {
+                    instruction += " 标题：" + title;
+                }
+                instruction += " 内容：" + content;
+                break;
+        }
+        
+        aiInstructionTextArea.setText(instruction);
+    }
+    
+    private void generateWithAI() {
+        // 保存原始内容
+        originalTitle = titleTextField.getText().trim();
+        originalContent = contentTextArea.getText().trim();
+        String instruction = aiInstructionTextArea.getText().trim();
+        
+        // 禁用按钮，显示加载状态和进度条
+        aiGenerateButton.setDisable(true);
+        aiHelpWriteButton.setDisable(true);
+        aiContinueButton.setDisable(true);
+        aiPolishButton.setDisable(true);
+        aiStatusLabel.setText("AI正在生成中，请稍候...");
+        
+        // 显示并启动进度条动画
+        startProgressAnimation();
+        
+        Task<com.teach.javafx.models.AiWriteResponse> task = new Task<com.teach.javafx.models.AiWriteResponse>() {
+            @Override
+            protected com.teach.javafx.models.AiWriteResponse call() {
+                return HttpRequestUtil.aiWrite(originalTitle, originalContent, instruction, null);
+            }
+        };
+        
+        task.setOnSucceeded(event -> {
+            Platform.runLater(() -> {
+                // 停止进度条动画
+                stopProgressAnimation(true);
+                
+                com.teach.javafx.models.AiWriteResponse response = task.getValue();
+                aiGenerateButton.setDisable(false);
+                aiHelpWriteButton.setDisable(false);
+                aiContinueButton.setDisable(false);
+                aiPolishButton.setDisable(false);
+                
+                if (response != null && response.getSuccess()) {
+                    aiStatusLabel.setText("AI生成成功！");
+                    showAcceptOrRejectDialog(response);
+                } else {
+                    String errorMsg = (response != null && response.getMessage() != null) 
+                        ? response.getMessage() 
+                        : "AI生成失败，请稍后重试";
+                    aiStatusLabel.setText(errorMsg);
+                    showError(errorMsg);
+                }
+            });
+        });
+        
+        task.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                // 停止进度条动画
+                stopProgressAnimation(false);
+                
+                aiGenerateButton.setDisable(false);
+                aiHelpWriteButton.setDisable(false);
+                aiContinueButton.setDisable(false);
+                aiPolishButton.setDisable(false);
+                aiStatusLabel.setText("AI生成失败：" + task.getException().getMessage());
+                showError("AI生成失败，请稍后重试");
+            });
+        });
+        
+        new Thread(task).start();
+    }
+    
+    /**
+     * 启动进度条动画（模仿浏览器加载效果）
+     */
+    private void startProgressAnimation() {
+        // 显示进度条
+        aiProgressContainer.setVisible(true);
+        aiProgressContainer.setManaged(true);
+        
+        // 重置进度
+        aiProgressBar.setProgress(0.0);
+        aiProgressLabel.setText("正在连接 AI 服务...");
+        
+        // 记录开始时间
+        aiStartTime = System.currentTimeMillis();
+        
+        // 先停止之前的动画
+        stopProgressThread();
+        
+        // 启动新的线程
+        aiRunning = true;
+        aiProgressThread = new Thread(() -> {
+            while (aiRunning) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    break;
+                }
+                
+                // 计算已经过去的时间
+                long elapsed = System.currentTimeMillis() - aiStartTime;
+                
+                // 计算进度百分比 (先快后慢，到99.5%)
+                double rawProgress = (double) elapsed / TOTAL_EXPECTED_TIME;
+                // 使用平滑函数，先快后慢
+                double progress;
+                if (rawProgress < 0.3) {
+                    progress = rawProgress * 1.0; // 快进阶段（100%速度）
+                } else if (rawProgress < 0.6) {
+                    progress = 0.3 + (rawProgress - 0.3) * 0.8; // 中等阶段（80%速度）
+                } else if (rawProgress < 0.9) {
+                    progress = 0.54 + (rawProgress - 0.6) * 0.6; // 慢速阶段（60%速度）
+                } else {
+                    progress = 0.72 + (rawProgress - 0.9) * 0.2; // 极慢阶段（20%速度）
+                }
+                
+                // 限制最大进度为99.5%
+                if (progress > 0.995) {
+                    progress = 0.995;
+                }
+                
+                // 根据时间选择状态文本
+                String statusText = "正在处理...";
+                if (progress < 0.2) {
+                    statusText = "正在连接 AI 服务...";
+                } else if (progress < 0.5) {
+                    statusText = "AI 正在思考中...";
+                } else if (progress < 0.8) {
+                    statusText = "正在生成内容...";
+                } else {
+                    statusText = "即将完成...";
+                }
+                
+                // 更新 UI - 用Platform.runLater
+                final double finalProgress = progress;
+                final String finalStatusText = statusText;
+                Platform.runLater(() -> {
+                    aiProgressBar.setProgress(finalProgress);
+                    aiProgressLabel.setText(finalStatusText);
+                });
+            }
+        });
+        aiProgressThread.setDaemon(true);
+        aiProgressThread.start();
+    }
+    
+    private void stopProgressThread() {
+        aiRunning = false;
+        if (aiProgressThread != null && aiProgressThread.isAlive()) {
+            aiProgressThread.interrupt();
+        }
+        aiProgressThread = null;
+    }
+    
+    /**
+     * 停止进度条动画
+     * @param success 是否成功
+     */
+    private void stopProgressAnimation(boolean success) {
+        stopProgressThread();
+        
+        if (success) {
+            // 成功：快速走到 100%
+            aiProgressBar.setProgress(1.0);
+            aiProgressLabel.setText("完成！");
+            
+            // 延迟隐藏
+            Thread hideThread = new Thread(() -> {
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    // ignore
+                }
+                Platform.runLater(() -> {
+                    aiProgressContainer.setVisible(false);
+                    aiProgressContainer.setManaged(false);
+                });
+            });
+            hideThread.setDaemon(true);
+            hideThread.start();
+        } else {
+            // 失败：立即隐藏
+            aiProgressContainer.setVisible(false);
+            aiProgressContainer.setManaged(false);
+        }
+    }
+    
+    private void showAcceptOrRejectDialog(com.teach.javafx.models.AiWriteResponse response) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("AI写作助手");
+        alert.setHeaderText("AI已生成新的内容");
+        
+        // 显示对比信息
+        StringBuilder contentText = new StringBuilder();
+        contentText.append("【原始标题】: ").append(originalTitle.isEmpty() ? "(无)" : originalTitle).append("\n");
+        contentText.append("【AI标题】: ").append((response.getTitle() == null || response.getTitle().isEmpty()) ? "(无修改)" : response.getTitle()).append("\n\n");
+        contentText.append("【原始内容】: \n").append(originalContent.isEmpty() ? "(无)" : originalContent.substring(0, Math.min(150, originalContent.length())));
+        if (originalContent.length() > 150) {
+            contentText.append("...");
+        }
+        contentText.append("\n\n");
+        contentText.append("【AI生成内容】: \n").append((response.getContent() == null || response.getContent().isEmpty()) ? "(无修改)" : response.getContent().substring(0, Math.min(150, response.getContent().length())));
+        if (response.getContent() != null && response.getContent().length() > 150) {
+            contentText.append("...");
+        }
+        contentText.append("\n\n是否采纳AI生成的内容？");
+        
+        alert.setContentText(contentText.toString());
+        
+        ButtonType acceptButton = new ButtonType("采纳");
+        ButtonType rejectButton = new ButtonType("弃用", ButtonBar.ButtonData.CANCEL_CLOSE);
+        
+        alert.getButtonTypes().setAll(acceptButton, rejectButton);
+        
+        alert.showAndWait().ifPresent(button -> {
+            if (button == acceptButton) {
+                // 采纳：填充AI内容
+                if (response.getTitle() != null && !response.getTitle().isEmpty()) {
+                    titleTextField.setText(response.getTitle());
+                }
+                if (response.getContent() != null && !response.getContent().isEmpty()) {
+                    contentTextArea.setText(response.getContent());
+                }
+                aiStatusLabel.setText("已采纳AI生成的内容");
+            } else {
+                // 弃用：保持原样
+                aiStatusLabel.setText("已保持原始内容");
+            }
+            updateWordCount();
+        });
+    }
+    
+    public void setMainFrameController(com.teach.javafx.controller.base.MainFrameController mainFrameController) {
+        this.mainFrameController = mainFrameController;
+    }
+    
+    /**
+     * 预填标题
+     */
+    public void prefillTitle(String title) {
+        if (title != null && !title.isBlank()) {
+            titleTextField.setText(title);
+            updateWordCount();
+        }
+    }
+    
+    /**
+     * 预填帖子标题和内容
+     */
+    public void prefillPost(String title, String content) {
+        if (title != null && !title.isBlank()) {
+            titleTextField.setText(title);
+        }
+        if (content != null && !content.isBlank()) {
+            contentTextArea.setText(content);
+        }
+        updateWordCount();
+    }
+    
+    /**
+     * 设置是否从草稿箱加载的标志
+     */
+    public void setLoadingFromDraftBox(boolean loadingFromDraftBox) {
+        System.out.println("PostPublishController.setLoadingFromDraftBox: 设置 " + loadingFromDraftBox);
+        this.isLoadingFromDraftBox = loadingFromDraftBox;
+    }
+    
+    /**
+     * 设置当前草稿ID
+     */
+    public void setCurrentDraftId(Long currentDraftId) {
+        System.out.println("PostPublishController.setCurrentDraftId: 设置草稿ID " + currentDraftId);
+        this.currentDraftId = currentDraftId;
+    }
+    
+    /**
+     * 使用反射将实体对象转换为 Map
+     */
+    private static Map<String, Object> objectToMap(Object obj) {
+        try {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            java.lang.reflect.Field[] fields = obj.getClass().getDeclaredFields();
+            for (java.lang.reflect.Field field : fields) {
+                field.setAccessible(true);
+                map.put(field.getName(), field.get(obj));
+            }
+            // 也检查父类的字段
+            Class<?> superClass = obj.getClass().getSuperclass();
+            if (superClass != null) {
+                java.lang.reflect.Field[] superFields = superClass.getDeclaredFields();
+                for (java.lang.reflect.Field field : superFields) {
+                    field.setAccessible(true);
+                    map.put(field.getName(), field.get(obj));
+                }
+            }
+            System.out.println("PostPublishController.objectToMap: 转换结果=" + map);
+            return map;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+}

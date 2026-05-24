@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+
+<BorderPane fx:controller="com.teach.javafx.controller.ImagePreviewController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" style="-fx-background-color: rgba(0, 0, 0, 0.9);">
+   <center>
+      <StackPane fx:id="imageContainer" BorderPane.alignment="CENTER">
+         <children>
+            <ImageView fx:id="imageView" fitWidth="800.0" fitHeight="600.0" preserveRatio="true" />
+         </children>
+      </StackPane>
+   </center>
+   <bottom>
+      <HBox spacing="20.0" alignment="CENTER" BorderPane.alignment="CENTER">
+         <padding>
+            <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+         </padding>
+         <children>
+            <Button fx:id="prevButton" mnemonicParsing="false" text="上一张" />
+            <Label fx:id="pageLabel" text="1 / 1" style="-fx-text-fill: white; -fx-font-size: 14px;" />
+            <Button fx:id="nextButton" mnemonicParsing="false" text="下一张" />
+            <Button fx:id="closeButton" mnemonicParsing="false" text="关闭" />
+         </children>
+      </HBox>
+   </bottom>
+</BorderPane>

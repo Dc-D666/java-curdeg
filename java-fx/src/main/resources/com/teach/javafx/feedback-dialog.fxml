@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane prefWidth="520.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.dialog.FeedbackDialogController">
+   <content>
+      <VBox spacing="12.0">
+         <padding>
+            <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+         </padding>
+         <children>
+            <VBox spacing="5.0">
+               <children>
+                  <Label style="-fx-font-size: 13px;" text="反馈类型：" />
+                  <ComboBox fx:id="typeComboBox" prefWidth="480.0" />
+               </children>
+            </VBox>
+            <VBox spacing="5.0">
+               <children>
+                  <Label style="-fx-font-size: 13px;" text="标题（最多 50 字符）：" />
+                  <TextField fx:id="titleField" prefWidth="480.0" />
+               </children>
+            </VBox>
+            <VBox spacing="5.0">
+               <children>
+                  <Label style="-fx-font-size: 13px;" text="详细描述（最多 2000 字符）：" />
+                  <TextArea fx:id="descriptionArea" prefHeight="120.0" prefWidth="480.0" wrapText="true" />
+               </children>
+            </VBox>
+            <VBox spacing="5.0">
+               <children>
+                  <Label style="-fx-font-size: 13px;" text="联系方式（可选）：" />
+                  <TextField fx:id="contactField" prefWidth="480.0" promptText="邮箱或QQ等" />
+               </children>
+            </VBox>
+         </children>
+      </VBox>
+   </content>
+   <buttonTypes>
+      <ButtonType fx:constant="CANCEL" />
+      <ButtonType fx:constant="OK" />
+   </buttonTypes>
+</DialogPane>

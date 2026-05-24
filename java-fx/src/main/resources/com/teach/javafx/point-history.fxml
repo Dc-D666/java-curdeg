@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.Pagination?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.teach.javafx.controller.PointHistoryController"
+      spacing="10" style="-fx-padding: 20;">
+    <Label text="山竹瓣明细" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+    <TableView fx:id="pointTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn text="时间" fx:id="timeColumn" prefWidth="150"/>
+            <TableColumn text="行为" fx:id="actionColumn" prefWidth="200"/>
+            <TableColumn text="变动" fx:id="changeColumn" prefWidth="100"/>
+            <TableColumn text="余额" fx:id="balanceColumn" prefWidth="100"/>
+        </columns>
+    </TableView>
+    <Pagination fx:id="pagination"/>
+</VBox>

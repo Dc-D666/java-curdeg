@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane fx:controller="com.teach.javafx.controller.dialog.ExportPostsDialogController"
+            headerText="导出帖子数据"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+    <content>
+        <VBox spacing="12.0">
+            <padding>
+                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+            </padding>
+
+            <Label style="-fx-font-weight: bold;" text="导出范围" />
+            <VBox spacing="6.0">
+                <fx:define>
+                    <ToggleGroup fx:id="scopeGroup" />
+                </fx:define>
+                <RadioButton fx:id="allScopeRadio" text="全部帖子" toggleGroup="$scopeGroup" selected="true" />
+                <RadioButton fx:id="boardScopeRadio" text="指定板块" toggleGroup="$scopeGroup" />
+                <RadioButton fx:id="dateScopeRadio" text="指定时间范围" toggleGroup="$scopeGroup" />
+                <RadioButton fx:id="userScopeRadio" text="指定用户" toggleGroup="$scopeGroup" />
+            </VBox>
+
+            <VBox fx:id="boardSection" spacing="5.0" visible="false" managed="false">
+                <children>
+                    <Label text="选择板块：" />
+                    <ComboBox fx:id="boardComboBox" prefWidth="460.0" />
+                </children>
+            </VBox>
+
+            <VBox fx:id="dateSection" spacing="5.0" visible="false" managed="false">
+                <children>
+                    <Label text="开始日期：" />
+                    <DatePicker fx:id="startDatePicker" prefWidth="460.0" />
+                    <Label text="结束日期：" />
+                    <DatePicker fx:id="endDatePicker" prefWidth="460.0" />
+                </children>
+            </VBox>
+
+            <VBox fx:id="userSection" spacing="5.0" visible="false" managed="false">
+                <children>
+                    <Label text="用户ID：" />
+                    <TextField fx:id="userIdField" prefWidth="460.0" promptText="请输入用户ID" />
+                </children>
+            </VBox>
+
+            <Label style="-fx-font-weight: bold;" text="导出字段" />
+            <FlowPane hgap="10.0" vgap="6.0" prefWidth="460.0">
+                <CheckBox fx:id="idFieldCheck" text="帖子ID" selected="true" />
+                <CheckBox fx:id="titleFieldCheck" text="标题" selected="true" />
+                <CheckBox fx:id="contentFieldCheck" text="内容" selected="true" />
+                <CheckBox fx:id="authorFieldCheck" text="作者" selected="true" />
+                <CheckBox fx:id="boardFieldCheck" text="板块" selected="true" />
+                <CheckBox fx:id="likeCountFieldCheck" text="点赞数" selected="true" />
+                <CheckBox fx:id="commentCountFieldCheck" text="评论数" selected="true" />
+                <CheckBox fx:id="createTimeFieldCheck" text="创建时间" selected="true" />
+                <CheckBox fx:id="updateTimeFieldCheck" text="更新时间" selected="true" />
+                <CheckBox fx:id="statusFieldCheck" text="状态" selected="true" />
+            </FlowPane>
+
+            <Label style="-fx-font-weight: bold;" text="导出格式" />
+            <HBox spacing="20.0">
+                <fx:define>
+                    <ToggleGroup fx:id="formatGroup" />
+                </fx:define>
+                <RadioButton fx:id="csvFormatRadio" text="CSV" toggleGroup="$formatGroup" selected="true" />
+                <RadioButton fx:id="excelFormatRadio" text="Excel" toggleGroup="$formatGroup" />
+                <RadioButton fx:id="jsonFormatRadio" text="JSON" toggleGroup="$formatGroup" />
+            </HBox>
+
+            <CheckBox fx:id="includeDeletedCheck" text="包含已删除的帖子" />
+        </VBox>
+    </content>
+    <buttonTypes>
+        <ButtonType fx:constant="CANCEL" />
+        <ButtonType fx:id="exportButtonType" text="导出" />
+    </buttonTypes>
+</DialogPane>

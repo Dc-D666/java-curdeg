@@ -1,0 +1,822 @@
+
+package cn.edu.sdu.java.server.services;
+
+import cn.edu.sdu.java.server.models.BbsBoard;
+import cn.edu.sdu.java.server.models.BbsFollow;
+import cn.edu.sdu.java.server.models.BbsFavorite;
+import cn.edu.sdu.java.server.models.BbsLike;
+import cn.edu.sdu.java.server.models.BbsNotification;
+import cn.edu.sdu.java.server.models.BbsPost;
+import cn.edu.sdu.java.server.models.User;
+import cn.edu.sdu.java.server.payload.request.DataRequest;
+import cn.edu.sdu.java.server.payload.response.DataResponse;
+import cn.edu.sdu.java.server.repositorys.BbsBoardRepository;
+import cn.edu.sdu.java.server.repositorys.BbsCommentRepository;
+import cn.edu.sdu.java.server.repositorys.BbsFollowRepository;
+import cn.edu.sdu.java.server.repositorys.BbsFavoriteRepository;
+import cn.edu.sdu.java.server.repositorys.BbsLikeRepository;
+import cn.edu.sdu.java.server.repositorys.BbsNotificationRepository;
+import cn.edu.sdu.java.server.repositorys.BbsPostRepository;
+import cn.edu.sdu.java.server.repositorys.UserRepository;
+import cn.edu.sdu.java.server.util.CommonMethod;
+import cn.edu.sdu.java.server.util.SensitiveWordFilter;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+@Slf4j
+@Service
+public class BbsPostService {
+
+    private final BbsPostRepository bbsPostRepository;
+    private final UserRepository userRepository;
+    private final BbsBoardRepository bbsBoardRepository;
+    private final BbsCommentRepository bbsCommentRepository;
+    private final BbsLikeRepository bbsLikeRepository;
+    private final BbsFavoriteRepository bbsFavoriteRepository;
+    private final SensitiveWordFilter sensitiveWordFilter;
+    private final BbsFollowRepository bbsFollowRepository;
+    private final BbsNotificationRepository bbsNotificationRepository;
+    private final LevelPrivilegeService levelPrivilegeService;
+    private final PostModerationService postModerationService;
+    private final BbsFileService bbsFileService;
+    private final PointService pointService;
+
+    public BbsPostService(BbsPostRepository bbsPostRepository, UserRepository userRepository,
+                          BbsBoardRepository bbsBoardRepository, BbsCommentRepository bbsCommentRepository,
+                          BbsLikeRepository bbsLikeRepository, BbsFavoriteRepository bbsFavoriteRepository,
+                          SensitiveWordFilter sensitiveWordFilter, BbsFollowRepository bbsFollowRepository,
+                          BbsNotificationRepository bbsNotificationRepository, PostModerationService postModerationService,
+                          BbsFileService bbsFileService, PointService pointService, LevelPrivilegeService levelPrivilegeService) {
+        this.bbsPostRepository = bbsPostRepository;
+        this.userRepository = userRepository;
+        this.bbsBoardRepository = bbsBoardRepository;
+        this.bbsCommentRepository = bbsCommentRepository;
+        this.bbsLikeRepository = bbsLikeRepository;
+        this.bbsFavoriteRepository = bbsFavoriteRepository;
+        this.sensitiveWordFilter = sensitiveWordFilter;
+        this.bbsFollowRepository = bbsFollowRepository;
+        this.bbsNotificationRepository = bbsNotificationRepository;
+        this.postModerationService = postModerationService;
+        this.bbsFileService = bbsFileService;
+        this.pointService = pointService;
+        this.levelPrivilegeService = levelPrivilegeService;
+    }
+
+    private void fillPostAuthorInfo(BbsPost post) {
+        log.info("[fillPostAuthorInfo] 开始填充帖子ID: {}, 作者ID: {}", post.getId(), post.getAuthorId());
+        String originalDefaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+        if (post.getAuthorId() != null) {
+            Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
+            log.info("[fillPostAuthorInfo] 查找作者ID: {}, 是否找到: {}", post.getAuthorId().intValue(), authorOptional.isPresent());
+            if (authorOptional.isPresent()) {
+                User author = authorOptional.get();
+                log.info("[fillPostAuthorInfo] 作者昵称: {}, 头像URL: {}", author.getNickname(), author.getAvatarUrl());
+                post.setAuthorNickname(author.getNickname());
+                int authorLevel = author.getLevel() != null ? author.getLevel() : 0;
+                post.setAuthorNicknameStyle(levelPrivilegeService.getNicknameStyle(authorLevel));
+                String avatarUrl = author.getAvatarUrl();
+                if (avatarUrl == null || avatarUrl.isBlank()) {
+                    avatarUrl = originalDefaultUrl;
+                }
+                post.setAuthorAvatarUrl(avatarUrl);
+                log.info("[fillPostAuthorInfo] 设置后的头像URL: {}", avatarUrl);
+            } else {
+                // 即使找不到作者，也设置默认头像和昵称
+                post.setAuthorNickname("未知用户");
+                post.setAuthorAvatarUrl(originalDefaultUrl);
+                log.info("[fillPostAuthorInfo] 未找到作者，设置默认头像");
+            }
+        } else {
+            // 如果没有作者ID，也设置默认头像
+            post.setAuthorNickname("未知用户");
+            post.setAuthorAvatarUrl(originalDefaultUrl);
+            log.info("[fillPostAuthorInfo] 无作者ID，设置默认头像");
+        }
+        if (post.getBoardId() != null) {
+            Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(post.getBoardId());
+            if (boardOptional.isPresent()) {
+                post.setBoardName(boardOptional.get().getName());
+            }
+        }
+        // 填充审核人信息
+        if (post.getModeratorId() != null) {
+            Optional<User> moderatorOptional = userRepository.findById(post.getModeratorId());
+            if (moderatorOptional.isPresent()) {
+                post.setModeratorNickname(moderatorOptional.get().getNickname());
+            }
+        }
+    }
+
+    public DataResponse getPostList(DataRequest dataRequest) {
+        Integer pageNum = dataRequest.getInteger("pageNum");
+        Integer pageSize = dataRequest.getInteger("pageSize");
+        Long boardId = dataRequest.getLong("boardId");
+        String keyword = dataRequest.getString("keyword");
+        String sort = dataRequest.getString("sort");
+
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 50) {
+            pageSize = 20;
+        }
+        if (keyword != null && keyword.length() > 50) {
+            return CommonMethod.getReturnMessageError("参数错误：搜索关键词长度不能超过50");
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Page<BbsPost> postPage;
+
+        if (sort != null && !sort.isBlank()) {
+            String validSort = getValidSortValue(sort);
+            postPage = bbsPostRepository.findPostsWithSort(
+                    boardId, keyword, currentUserIdLong, isAdmin, validSort, pageable);
+        } else {
+            postPage = bbsPostRepository.findPostsByConditionWithModeration(
+                    boardId, keyword, currentUserIdLong, isAdmin, pageable);
+        }
+
+        postPage.getContent().forEach(post -> {
+            fillPostAuthorInfo(post);
+            applyContentPriority(post);
+        });
+
+        return CommonMethod.getReturnData(postPage);
+    }
+
+    private String getValidSortValue(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return "latest";
+        }
+        String lowerSort = sort.toLowerCase().trim();
+        switch (lowerSort) {
+            case "latest":
+            case "latest_reply":
+            case "most_view":
+            case "most_like":
+            case "featured_first":
+                return lowerSort;
+            default:
+                return "latest";
+        }
+    }
+
+    private void applyContentPriority(BbsPost post) {
+        if (post.getAuthorId() == null) return;
+        Optional<User> authorOpt = userRepository.findById(post.getAuthorId().intValue());
+        if (authorOpt.isPresent()) {
+            User author = authorOpt.get();
+            int level = author.getLevel() != null ? author.getLevel() : 0;
+            if (levelPrivilegeService.hasContentPriority(level)) {
+                post.setMatchScore((post.getMatchScore() != null ? post.getMatchScore() : 0.0) + 50.0);
+            }
+        }
+    }
+
+    @Transactional
+    public DataResponse getPostDetail(Long id) {
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAuthor = currentUserId != null && post.getAuthorId() != null
+                && post.getAuthorId().equals(currentUserId.longValue());
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+
+        if (post.getStatus() == null || post.getStatus() != 1) {
+            boolean ownerOrAdminCanViewRejectedPost = (isAdmin || isAuthor) && "reject".equals(post.getModerationStatus());
+            if (!ownerOrAdminCanViewRejectedPost) {
+                return CommonMethod.getReturnMessageError("帖子已下架");
+            }
+        }
+        
+        // 增加浏览量
+        post.setViewCount((post.getViewCount() != null ? post.getViewCount() : 0) + 1);
+        bbsPostRepository.saveAndFlush(post);
+        
+        fillPostAuthorInfo(post);
+
+        return CommonMethod.getReturnData(post);
+    }
+
+    @Transactional
+    public DataResponse createPost(DataRequest dataRequest) {
+        String title = dataRequest.getString("title");
+        String content = dataRequest.getString("content");
+        String imageUrls = dataRequest.getString("imageUrls");
+        String attachmentInfos = dataRequest.getString("attachmentInfos");
+        Long boardId = dataRequest.getLong("boardId");
+
+        if (title == null || title.isBlank()) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子标题不能为空");
+        }
+        if (title.length() > 256) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子标题长度不能超过256");
+        }
+
+        if (content == null || content.isBlank()) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子内容不能为空");
+        }
+        if (content.length() > 20000) {
+            return CommonMethod.getReturnMessageError("参数错误：帖子内容长度不能超过20000");
+        }
+
+        if (imageUrls != null && imageUrls.length() > 1000) {
+            return CommonMethod.getReturnMessageError("参数错误：图片URL列表长度不能超过1000");
+        }
+        try {
+            attachmentInfos = bbsFileService.normalizeAttachmentInfos(attachmentInfos);
+        } catch (IllegalArgumentException e) {
+            return CommonMethod.getReturnMessageError(e.getMessage());
+        }
+
+        if (boardId == null) {
+            return CommonMethod.getReturnMessageError("参数错误：所属板块不能为空");
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<User> userOptional = userRepository.findById(currentUserId);
+        if (userOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("用户不存在");
+        }
+
+        User user = userOptional.get();
+        if (user.getIsBanned()) {
+            return CommonMethod.getReturnMessageError("您已被禁言，无法发帖");
+        }
+
+        // 等级权限检查
+        int level = user.getLevel() != null ? user.getLevel() : 0;
+        if (!levelPrivilegeService.canPost(level)) {
+            throw new IllegalStateException("等级不足，无法发帖");
+        }
+        if (!levelPrivilegeService.checkPostLimit(currentUserId, level)) {
+            throw new IllegalStateException("今日发帖已达上限");
+        }
+
+        Optional<BbsBoard> boardOptional = bbsBoardRepository.findById(boardId);
+        if (boardOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("板块不存在");
+        }
+
+        // 注释掉敏感词库审核功能，只使用AI审核
+        // String filteredTitle = sensitiveWordFilter.filterNormalWord(title);
+        // String filteredContent = sensitiveWordFilter.filterNormalWord(content);
+        // boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(title) || sensitiveWordFilter.checkSevereWord(content);
+        
+        String filteredTitle = title;  // 不经过敏感词库过滤
+        String filteredContent = content;
+        boolean hasSevereWord = false;  // 禁用敏感词库检测
+
+        BbsPost post = new BbsPost();
+        post.setTitle(filteredTitle);
+        post.setContent(filteredContent);
+        post.setImageUrls(imageUrls);
+        post.setAttachmentInfos(attachmentInfos);
+        post.setBoardId(boardId);
+        post.setAuthorId(currentUserId.longValue());
+        post.setLikeCount(0);
+        post.setCommentCount(0);
+        post.setViewCount(0);
+        post.setIsTop(false);
+        post.setIsFeatured(false);
+        post.setStatus(0);  // 初始设为不可见，等待AI审核结果
+        post.setModerationStatus("pending");
+
+        log.info("正在保存帖子...");
+        bbsPostRepository.saveAndFlush(post);
+        
+        log.info("帖子保存成功，ID：{}", post.getId());
+
+        // ===== 关键修改：注册事务同步，确保事务提交后再调用异步审核 =====
+        final Long postId = post.getId();
+        
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("事务已提交，准备调用AI审核，帖子ID：{}", postId);
+                // 确保事务完全提交后再调用
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                postModerationService.moderatePostAsync(postId);
+            }
+        });
+
+        // 不立即更新用户发帖数，等AI审核通过后再处理
+        // 通知功能也等审核通过后再发送，避免发送违规内容的通知
+
+        fillPostAuthorInfo(post);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("post", post);
+        result.put("hasSevereWord", hasSevereWord);
+        result.put("contentFiltered", !filteredTitle.equals(title) || !filteredContent.equals(content));
+
+        return CommonMethod.getReturnData(result);
+    }
+
+    @Transactional
+    public DataResponse updatePost(Long id, DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        Integer oldStatus = post.getStatus();
+
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAuthor = post.getAuthorId().equals(currentUserId.longValue());
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+
+        if (!isAuthor && !isAdmin) {
+            return CommonMethod.getReturnMessageError("您无权修改此帖子");
+        }
+
+        String newTitle = post.getTitle();
+        String newContent = post.getContent();
+
+        String title = dataRequest.getString("title");
+        if (title != null && !title.isBlank()) {
+            if (title.length() > 256) {
+                return CommonMethod.getReturnMessageError("参数错误：帖子标题长度不能超过256");
+            }
+            newTitle = title;
+        }
+
+        String content = dataRequest.getString("content");
+        if (content != null) {
+            if (content.length() > 20000) {
+                return CommonMethod.getReturnMessageError("参数错误：帖子内容长度不能超过20000");
+            }
+            newContent = content;
+        }
+
+        // 注释掉敏感词库审核功能，只使用AI审核
+        // String filteredTitle = sensitiveWordFilter.filterNormalWord(newTitle);
+        // String filteredContent = sensitiveWordFilter.filterNormalWord(newContent);
+        // boolean hasSevereWord = sensitiveWordFilter.checkSevereWord(newTitle) || sensitiveWordFilter.checkSevereWord(newContent);
+        
+        String filteredTitle = newTitle;  // 不经过敏感词库过滤
+        String filteredContent = newContent;
+        boolean hasSevereWord = false;  // 禁用敏感词库检测
+
+        post.setTitle(filteredTitle);
+        post.setContent(filteredContent);
+
+        String imageUrls = dataRequest.getString("imageUrls");
+        if (imageUrls != null) {
+            if (imageUrls.length() > 1000) {
+                return CommonMethod.getReturnMessageError("参数错误：图片URL列表长度不能超过1000");
+            }
+            post.setImageUrls(imageUrls);
+        }
+
+        String attachmentInfos = dataRequest.getString("attachmentInfos");
+        if (attachmentInfos != null) {
+            try {
+                post.setAttachmentInfos(bbsFileService.normalizeAttachmentInfos(attachmentInfos));
+            } catch (IllegalArgumentException e) {
+                return CommonMethod.getReturnMessageError(e.getMessage());
+            }
+        }
+
+        // 重置审核状态为 pending，并设置为不可见
+        post.setModerationStatus("pending");
+        post.setStatus(0);  // 审核通过前不显示
+
+        log.info("正在保存帖子...");
+        bbsPostRepository.saveAndFlush(post);
+        log.info("帖子保存成功，ID：{}", post.getId());
+
+        // ===== 关键修改：注册事务同步，确保事务提交后再调用异步审核 =====
+        final Long postId = post.getId();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("事务已提交，准备调用AI审核，帖子ID：{}", postId);
+                // 确保事务完全提交后再调用
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                postModerationService.moderatePostAsync(postId);
+            }
+        });
+
+        fillPostAuthorInfo(post);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("post", post);
+        result.put("hasSevereWord", hasSevereWord);
+        result.put("contentFiltered", !filteredTitle.equals(newTitle) || !filteredContent.equals(newContent));
+
+        return CommonMethod.getReturnData(result);
+    }
+
+    @Transactional
+    public DataResponse deletePost(Long id) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAuthor = post.getAuthorId().equals(currentUserId.longValue());
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+
+        if (!isAuthor && !isAdmin) {
+            return CommonMethod.getReturnMessageError("您无权删除此帖子");
+        }
+
+        if (post.getStatus() == 1 && post.getAuthorId() != null) {
+            userRepository.updatePostCount(post.getAuthorId().intValue(), -1);
+        }
+
+        bbsCommentRepository.deleteByPostId(id);
+        bbsLikeRepository.deleteByPostId(id);
+        bbsFavoriteRepository.deleteByPostId(id);
+        bbsPostRepository.delete(post);
+
+        // 管理员删除违规帖子扣除积分
+        if (isAdmin && post.getAuthorId() != null) {
+            pointService.deductPoints(post.getAuthorId().intValue(), "POST_DELETED_VIOLATION", "帖子违规删除", post.getId(), "POST");
+        }
+
+        return CommonMethod.getReturnMessageOK("删除成功");
+    }
+
+    @Transactional
+    public DataResponse toggleTop(Long id) {
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        if (post.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("帖子已下架");
+        }
+
+        post.setIsTop(!post.getIsTop());
+        bbsPostRepository.saveAndFlush(post);
+
+        return CommonMethod.getReturnData(post);
+    }
+
+    @Transactional
+    public DataResponse toggleFeature(Long id) {
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(id);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        if (post.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("帖子已下架");
+        }
+
+        boolean wasFeatured = Boolean.TRUE.equals(post.getIsFeatured());
+        post.setIsFeatured(!wasFeatured);
+        bbsPostRepository.saveAndFlush(post);
+
+        // 加精奖励积分
+        if (!wasFeatured && post.getAuthorId() != null) {
+            pointService.addPoints(post.getAuthorId().intValue(), "POST_FEATURED", "帖子加精", post.getId(), "POST");
+        }
+
+        return CommonMethod.getReturnData(post);
+    }
+
+    @Transactional
+    public DataResponse toggleLike(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        if (post.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("帖子已下架");
+        }
+
+        boolean alreadyLiked = bbsLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
+
+        if (alreadyLiked) {
+            bbsLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
+            post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+        } else {
+            BbsLike like = new BbsLike();
+            like.setPostId(postId);
+            like.setUserId(currentUserId);
+            bbsLikeRepository.saveAndFlush(like);
+            post.setLikeCount(post.getLikeCount() + 1);
+
+            // 被点赞积分奖励
+            if (post.getAuthorId() != null && !post.getAuthorId().equals(currentUserId.longValue())) {
+                pointService.addPoints(post.getAuthorId().intValue(), "RECEIVED_LIKE", "被点赞", like.getId(), "LIKE");
+            }
+        }
+
+        bbsPostRepository.saveAndFlush(post);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", !alreadyLiked);
+        result.put("likeCount", post.getLikeCount());
+        result.put("post", post);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getLikeStatus(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        boolean liked = false;
+        long likeCount = 0;
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isPresent()) {
+            likeCount = postOptional.get().getLikeCount() != null ? postOptional.get().getLikeCount() : 0;
+        }
+
+        if (currentUserId != null) {
+            liked = bbsLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("liked", liked);
+        result.put("likeCount", likeCount);
+
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getPostLikers(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId != null) {
+            Optional<User> userOpt = userRepository.findById(currentUserId);
+            int level = userOpt.map(u -> u.getLevel() != null ? u.getLevel() : 0).orElse(0);
+            if (!levelPrivilegeService.canViewLikers(level)) {
+                return CommonMethod.getReturnMessageError("等级达到LV.8方可查看点赞者列表");
+            }
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        List<Map<String, Object>> likers = bbsLikeRepository.findLikersByPostId(postId);
+        return CommonMethod.getReturnData(likers);
+    }
+
+    @Transactional
+    public DataResponse toggleFavorite(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isEmpty()) {
+            return CommonMethod.getReturnMessageError("帖子不存在");
+        }
+
+        BbsPost post = postOptional.get();
+        if (post.getStatus() != 1) {
+            return CommonMethod.getReturnMessageError("帖子已下架");
+        }
+
+        boolean alreadyFavorited = bbsFavoriteRepository.existsByPostIdAndUserId(postId, currentUserId);
+        
+        if (alreadyFavorited) {
+            bbsFavoriteRepository.deleteByPostIdAndUserId(postId, currentUserId);
+            post.setFavoriteCount(Math.max(0, post.getFavoriteCount() - 1));
+        } else {
+            BbsFavorite favorite = new BbsFavorite();
+            favorite.setPostId(postId);
+            favorite.setUserId(currentUserId);
+            bbsFavoriteRepository.saveAndFlush(favorite);
+            post.setFavoriteCount(post.getFavoriteCount() + 1);
+        }
+        
+        bbsPostRepository.saveAndFlush(post);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("favorited", !alreadyFavorited);
+        result.put("favoriteCount", post.getFavoriteCount());
+        result.put("post", post);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse getFavoriteStatus(Long postId) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        boolean favorited = false;
+        long favoriteCount = 0;
+        
+        Optional<BbsPost> postOptional = bbsPostRepository.findById(postId);
+        if (postOptional.isPresent()) {
+            favoriteCount = postOptional.get().getFavoriteCount() != null ? postOptional.get().getFavoriteCount() : 0;
+        }
+        
+        if (currentUserId != null) {
+            favorited = bbsFavoriteRepository.existsByPostIdAndUserId(postId, currentUserId);
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("favorited", favorited);
+        result.put("favoriteCount", favoriteCount);
+        
+        return CommonMethod.getReturnData(result);
+    }
+
+    public DataResponse searchPosts(String keyword, String searchType, Integer pageNum, Integer pageSize) {
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 50) {
+            pageSize = 20;
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Page<BbsPost> postPage = bbsPostRepository.searchPostsWithModerationByType(
+                keyword, searchType, currentUserIdLong, isAdmin, pageable);
+
+        // 填充信息并处理高亮
+        postPage.getContent().forEach(post -> {
+            fillPostAuthorInfo(post);
+            applyHighlight(post, keyword, searchType);
+        });
+
+        return CommonMethod.getReturnData(postPage);
+    }
+
+    private void applyHighlight(BbsPost post, String keyword, String searchType) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            post.setHighlightTitle(post.getTitle());
+            post.setHighlightSnippet(extractSnippet(post.getContent()));
+            return;
+        }
+
+        // 对标题进行高亮处理
+        String highlightedTitle = highlightText(post.getTitle(), keyword);
+        post.setHighlightTitle(highlightedTitle);
+
+        // 对内容进行高亮并提取片段
+        String snippet = extractAndHighlightSnippet(post.getContent(), keyword);
+        post.setHighlightSnippet(snippet);
+    }
+
+    private String highlightText(String text, String keyword) {
+        if (text == null || keyword == null || keyword.trim().isEmpty()) {
+            return text;
+        }
+
+        String highlightStart = "<span style=\"color:red;font-weight:bold\">";
+        String highlightEnd = "</span>";
+
+        // 简单的不区分大小写替换
+        String lowerText = text.toLowerCase();
+        String lowerKeyword = keyword.toLowerCase();
+
+        int lastIndex = 0;
+        StringBuilder sb = new StringBuilder();
+        int index;
+
+        while ((index = lowerText.indexOf(lowerKeyword, lastIndex)) != -1) {
+            // 添加匹配前的部分
+            sb.append(text, lastIndex, index);
+            // 添加高亮标签和匹配内容
+            sb.append(highlightStart);
+            sb.append(text, index, index + keyword.length());
+            sb.append(highlightEnd);
+            // 更新位置
+            lastIndex = index + keyword.length();
+        }
+        // 添加剩余部分
+        sb.append(text, lastIndex, text.length());
+
+        return sb.toString();
+    }
+
+    private String extractAndHighlightSnippet(String content, String keyword) {
+        if (content == null) {
+            return "";
+        }
+
+        String cleanContent = content.replaceAll("\\s+", " ").trim();
+
+        // 如果内容很短，直接高亮返回
+        if (cleanContent.length() <= 200) {
+            return highlightText(cleanContent, keyword);
+        }
+
+        // 尝试找到关键词位置
+        int keywordIndex = cleanContent.toLowerCase().indexOf(keyword.toLowerCase());
+
+        String snippet;
+        if (keywordIndex >= 0) {
+            // 从关键词前后各截取一部分，构成片段
+            int start = Math.max(0, keywordIndex - 50);
+            int end = Math.min(cleanContent.length(), keywordIndex + keyword.length() + 150);
+            if (start > 0) {
+                snippet = "..." + cleanContent.substring(start, end) + "...";
+            } else {
+                snippet = cleanContent.substring(start, end) + "...";
+            }
+        } else {
+            // 如果没找到关键词，截取开头
+            snippet = cleanContent.substring(0, Math.min(200, cleanContent.length())) + "...";
+        }
+
+        return highlightText(snippet, keyword);
+    }
+
+    private String extractSnippet(String content) {
+        if (content == null) {
+            return "";
+        }
+
+        String cleanContent = content.replaceAll("\\s+", " ").trim();
+        if (cleanContent.length() <= 200) {
+            return cleanContent;
+        }
+        return cleanContent.substring(0, 200) + "...";
+    }
+
+    public DataResponse getUserPosts(Long userId, DataRequest dataRequest) {
+        Integer pageNum = dataRequest.getInteger("pageNum");
+        Integer pageSize = dataRequest.getInteger("pageSize");
+
+        if (pageNum == null || pageNum < 1) {
+            pageNum = 1;
+        }
+        if (pageSize == null || pageSize < 1 || pageSize > 50) {
+            pageSize = 10;
+        }
+
+        Integer currentUserId = CommonMethod.getPersonId();
+        String currentUserRole = CommonMethod.getRoleName();
+        boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
+        Long currentUserIdLong = currentUserId != null ? currentUserId.longValue() : -1L;
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize);
+        Page<BbsPost> postPage = bbsPostRepository.findUserPostsWithModeration(
+                userId, currentUserIdLong, isAdmin, pageable);
+
+        postPage.getContent().forEach(this::fillPostAuthorInfo);
+
+        return CommonMethod.getReturnData(postPage);
+    }
+}

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:controller="com.teach.javafx.controller.MyNotificationController" styleClass="notification-page" stylesheets="@css/notification-page.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+   <top>
+      <VBox spacing="0" styleClass="notification-toolbar" BorderPane.alignment="CENTER">
+         <padding>
+            <Insets bottom="12" left="20" right="20" top="14" />
+         </padding>
+         <HBox alignment="CENTER_LEFT" spacing="10">
+            <children>
+               <Label text="我的通知" styleClass="page-title" />
+               <Region HBox.hgrow="ALWAYS" />
+               <Label fx:id="unreadBadge" styleClass="unread-badge" text="未读 0" />
+            </children>
+         </HBox>
+         <HBox alignment="CENTER_LEFT" spacing="0" style="-fx-padding: 10 0 0 0;">
+            <children>
+               <HBox fx:id="tabGroup" styleClass="tab-group">
+                  <children>
+                     <Button fx:id="tabAll" text="全部" styleClass="tab-btn tab-btn-active" />
+                     <Button fx:id="tabUnread" text="未读" styleClass="tab-btn" />
+                     <Button fx:id="tabRead" text="已读" styleClass="tab-btn" />
+                  </children>
+               </HBox>
+               <Region HBox.hgrow="ALWAYS" />
+               <Button fx:id="markAllReadButton" text="全部已读" styleClass="toolbar-btn" />
+               <Button fx:id="refreshButton" text="刷新" styleClass="toolbar-btn" style="-fx-margin: 0 0 0 8;" />
+            </children>
+         </HBox>
+      </VBox>
+   </top>
+   <center>
+      <StackPane BorderPane.alignment="CENTER">
+         <ListView fx:id="notificationListView" styleClass="notification-list" />
+         <VBox fx:id="loadingPane" alignment="CENTER" spacing="10" visible="false" managed="false" styleClass="loading-pane">
+            <children>
+               <ProgressIndicator styleClass="loading-spinner" />
+               <Label text="加载中..." styleClass="loading-text" />
+            </children>
+         </VBox>
+         <VBox fx:id="emptyPane" alignment="CENTER" spacing="12" visible="false" managed="false" styleClass="empty-pane">
+            <children>
+               <StackPane styleClass="empty-icon-box">
+                  <Label text="!" styleClass="empty-icon-text" />
+               </StackPane>
+               <Label text="暂无通知" styleClass="empty-title" />
+               <Label text="当您收到新通知时会在这里显示" styleClass="empty-subtitle" />
+               <Button fx:id="emptyRefreshButton" text="刷新" styleClass="empty-button" />
+            </children>
+         </VBox>
+      </StackPane>
+   </center>
+   <bottom>
+      <HBox alignment="CENTER" styleClass="bottom-bar" BorderPane.alignment="CENTER">
+         <children>
+            <Label fx:id="bottomInfoLabel" styleClass="bottom-info-text" text="" />
+         </children>
+      </HBox>
+   </bottom>
+</BorderPane>

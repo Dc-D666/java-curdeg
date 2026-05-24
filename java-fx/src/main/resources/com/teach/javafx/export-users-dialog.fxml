@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.DialogPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<DialogPane fx:controller="com.teach.javafx.controller.dialog.ExportUsersDialogController"
+            headerText="导出用户数据"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+    <content>
+        <VBox spacing="12.0">
+            <padding>
+                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+            </padding>
+
+            <Label style="-fx-font-weight: bold;" text="导出字段" />
+            <VBox spacing="6.0">
+                <CheckBox fx:id="personIdFieldCheck" text="用户ID" selected="true" />
+                <CheckBox fx:id="userNameFieldCheck" text="用户名" selected="true" />
+                <CheckBox fx:id="nicknameFieldCheck" text="昵称" selected="true" />
+                <CheckBox fx:id="studentIdFieldCheck" text="学号" selected="true" />
+                <CheckBox fx:id="postCountFieldCheck" text="发帖数" selected="true" />
+                <CheckBox fx:id="commentCountFieldCheck" text="评论数" selected="true" />
+                <CheckBox fx:id="isBannedFieldCheck" text="是否禁言" selected="true" />
+                <CheckBox fx:id="createTimeFieldCheck" text="创建时间" selected="true" />
+            </VBox>
+
+            <Label style="-fx-font-weight: bold;" text="导出格式" />
+            <HBox spacing="20.0">
+                <fx:define>
+                    <ToggleGroup fx:id="formatGroup" />
+                </fx:define>
+                <RadioButton fx:id="csvFormatRadio" text="CSV" toggleGroup="$formatGroup" selected="true" />
+                <RadioButton fx:id="excelFormatRadio" text="Excel" toggleGroup="$formatGroup" />
+                <RadioButton fx:id="jsonFormatRadio" text="JSON" toggleGroup="$formatGroup" />
+            </HBox>
+        </VBox>
+    </content>
+    <buttonTypes>
+        <ButtonType fx:constant="CANCEL" />
+        <ButtonType fx:id="exportButtonType" text="导出" />
+    </buttonTypes>
+</DialogPane>

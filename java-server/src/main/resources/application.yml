@@ -1,0 +1,88 @@
+
+security:
+  jwt:
+    secret-key: 3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
+    expiration-time: 86400000
+server:
+  port: 22223
+spring:
+  application:
+    name: java-server
+  datasource:
+#    url: jdbc:mysql://202.194.14.120:3306/web_db?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_server
+#    password: JavaServer2025@
+    url: jdbc:mysql://202.194.14.120:3306/java_2_48?allowPublicKeyRetrieval=true&useSSL=false
+    username: java_2_48
+    password: JavaP248@
+#    url: jdbc:mysql://202.194.14.120:3306/java_1_01?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_1_01
+#    password: JavaP101@
+#    url: jdbc:mysql://202.194.14.120:3306/java_1_01?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_1_01
+#    password: JavaP101@
+#    url: jdbc:mysql://202.194.14.120:3306/java_2_01?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java_2_01
+#    password: JavaP201@
+#    url: jdbc:mysql://202.194.14.120:3306/java_3_01?allowPublicKeyRetrieval=true&useSSL=false
+#    username: java3_01
+#    password: JavaP301@
+    hikari:
+      minimum-idle: 1
+      maximum-pool-size: 2
+  jpa:
+#    hibernate.ddl-auto: update
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  jmx:
+    enabled: false
+# 邮件服务配置
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: ${MAIL_USERNAME:3303188265@qq.com}
+    password: ${MAIL_PASSWORD:qjgahojbysicchga}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+attach:
+  folder: ./uploads/
+# AI内容审核配置
+moderation:
+  enabled: true
+  api:
+    url: https://xplt.sdu.edu.cn:4000/v1/chat/completions
+    key: sk-NnGunsuM6UNzJxLUIPR7ew
+    model: SDU-AI/DeepSeek-V4-Flash
+    timeout: 60000
+# AI图片生成配置
+ai-image:
+  enabled: true
+  api:
+    url: https://open.bigmodel.cn/api/paas/v4/images/generations
+    key: 68c1b48b1b0448fdb7e11e25e8ff107d.JyhwtU9wuCB1aAE5
+    model: cogview-3-flash
+    timeout: 30000
+# AI搜索优化配置
+ai-search:
+  keyword-refactor:
+    enabled: true
+    keyword-count: 5
+    result-count: 8
+    timeout: 30000
+
+logging:
+  config: classpath:loggback.xml
+#logging:
+#  level:
+#    root: info

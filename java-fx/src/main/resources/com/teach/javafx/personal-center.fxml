@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane fx:controller="com.teach.javafx.controller.PersonalCenterController" styleClass="personal-center-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+   <center>
+      <StackPane fx:id="contentStackPane" maxHeight="1.7976931348623157E308" maxWidth="1.7976931348623157E308" styleClass="profile-content" />
+   </center>
+</BorderPane>
