@@ -1145,9 +1145,9 @@ public class PostDetailController extends ToolController {
 
         for (int i = 0; i < steps.size(); i++) {
             Post.ModerationFlowStep step = steps.get(i);
-            moderationFlowStepsBox.getChildren().add(createFlowStepNode(step, i + 1, false));
+            moderationFlowStepsBox.getChildren().add(createFlowStepNode(step, i + 1, true));
             if (i < steps.size() - 1) {
-                moderationFlowStepsBox.getChildren().add(createFlowConnector(flowView.isConnectorReached(i), false));
+                moderationFlowStepsBox.getChildren().add(createFlowConnector(flowView.isConnectorReached(i), true));
             }
         }
     }

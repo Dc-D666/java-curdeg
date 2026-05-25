@@ -58,7 +58,7 @@
                 <Button fx:id="cancelButton" mnemonicParsing="false" text="取消" />
                 <Button fx:id="regenerateButton" mnemonicParsing="false" text="重新生成" visible="false" />
                 <Button fx:id="confirmButton" mnemonicParsing="false" text="确认添加" visible="false" />
-                <Button fx:id="generateButton" mnemonicParsing="false" text="生成图片" style="-fx-background-color: #ff7a45; -fx-text-fill: white;" />
+                <Button fx:id="generateButton" mnemonicParsing="false" text="生成图片" styleClass="warning-button" />
             </children>
         </HBox>
     </children>

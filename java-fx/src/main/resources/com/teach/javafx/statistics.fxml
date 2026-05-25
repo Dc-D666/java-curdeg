@@ -9,11 +9,14 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.StatisticsController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:controller="com.teach.javafx.controller.StatisticsController" styleClass="data-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
     <top>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
-            <Label style="-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="数据统计分析" />
-            <Label style="-fx-font-size: 13px; -fx-text-fill: #7f8c8d;" text="全面监控论坛运营数据，洞察用户行为与内容趋势" />
+        <VBox spacing="10" styleClass="data-toolbar">
+            <padding>
+                <Insets bottom="18.0" left="22.0" right="22.0" top="22.0" />
+            </padding>
+            <Label styleClass="profile-title" text="数据统计分析" />
+            <Label styleClass="profile-subtitle" text="全面监控论坛运营数据，洞察用户行为与内容趋势" />
         </VBox>
     </top>
     <center>
@@ -71,7 +74,7 @@
                         <HBox spacing="10" alignment="CENTER_LEFT">
                             <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="用户增长趋势" />
                             <ChoiceBox fx:id="userGrowthDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
-                            <Button fx:id="refreshUserBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                            <Button fx:id="refreshUserBtn" mnemonicParsing="false" prefWidth="80" text="刷新" styleClass="primary-button" />
                         </HBox>
                         <LineChart fx:id="userGrowthChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
                             <xAxis>
@@ -132,7 +135,7 @@
                         <HBox spacing="10" alignment="CENTER_LEFT">
                             <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="发帖趋势" />
                             <ChoiceBox fx:id="postTrendDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
-                            <Button fx:id="refreshContentBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                            <Button fx:id="refreshContentBtn" mnemonicParsing="false" prefWidth="80" text="刷新" styleClass="primary-button" />
                         </HBox>
                         <LineChart fx:id="postTrendChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
                             <xAxis>
@@ -187,7 +190,7 @@
                         <HBox spacing="10" alignment="CENTER_LEFT">
                             <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="互动趋势" />
                             <ChoiceBox fx:id="interactionDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
-                            <Button fx:id="refreshInteractionBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                            <Button fx:id="refreshInteractionBtn" mnemonicParsing="false" prefWidth="80" text="刷新" styleClass="primary-button" />
                         </HBox>
                         <GridPane hgap="15" vgap="15" alignment="CENTER">
                             <columnConstraints>
@@ -248,7 +251,7 @@
                         <HBox spacing="10" alignment="CENTER_LEFT">
                             <Label style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" text="审核趋势" />
                             <ChoiceBox fx:id="moderationDaysChoice" prefWidth="100" style="-fx-background-color: white;" />
-                            <Button fx:id="refreshSafetyBtn" mnemonicParsing="false" prefWidth="80" text="刷新" style="-fx-background-color: #3498db; -fx-text-fill: white;" />
+                            <Button fx:id="refreshSafetyBtn" mnemonicParsing="false" prefWidth="80" text="刷新" styleClass="primary-button" />
                         </HBox>
                         <LineChart fx:id="moderationTrendChart" prefHeight="300" animated="false" style="-fx-background-color: white;">
                             <xAxis>

@@ -52,6 +52,8 @@ public class BrowseHistoryController extends ToolController {
     @FXML
     public void initialize() {
         mainScrollPane.setFitToWidth(true);
+        totalLabel.setVisible(false);
+        totalLabel.setManaged(false);
         refreshButton.setOnAction(event -> loadHistory());
         clearButton.setOnAction(event -> clearHistory());
         prevButton.setOnAction(event -> goToPrevPage());
@@ -85,12 +87,10 @@ public class BrowseHistoryController extends ToolController {
                     }
                     
                     if (historyList != null && !historyList.isEmpty()) {
-                        totalLabel.setText("共 " + totalCount + " 条记录");
                         for (Map<String, Object> item : historyList) {
                             addHistoryCard(item);
                         }
                     } else {
-                        totalLabel.setText("暂无浏览记录");
                         Label emptyLabel = new Label("暂无浏览记录，去帖子广场看看吧~");
                         emptyLabel.setStyle("-fx-text-fill: #999; -fx-padding: 40 0; -fx-font-size: 14;");
                         emptyLabel.setAlignment(Pos.CENTER);
@@ -100,7 +100,6 @@ public class BrowseHistoryController extends ToolController {
                     
                     updatePagination();
                 } else {
-                    totalLabel.setText("加载失败");
                     showError("加载浏览历史失败");
                 }
             });
@@ -114,9 +113,10 @@ public class BrowseHistoryController extends ToolController {
     }
 
     private void updatePagination() {
-        pageLabel.setText("第 " + (currentPage + 1) + " / " + Math.max(1, totalPages) + " 页");
+        int displayTotalPages = Math.max(1, totalPages);
+        pageLabel.setText("共 " + totalCount + " 条，第 " + (currentPage + 1) + " / " + displayTotalPages + " 页");
         prevButton.setDisable(currentPage <= 0);
-        nextButton.setDisable(currentPage >= totalPages - 1);
+        nextButton.setDisable(currentPage >= displayTotalPages - 1);
     }
 
     private void goToPrevPage() {

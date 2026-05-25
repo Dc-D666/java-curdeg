@@ -44,7 +44,7 @@ public class ForgotPasswordController {
     @FXML
     public void initialize() {
         vbox.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
-        vbox.setStyle(BackgroundStyle.appBackground());
+        vbox.setStyle("");
 
         studentIdField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {

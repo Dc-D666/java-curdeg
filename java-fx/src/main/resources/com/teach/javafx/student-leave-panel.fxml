@@ -16,42 +16,42 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
-<BorderPane  xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"  prefWidth="800.0" fx:controller="com.teach.javafx.controller.StudentLeaveController">
+<BorderPane prefWidth="800.0" styleClass="data-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.StudentLeaveController">
    <top>
-       <HBox id="HBox" alignment="CENTER_LEFT" spacing="5.0">
+       <HBox id="HBox" alignment="CENTER_LEFT" spacing="12.0" styleClass="data-toolbar">
            <padding>
-               <Insets bottom="3.0" left="3.0" right="3.0" top="3.0"/>
+               <Insets bottom="18.0" left="22.0" right="22.0" top="22.0"/>
            </padding>
-           <FlowPane prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
-               <Button fx:id="addButton" mnemonicParsing="false" onAction="#onAddButtonClick" text="添加">
+           <FlowPane alignment="CENTER_LEFT" hgap="8.0" prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+               <Button fx:id="addButton" mnemonicParsing="false" onAction="#onAddButtonClick" styleClass="primary-button" text="添加">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
                </Button>
            </FlowPane>
            <Pane HBox.hgrow="ALWAYS"/>
-           <FlowPane alignment="TOP_RIGHT" prefHeight="40.0" prefWidth="400.0" BorderPane.alignment="CENTER">
-               <Label fx:id="stateLabel" prefWidth="49.0" text="审核状态">
+           <FlowPane alignment="CENTER_RIGHT" hgap="8.0" prefHeight="40.0" prefWidth="520.0" BorderPane.alignment="CENTER">
+               <Label fx:id="stateLabel" prefWidth="62.0" styleClass="data-filter-label" text="审核状态">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
                </Label>
-               <ComboBox fx:id="stateComboBox" prefWidth="100.0">
+               <ComboBox fx:id="stateComboBox" prefWidth="120.0">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
                </ComboBox>
-               <Label fx:id="searchLabel" prefWidth="49.0" text="关键字">
+               <Label fx:id="searchLabel" prefWidth="54.0" styleClass="data-filter-label" text="关键字">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
                </Label>
-               <TextField fx:id="searchTextField" prefWidth="100.0">
+               <TextField fx:id="searchTextField" prefWidth="150.0">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
                </TextField>
-               <Button mnemonicParsing="false" onAction="#onQueryButtonClick" text="查询">
+               <Button mnemonicParsing="false" onAction="#onQueryButtonClick" styleClass="primary-button" text="查询">
                    <FlowPane.margin>
                        <Insets bottom="5.0" left="5.0" right="5.0" top="5.0"/>
                    </FlowPane.margin>
@@ -60,9 +60,12 @@
        </HBox>
    </top>
    <center>
-      <SplitPane dividerPositions="0.7,0.3">
+      <SplitPane dividerPositions="0.7,0.3" styleClass="data-page">
+        <padding>
+            <Insets bottom="22.0" left="22.0" right="22.0" top="0.0" />
+        </padding>
         <items>
-            <TableView fx:id="dataTableView" >
+            <TableView fx:id="dataTableView" styleClass="data-table">
                 <columns>
                     <TableColumn fx:id="studentNumColumn" prefWidth="100.0" text="学号" />
                     <TableColumn fx:id="studentNameColumn" prefWidth="70.0" text="姓名" />
@@ -74,11 +77,11 @@
                     <TableColumn fx:id="adminCommentColumn" prefWidth="125.0" text="管理员审核意见" />
                 </columns>
             </TableView>
-            <VBox alignment="TOP_CENTER" spacing="20.0" >
+            <VBox alignment="TOP_CENTER" spacing="18.0" styleClass="data-detail-card">
                 <padding>
                     <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                 </padding>
-                <GridPane hgap="10.0">
+                <GridPane hgap="12.0" vgap="10.0" styleClass="data-form">
                     <columnConstraints>
                         <ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="124.0" minWidth="10.0" prefWidth="67.0" />
                         <ColumnConstraints hgrow="SOMETIMES" maxWidth="193.0" minWidth="10.0" prefWidth="193.0" />
@@ -92,38 +95,38 @@
                          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                          <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
                     </rowConstraints>
-                        <Label text="学号" GridPane.rowIndex="0" />
+                        <Label styleClass="form-label" text="学号" GridPane.rowIndex="0" />
                         <TextField fx:id="studentNumField" GridPane.columnIndex="1" GridPane.rowIndex="0" />
-                        <Label text="姓名" GridPane.rowIndex="1" />
+                        <Label styleClass="form-label" text="姓名" GridPane.rowIndex="1" />
                         <TextField fx:id="studentNameField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <Label text="指导老师" GridPane.rowIndex="2" />
+                        <Label styleClass="form-label" text="指导老师" GridPane.rowIndex="2" />
                         <ComboBox fx:id="teacherComboBox" GridPane.columnIndex="1" GridPane.rowIndex="2" />
-                        <Label text="请假日期" GridPane.rowIndex="3" />
+                        <Label styleClass="form-label" text="请假日期" GridPane.rowIndex="3" />
                         <TextField fx:id="leaveDateField" GridPane.columnIndex="1" GridPane.rowIndex="3" />
-                        <Label text="理由" GridPane.rowIndex="4" />
+                        <Label styleClass="form-label" text="理由" GridPane.rowIndex="4" />
                         <TextField fx:id="reasonField" GridPane.columnIndex="1" GridPane.rowIndex="4" />
-                        <Label text="老师意见" GridPane.rowIndex="5" />
+                        <Label styleClass="form-label" text="老师意见" GridPane.rowIndex="5" />
                         <TextField fx:id="teacherCommentField" GridPane.columnIndex="1" GridPane.rowIndex="5" />
-                        <Label text="管理员意见" GridPane.rowIndex="6" />
+                        <Label styleClass="form-label" text="管理员意见" GridPane.rowIndex="6" />
                         <TextField fx:id="adminCommentField" GridPane.columnIndex="1" GridPane.rowIndex="6" />
                 </GridPane>
-               <FlowPane alignment="CENTER" columnHalignment="CENTER" prefHeight="36.0">
-                   <Button fx:id="saveButton" onAction="#onSaveButtonClick" text="保存" >
+               <FlowPane alignment="CENTER" columnHalignment="CENTER" hgap="8.0" prefHeight="36.0" styleClass="data-actions">
+                   <Button fx:id="saveButton" onAction="#onSaveButtonClick" styleClass="btn-save" text="保存" >
                        <FlowPane.margin>
                            <Insets right="5.0" top="5.0" />
                        </FlowPane.margin>
                    </Button>
-                   <Button fx:id="submitButton" onAction="#onSubmitButtonClick" text="提交" >
+                   <Button fx:id="submitButton" onAction="#onSubmitButtonClick" styleClass="primary-button" text="提交" >
                        <FlowPane.margin>
                            <Insets right="5.0" top="5.0" />
                        </FlowPane.margin>
                    </Button>
-                   <Button fx:id="passButton" onAction="#onPassButtonClick" text="审核通过" >
+                   <Button fx:id="passButton" onAction="#onPassButtonClick" styleClass="success-button" text="审核通过" >
                        <FlowPane.margin>
                            <Insets right="5.0" top="5.0" />
                        </FlowPane.margin>
                    </Button>
-                   <Button fx:id="notPassButton" onAction="#onNotPassButtonClick" text="审核不通过" >
+                   <Button fx:id="notPassButton" onAction="#onNotPassButtonClick" styleClass="danger-button" text="审核不通过" >
                        <FlowPane.margin>
                            <Insets right="5.0" top="5.0" />
                        </FlowPane.margin>

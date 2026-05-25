@@ -40,6 +40,11 @@ public class MainApplication extends Application {
     }
 
     private static void applyTheme(Scene scene) {
+        String themeCss = MainApplication.class.getResource("css/personal-center.css").toExternalForm();
+        if (!scene.getStylesheets().contains(themeCss)) {
+            scene.getStylesheets().add(themeCss);
+        }
+
         Parent root = scene.getRoot();
         if (root.getStyleClass().contains(BackgroundStyle.BACKGROUND_STYLE_CLASS)) {
             if (root.getStyle() == null || !root.getStyle().contains("-fx-background-image")) {

@@ -46,7 +46,7 @@ public class LoginController {
 //        vbox.setId("min");  // id选择器 #
 //        vbox.getStyleClass().add("min");  类选择器 .
         vbox.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
-        vbox.setStyle(BackgroundStyle.appBackground());
+        vbox.setStyle("");
 //        loginButton.setStyle("-fx-background-color: red; -fx-text-fill: white;");
         
         usernameField.setOnKeyPressed(event -> {

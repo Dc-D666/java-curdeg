@@ -26,6 +26,8 @@ import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -62,6 +64,12 @@ public class PostListController extends ToolController {
     @FXML
     private VBox recommendContentVBox;
     @FXML
+    private GridPane postContentGrid;
+    @FXML
+    private ColumnConstraints postListColumn;
+    @FXML
+    private ColumnConstraints recommendColumn;
+    @FXML
     private ProgressIndicator refreshProgressIndicator;
     @FXML
     private Label pageInfoLabel;
@@ -79,6 +87,10 @@ public class PostListController extends ToolController {
     private User currentUser;
     private Set<Integer> followingUserIds = new HashSet<>();
     private Map<String, Object> recommendationsCache = null;
+    private static final double POST_LIST_WITH_RECOMMEND_WIDTH = 70.0;
+    private static final double RECOMMEND_WIDTH = 30.0;
+    private static final double FULL_POST_LIST_WIDTH = 100.0;
+    private static final double CONTENT_GRID_GAP = 18.0;
 
     @FXML
     public void initialize() {
@@ -325,10 +337,11 @@ public class PostListController extends ToolController {
 
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
                     int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + totalPages + " 页");
+                    int displayTotalPages = Math.max(totalPages, 1);
+                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + displayTotalPages + " 页");
 
                     prevButton.setDisable(currentPageNum <= 1);
-                    nextButton.setDisable(currentPageNum >= totalPages);
+                    nextButton.setDisable(currentPageNum >= displayTotalPages);
                 } else {
                     Label emptyLabel = new Label("暂无帖子~");
                     emptyLabel.setStyle("-fx-text-fill: #999; -fx-padding: 40 0; -fx-font-size: 14;");
@@ -336,7 +349,7 @@ public class PostListController extends ToolController {
                     emptyLabel.setAlignment(javafx.geometry.Pos.CENTER);
                     postListVBox.getChildren().add(emptyLabel);
 
-                    pageInfoLabel.setText("共 0 条");
+                    pageInfoLabel.setText("共 0 条，第 1 / 1 页");
                     prevButton.setDisable(true);
                     nextButton.setDisable(true);
                 }
@@ -562,7 +575,7 @@ public class PostListController extends ToolController {
 
     private void addRecommendationSection() {
         if (recommendationsCache == null) {
-            recommendVBox.setVisible(false);
+            setRecommendAreaVisible(false);
             return;
         }
 
@@ -576,7 +589,7 @@ public class PostListController extends ToolController {
         if ((browseRecommendations == null || browseRecommendations.isEmpty()) &&
             (followingPosts == null || followingPosts.isEmpty()) &&
             (similarPosts == null || similarPosts.isEmpty())) {
-            recommendVBox.setVisible(false);
+            setRecommendAreaVisible(false);
             return;
         }
 
@@ -605,7 +618,19 @@ public class PostListController extends ToolController {
 
         tabPane.getSelectionModel().selectFirst();
         recommendContentVBox.getChildren().add(tabPane);
-        recommendVBox.setVisible(true);
+        setRecommendAreaVisible(true);
+    }
+
+    private void setRecommendAreaVisible(boolean visible) {
+        recommendVBox.setVisible(visible);
+        recommendVBox.setManaged(visible);
+        if (postContentGrid != null) {
+            postContentGrid.setHgap(visible ? CONTENT_GRID_GAP : 0.0);
+        }
+        if (postListColumn != null && recommendColumn != null) {
+            postListColumn.setPercentWidth(visible ? POST_LIST_WITH_RECOMMEND_WIDTH : FULL_POST_LIST_WIDTH);
+            recommendColumn.setPercentWidth(visible ? RECOMMEND_WIDTH : 0.0);
+        }
     }
 
     private VBox createRecommendList(List<Map<String, Object>> posts) {

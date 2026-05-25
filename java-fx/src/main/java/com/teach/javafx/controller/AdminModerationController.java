@@ -255,9 +255,10 @@ public class AdminModerationController extends ToolController {
 
     private void updatePageInfo(long total) {
         int totalPages = (int) Math.ceil((double) total / pageSize);
-        pageInfoLabel.setText("第 " + currentPage + " / " + totalPages + " 页，共 " + total + " 条");
+        int displayTotalPages = Math.max(totalPages, 1);
+        pageInfoLabel.setText("共 " + total + " 条，第 " + currentPage + " / " + displayTotalPages + " 页");
         prevPageButton.setDisable(currentPage <= 1);
-        nextPageButton.setDisable(currentPage >= totalPages);
+        nextPageButton.setDisable(currentPage >= displayTotalPages);
     }
 
     @FXML

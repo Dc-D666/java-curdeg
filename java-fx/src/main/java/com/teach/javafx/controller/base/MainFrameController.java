@@ -19,6 +19,7 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.StackPane;
 import com.teach.javafx.request.DataRequest;
 import com.teach.javafx.request.DataResponse;
 import com.teach.javafx.request.LoginRequest;
@@ -67,6 +68,8 @@ public class MainFrameController {
     private TreeView<MyTreeNode> menuTree;
     @FXML
     protected TabPane contentTabPane;
+    @FXML
+    private StackPane emptyStatePane;
     @FXML
     private Label systemPrompt;
     @FXML
@@ -203,7 +206,9 @@ public class MainFrameController {
         handler =new ChangePanelHandler();
         contentTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
         contentTabPane.getStyleClass().add(BackgroundStyle.BACKGROUND_STYLE_CLASS);
-        contentTabPane.setStyle(BackgroundStyle.appBackground());
+        contentTabPane.setStyle("");
+        contentTabPane.getTabs().addListener((javafx.collections.ListChangeListener<Tab>) change -> updateEmptyStateVisibility());
+        updateEmptyStateVisibility();
         
         unreadNotificationLabel.setOnMouseClicked(event -> {
             changeContent("my-notification", "我的通知");
@@ -493,6 +498,7 @@ public class MainFrameController {
             System.out.println("Tab created and added: " + title);
         }
         contentTabPane.getSelectionModel().select(tab);
+        updateEmptyStateVisibility();
     }
     
     // 驼峰转 kebab-case
@@ -532,6 +538,7 @@ public class MainFrameController {
             tab.setContent(contentMap.get(name));
             contentTabPane.getTabs().add(tab);
             tabMap.put(name, tab);
+            updateEmptyStateVisibility();
         }
         contentTabPane.getSelectionModel().select(tab);
     }
@@ -613,6 +620,7 @@ public class MainFrameController {
         if ("post-list".equals(name)) {
             postListController = null;
         }
+        updateEmptyStateVisibility();
     }
     
     public com.teach.javafx.controller.PostListController getPostListController() {
@@ -716,7 +724,17 @@ public class MainFrameController {
             if ("post-list".equals(name)) {
                 postListController = null;
             }
+            updateEmptyStateVisibility();
         }
+    }
+
+    private void updateEmptyStateVisibility() {
+        if (emptyStatePane == null || contentTabPane == null) {
+            return;
+        }
+        boolean showEmptyState = contentTabPane.getTabs().isEmpty();
+        emptyStatePane.setVisible(showEmptyState);
+        emptyStatePane.setManaged(showEmptyState);
     }
 
     public void openUserHome(Integer userId, String nickname) {
