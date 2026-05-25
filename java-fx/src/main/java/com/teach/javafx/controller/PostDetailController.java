@@ -1754,14 +1754,25 @@ public class PostDetailController extends ToolController {
             return;
         }
         try {
-            String fullUrl = AttachmentUtil.fullUrl(attachment.getUrl());
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().browse(URI.create(fullUrl));
-            } else {
-                showInfo(fullUrl);
+            FileChooser fileChooser = new FileChooser();
+            String name = attachment.getName() != null && !attachment.getName().isBlank()
+                    ? attachment.getName()
+                    : "attachment";
+            fileChooser.setInitialFileName(name);
+            File targetFile = fileChooser.showSaveDialog(null);
+            if (targetFile == null) {
+                return;
             }
+
+            byte[] bytes = HttpRequestUtil.downloadAttachment(attachment.getUrl(), name);
+            if (bytes == null || bytes.length == 0) {
+                showError("下载附件失败，文件可能已丢失");
+                return;
+            }
+            java.nio.file.Files.write(targetFile.toPath(), bytes);
+            showInfo("附件已保存到：" + targetFile.getAbsolutePath());
         } catch (Exception e) {
-            showError("打开附件失败");
+            showError("下载附件失败");
         }
     }
     
