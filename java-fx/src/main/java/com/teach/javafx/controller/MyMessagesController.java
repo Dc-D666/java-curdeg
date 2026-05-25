@@ -35,6 +35,11 @@ public class MyMessagesController extends ToolController {
     public void initialize() {
         loadConversations();
     }
+
+    @Override
+    public void doRefresh() {
+        loadConversations();
+    }
     
     @FXML
     private void onRefresh() {

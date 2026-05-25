@@ -36,6 +36,7 @@ import java.util.Map;
 public class ChatViewController extends ToolController {
 
     private static final String DEFAULT_AVATAR_URL = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
+    private static final String DEFAULT_MISSING_IMAGE_URL = HttpRequestUtil.serverUrl + "/missing-image.png";
 
     @FXML
     private BorderPane rootPane;
@@ -330,7 +331,7 @@ public class ChatViewController extends ToolController {
                 
                 if (imgUrlStr != null) {
                     String fullImgUrl = imgUrlStr.startsWith("http") ? imgUrlStr : HttpRequestUtil.serverUrl + imgUrlStr;
-                    imgView.setImage(new Image(fullImgUrl, true));
+                    Image chatImage = new Image(fullImgUrl, true);
                     
                     // 创建一个容器放文本和图片
                     VBox bubbleContent = new VBox();
@@ -351,6 +352,19 @@ public class ChatViewController extends ToolController {
                     
                     // 添加图片
                     imgView.setStyle("-fx-padding: 0;");
+                    chatImage.errorProperty().addListener((observable, oldValue, newValue) -> {
+                        if (newValue) {
+                            Platform.runLater(() -> {
+                                bubbleContent.getChildren().remove(imgView);
+                                Label failLabel = new Label("[图片加载失败或文件已失效]");
+                                failLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 12px;");
+                                if (!bubbleContent.getChildren().contains(failLabel)) {
+                                    bubbleContent.getChildren().add(failLabel);
+                                }
+                            });
+                        }
+                    });
+                    imgView.setImage(chatImage);
                     bubbleContent.getChildren().add(imgView);
                     
                     messageBox.getChildren().add(bubbleContent);
@@ -441,6 +455,12 @@ public class ChatViewController extends ToolController {
             Platform.runLater(() -> {
                 // 标记已读后立即获取最新的未读计数，确保红点一次性消失
                 com.teach.javafx.util.NotificationCounter.refreshCounts();
+                if (AppStore.getMainFrameController() != null) {
+                    ToolController myMessagesController = AppStore.getMainFrameController().getToolController("my-messages");
+                    if (myMessagesController != null) {
+                        myMessagesController.doRefresh();
+                    }
+                }
             });
         });
         

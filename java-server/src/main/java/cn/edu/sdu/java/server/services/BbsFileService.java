@@ -2,15 +2,16 @@ package cn.edu.sdu.java.server.services;
 
 import cn.edu.sdu.java.server.models.User;
 import cn.edu.sdu.java.server.repositorys.UserRepository;
+import cn.edu.sdu.java.server.util.AttachmentStorageUtil;
 import cn.edu.sdu.java.server.util.DateTimeTool;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -20,8 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +38,9 @@ public class BbsFileService {
     );
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
     public static final long MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
-    private static final String UPLOAD_FOLDER = "./uploads/";
+
+    @Value("${attach.folder}")
+    private String attachFolder;
 
     private final UserRepository userRepository;
     private final LevelPrivilegeService levelPrivilegeService;
@@ -53,7 +56,7 @@ public class BbsFileService {
 
     public String uploadImage(MultipartFile file, Integer userId) {
         log.info("Starting image upload, originalFilename: {}, size: {}", file.getOriginalFilename(), file.getSize());
-        
+
         try {
             if (file.isEmpty()) {
                 log.error("File is empty");
@@ -68,7 +71,7 @@ public class BbsFileService {
 
             String extension = getFileExtension(originalFilename);
             log.info("File extension: {}", extension);
-            
+
             if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
                 log.error("Invalid file extension: {}", extension);
                 return null;
@@ -88,38 +91,20 @@ public class BbsFileService {
             }
 
             String dateFolder = DateTimeTool.parseDateTime(new Date(), "yyyyMMdd");
-            log.info("Date folder: {}", dateFolder);
-            
-            String fullFolderPath = UPLOAD_FOLDER + dateFolder + File.separator;
-            File folder = new File(fullFolderPath);
-            if (!folder.exists()) {
-                boolean created = folder.mkdirs();
-                log.info("Folder created: {}, path: {}", created, fullFolderPath);
-            }
+            Path uploadDir = resolveUploadDirectory(dateFolder);
+            String uniqueFileName = UUID.randomUUID() + "." + extension;
+            Path destPath = uploadDir.resolve(uniqueFileName);
 
-            String uniqueFileName = UUID.randomUUID().toString() + "." + extension;
-            String fullFilePath = fullFolderPath + uniqueFileName;
-            log.info("Saving file to: {}", fullFilePath);
-            
-            Path destPath = Paths.get(fullFilePath);
+            log.info("Saving file to: {}", destPath);
             Files.copy(file.getInputStream(), destPath, StandardCopyOption.REPLACE_EXISTING);
-            
-            String returnUrl = "/uploads/" + dateFolder + "/" + uniqueFileName;
+
+            String returnUrl = AttachmentStorageUtil.UPLOAD_URL_PREFIX + dateFolder + "/" + uniqueFileName;
             log.info("File saved successfully, returning URL: {}", returnUrl);
-            
             return returnUrl;
         } catch (IOException e) {
             log.error("Failed to upload image", e);
             return null;
         }
-    }
-
-    private String getFileExtension(String filename) {
-        int lastDotIndex = filename.lastIndexOf('.');
-        if (lastDotIndex == -1) {
-            return "";
-        }
-        return filename.substring(lastDotIndex + 1);
     }
 
     public Map<String, Object> uploadAttachment(MultipartFile file) {
@@ -160,25 +145,20 @@ public class BbsFileService {
                     }
                 }
             }
-            
+
             if (file.getSize() > MAX_ATTACHMENT_SIZE) {
                 throw new IllegalArgumentException("单个附件不能超过20MB");
             }
 
             String dateFolder = DateTimeTool.parseDateTime(new Date(), "yyyyMMdd");
-            String fullFolderPath = UPLOAD_FOLDER + dateFolder + File.separator;
-            File folder = new File(fullFolderPath);
-            if (!folder.exists()) {
-                boolean created = folder.mkdirs();
-                log.info("Folder created: {}, path: {}", created, fullFolderPath);
-            }
-
+            Path uploadDir = resolveUploadDirectory(dateFolder);
             String uniqueFileName = UUID.randomUUID() + "." + extension;
-            Path destPath = Paths.get(fullFolderPath + uniqueFileName);
+            Path destPath = uploadDir.resolve(uniqueFileName);
+
             Files.copy(file.getInputStream(), destPath, StandardCopyOption.REPLACE_EXISTING);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("url", "/uploads/" + dateFolder + "/" + uniqueFileName);
+            result.put("url", AttachmentStorageUtil.UPLOAD_URL_PREFIX + dateFolder + "/" + uniqueFileName);
             result.put("name", safeOriginalName);
             result.put("size", file.getSize());
             result.put("contentType", file.getContentType() != null ? file.getContentType() : "application/octet-stream");
@@ -200,7 +180,7 @@ public class BbsFileService {
                     attachmentInfos, new TypeReference<List<Map<String, Object>>>() {}
             );
             if (items.size() > 5) {
-                throw new IllegalArgumentException("附件最多上传5个");
+                throw new IllegalArgumentException("附件最多上传 5 个");
             }
 
             for (Map<String, Object> item : items) {
@@ -209,7 +189,7 @@ public class BbsFileService {
                 String ext = valueAsString(item.get("ext")).toLowerCase();
                 long size = valueAsLong(item.get("size"));
 
-                if (url.isBlank() || !url.startsWith("/uploads/")) {
+                if (url.isBlank() || !url.startsWith(AttachmentStorageUtil.UPLOAD_URL_PREFIX)) {
                     throw new IllegalArgumentException("附件地址不合法");
                 }
                 if (name.isBlank() || name.length() > 255) {
@@ -231,6 +211,54 @@ public class BbsFileService {
         }
     }
 
+    public String downloadAndSaveImage(String imageUrl) {
+        log.info("Starting to download and save image from URL: {}", imageUrl);
+
+        try {
+            URL url = URI.create(imageUrl).toURL();
+            URLConnection connection = url.openConnection();
+            connection.setConnectTimeout(30000);
+            connection.setReadTimeout(30000);
+
+            try (InputStream inputStream = connection.getInputStream()) {
+                String dateFolder = DateTimeTool.parseDateTime(new Date(), "yyyyMMdd");
+                Path uploadDir = resolveUploadDirectory(dateFolder);
+                String uniqueFileName = UUID.randomUUID() + ".png";
+                Path destPath = uploadDir.resolve(uniqueFileName);
+
+                log.info("Saving downloaded image to: {}", destPath);
+                Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
+
+                String returnUrl = AttachmentStorageUtil.UPLOAD_URL_PREFIX + dateFolder + "/" + uniqueFileName;
+                log.info("Downloaded image saved successfully, returning URL: {}", returnUrl);
+                return returnUrl;
+            }
+        } catch (IOException e) {
+            log.error("Failed to download and save image from URL: {}", imageUrl, e);
+            return null;
+        }
+    }
+
+    public Path resolveAttachmentPath(String uploadUrl) {
+        return AttachmentStorageUtil.resolveExistingUpload(attachFolder, uploadUrl);
+    }
+
+    private Path resolveUploadDirectory(String dateFolder) throws IOException {
+        Path root = AttachmentStorageUtil.resolvePrimaryUploadRoot(attachFolder);
+        Path uploadDir = root.resolve(dateFolder).normalize();
+        Files.createDirectories(uploadDir);
+        log.info("Using upload directory: {}", uploadDir);
+        return uploadDir;
+    }
+
+    private String getFileExtension(String filename) {
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex == -1) {
+            return "";
+        }
+        return filename.substring(lastDotIndex + 1);
+    }
+
     private String valueAsString(Object value) {
         return value == null ? "" : value.toString().trim();
     }
@@ -243,44 +271,6 @@ public class BbsFileService {
             return Long.parseLong(valueAsString(value));
         } catch (Exception e) {
             return -1L;
-        }
-    }
-    
-    public String downloadAndSaveImage(String imageUrl) {
-        log.info("Starting to download and save image from URL: {}", imageUrl);
-        
-        try {
-            URL url = URI.create(imageUrl).toURL();
-            URLConnection connection = url.openConnection();
-            connection.setConnectTimeout(30000);
-            connection.setReadTimeout(30000);
-            
-            try (InputStream inputStream = connection.getInputStream()) {
-                String dateFolder = DateTimeTool.parseDateTime(new Date(), "yyyyMMdd");
-                log.info("Date folder for downloaded image: {}", dateFolder);
-                
-                String fullFolderPath = UPLOAD_FOLDER + dateFolder + File.separator;
-                File folder = new File(fullFolderPath);
-                if (!folder.exists()) {
-                    boolean created = folder.mkdirs();
-                    log.info("Folder created: {}, path: {}", created, fullFolderPath);
-                }
-                
-                String uniqueFileName = UUID.randomUUID().toString() + ".png";
-                String fullFilePath = fullFolderPath + uniqueFileName;
-                log.info("Saving downloaded image to: {}", fullFilePath);
-                
-                Path destPath = Paths.get(fullFilePath);
-                Files.copy(inputStream, destPath, StandardCopyOption.REPLACE_EXISTING);
-                
-                String returnUrl = "/uploads/" + dateFolder + "/" + uniqueFileName;
-                log.info("Downloaded image saved successfully, returning URL: {}", returnUrl);
-                
-                return returnUrl;
-            }
-        } catch (IOException e) {
-            log.error("Failed to download and save image from URL: {}", imageUrl, e);
-            return null;
         }
     }
 }

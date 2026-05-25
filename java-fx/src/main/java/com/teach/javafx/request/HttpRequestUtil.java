@@ -216,6 +216,13 @@ public class HttpRequestUtil {
         return null;
     }
 
+    public static byte[] downloadAttachment(String url, String fileName) {
+        DataRequest request = new DataRequest();
+        request.add("url", url);
+        request.add("fileName", fileName);
+        return requestByteData("/api/bbs/file/download", request);
+    }
+
     /**
      * DataResponse uploadFile(String fileName,String remoteFile) 上传数据文件
      * @param fileName  本地文件?     * @param remoteFile 远程文件路径
@@ -3097,7 +3104,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
 
     public static Map<String, Object> checkFollowStatus(Integer userId) {
         HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(serverUrl + "/api/bbs/follow/check/" + userId))
+                .uri(URI.create(serverUrl + "/api/bbs/follow/status/" + userId))
                 .GET()
                 .headers("Content-Type", "application/json");
         

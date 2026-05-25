@@ -49,9 +49,6 @@ bin/
 .vscode/
 .DS_Store
 
-# Uploads folder (contains user-uploaded files)
-uploads/
-
 # Application configuration with secrets
 application-local.yml
 application-dev.yml
