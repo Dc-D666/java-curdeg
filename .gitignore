@@ -50,7 +50,7 @@ bin/
 .DS_Store
 
 # Uploads folder (contains user-uploaded files)
-uploads/
+# uploads/
 
 # Application configuration with secrets
 application-local.yml
