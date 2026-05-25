@@ -6,30 +6,28 @@ import com.teach.javafx.controller.base.ToolController;
 import com.teach.javafx.models.PageResult;
 import com.teach.javafx.models.Post;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.NicknameStyleUtil;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.input.MouseButton;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
 
 import java.text.SimpleDateFormat;
 
 public class MyFavoritesController extends ToolController {
     @FXML
-    private TableView<Post> postTableView;
+    private ScrollPane mainScrollPane;
     @FXML
-    private TableColumn<Post, String> titleColumn;
-    @FXML
-    private TableColumn<Post, String> contentColumn;
-    @FXML
-    private TableColumn<Post, String> authorColumn;
-    @FXML
-    private TableColumn<Post, String> createTimeColumn;
-    @FXML
-    private TableColumn<Post, Integer> likeCountColumn;
-    @FXML
-    private TableColumn<Post, Integer> commentCountColumn;
+    private VBox favoriteListVBox;
     @FXML
     private Label totalLabel;
     @FXML
@@ -42,52 +40,19 @@ public class MyFavoritesController extends ToolController {
     private Button nextButton;
 
     private int currentPageNum = 1;
-    private int currentPageSize = 10;
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+    private final int currentPageSize = 10;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
     @FXML
     public void initialize() {
-        titleColumn.setCellValueFactory(new PropertyValueFactory<>("title"));
-        
-        contentColumn.setCellValueFactory(cellData -> {
-            String content = cellData.getValue().getContent();
-            if (content != null && content.length() > 50) {
-                return new javafx.beans.property.SimpleStringProperty(content.substring(0, 50) + "...");
-            }
-            return new javafx.beans.property.SimpleStringProperty(content != null ? content : "");
-        });
-        
-        authorColumn.setCellValueFactory(new PropertyValueFactory<>("authorNickname"));
-        
-        createTimeColumn.setCellValueFactory(cellData -> {
-            if (cellData.getValue().getCreateTime() != null) {
-                return new javafx.beans.property.SimpleStringProperty(dateFormat.format(cellData.getValue().getCreateTime()));
-            }
-            return new javafx.beans.property.SimpleStringProperty("");
-        });
-        
-        likeCountColumn.setCellValueFactory(new PropertyValueFactory<>("likeCount"));
-        commentCountColumn.setCellValueFactory(new PropertyValueFactory<>("commentCount"));
-
-        postTableView.setRowFactory(tv -> {
-            TableRow<Post> row = new TableRow<>();
-            row.setOnMouseClicked(event -> {
-                if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1 && !row.isEmpty()) {
-                    Post post = row.getItem();
-                    openPostDetail(post.getId());
-                }
-            });
-            return row;
-        });
-
+        totalLabel.setVisible(false);
+        totalLabel.setManaged(false);
         prevButton.setOnAction(event -> onPrevPage());
         nextButton.setOnAction(event -> onNextPage());
-
         refreshButton.setOnAction(event -> {
             currentPageNum = 1;
             loadFavorites(refreshButton);
         });
-
         loadFavorites();
     }
 
@@ -100,48 +65,121 @@ public class MyFavoritesController extends ToolController {
             refreshBtn.setDisable(true);
             refreshBtn.setText("刷新中");
         }
-        
-        Task<PageResult<Post>> task = new Task<PageResult<Post>>() {
+
+        Task<PageResult<Post>> task = new Task<>() {
             @Override
             protected PageResult<Post> call() {
                 return HttpRequestUtil.getMyFavorites(currentPageNum, currentPageSize);
             }
         };
 
-        task.setOnSucceeded(event -> {
-            Platform.runLater(() -> {
-                if (refreshBtn != null) {
-                    refreshBtn.setDisable(false);
-                    refreshBtn.setText("刷新");
-                }
-                
-                PageResult<Post> pageResult = task.getValue();
-                if (pageResult != null && pageResult.getList() != null) {
-                    postTableView.getItems().clear();
-                    postTableView.getItems().addAll(pageResult.getList());
-                    
-                    long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    totalLabel.setText("共 " + total + " 条");
-                    pageInfoLabel.setText("第 " + currentPageNum + " 页");
-                    
-                    prevButton.setDisable(currentPageNum <= 1);
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    nextButton.setDisable(currentPageNum >= totalPages);
-                }
-            });
-        });
+        task.setOnSucceeded(event -> Platform.runLater(() -> {
+            if (refreshBtn != null) {
+                refreshBtn.setDisable(false);
+                refreshBtn.setText("刷新");
+            }
 
-        task.setOnFailed(event -> {
-            Platform.runLater(() -> {
-                if (refreshBtn != null) {
-                    refreshBtn.setDisable(false);
-                    refreshBtn.setText("刷新");
+            PageResult<Post> pageResult = task.getValue();
+            favoriteListVBox.getChildren().clear();
+            if (pageResult != null && pageResult.getList() != null) {
+                for (Post post : pageResult.getList()) {
+                    addFavoriteCard(post);
                 }
-                showError("加载收藏列表失败");
-            });
-        });
+
+                long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
+                int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                int displayTotalPages = Math.max(totalPages, 1);
+                pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + displayTotalPages + " 页");
+
+                prevButton.setDisable(currentPageNum <= 1);
+                nextButton.setDisable(currentPageNum >= displayTotalPages);
+            }
+        }));
+
+        task.setOnFailed(event -> Platform.runLater(() -> {
+            if (refreshBtn != null) {
+                refreshBtn.setDisable(false);
+                refreshBtn.setText("刷新");
+            }
+            showError("加载收藏列表失败");
+        }));
 
         new Thread(task).start();
+    }
+
+    private void addFavoriteCard(Post post) {
+        VBox card = new VBox(10);
+        card.getStyleClass().addAll("profile-card", "feed-card");
+
+        Label titleLabel = new Label(post.getTitle() != null ? post.getTitle() : "");
+        titleLabel.getStyleClass().add("feed-title");
+        titleLabel.setWrapText(true);
+
+        HBox metaRow = new HBox(10);
+        metaRow.setAlignment(Pos.CENTER_LEFT);
+
+        String nickname = post.getAuthorNickname() != null ? post.getAuthorNickname() : "未知用户";
+        Label authorLabel = new Label(nickname);
+        authorLabel.getStyleClass().add("feed-author");
+        NicknameStyleUtil.applyStyle(authorLabel, post.getAuthorNicknameStyle());
+        metaRow.getChildren().add(authorLabel);
+
+        if (post.getBoardName() != null && !post.getBoardName().isBlank()) {
+            Label boardLabel = new Label(post.getBoardName());
+            boardLabel.getStyleClass().add("post-board-chip");
+            metaRow.getChildren().add(boardLabel);
+        }
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        metaRow.getChildren().add(spacer);
+
+        if (post.getCreateTime() != null) {
+            Label timeLabel = new Label(dateFormat.format(post.getCreateTime()));
+            timeLabel.getStyleClass().add("post-meta-time");
+            metaRow.getChildren().add(timeLabel);
+        }
+
+        Label excerptLabel = new Label(buildExcerpt(post.getContent()));
+        excerptLabel.getStyleClass().add("feed-excerpt");
+        excerptLabel.setWrapText(true);
+
+        HBox statsRow = new HBox(8);
+        statsRow.setAlignment(Pos.CENTER_LEFT);
+        statsRow.getChildren().addAll(
+                createMetaChip("赞 " + safeNumber(post.getLikeCount()), "post-meta-chip", "post-meta-chip-like"),
+                createMetaChip("评 " + safeNumber(post.getCommentCount()), "post-meta-chip", "post-meta-chip-comment")
+        );
+
+        card.getChildren().addAll(titleLabel, metaRow, excerptLabel, statsRow);
+        card.setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY) {
+                openPostDetail(post.getId());
+            }
+        });
+
+        favoriteListVBox.getChildren().add(card);
+    }
+
+    private Label createMetaChip(String text, String... styleClasses) {
+        Label label = new Label(text);
+        label.getStyleClass().addAll(styleClasses);
+        return label;
+    }
+
+    private String buildExcerpt(String content) {
+        if (content == null || content.isBlank()) {
+            return "暂无内容摘要";
+        }
+        String normalized = content.replace("\r", " ").replace("\n", " ").trim();
+        if (normalized.length() > 120) {
+            return normalized.substring(0, 120) + "...";
+        }
+        return normalized;
+    }
+
+    private int safeNumber(Integer value) {
+        return value != null ? value : 0;
     }
 
     public void onPrevPage() {
@@ -163,7 +201,7 @@ public class MyFavoritesController extends ToolController {
                 javafx.scene.Scene scene = new javafx.scene.Scene(fxmlLoader.load(), 1024, 768);
                 PostDetailController controller = fxmlLoader.getController();
                 controller.setPostId(postId);
-                
+
                 String tabName = "post-detail-" + postId;
                 AppStore.getMainFrameController().changeContentWithScene(tabName, "帖子详情", scene, controller);
             } catch (Exception e) {

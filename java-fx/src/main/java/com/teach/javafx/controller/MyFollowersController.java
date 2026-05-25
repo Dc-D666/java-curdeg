@@ -49,6 +49,8 @@ public class MyFollowersController extends ToolController {
 
     @FXML
     public void initialize() {
+        followerTotalLabel.setVisible(false);
+        followerTotalLabel.setManaged(false);
         setupFollowerTable();
         
         loadFollowers();
@@ -195,12 +197,12 @@ public class MyFollowersController extends ToolController {
                     followerTableView.getItems().addAll(pageResult.getList());
                     
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    followerTotalLabel.setText("共 " + total + " 条");
-                    followerPageInfoLabel.setText("第 " + followerCurrentPageNum + " 页");
+                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                    int displayTotalPages = Math.max(totalPages, 1);
+                    followerPageInfoLabel.setText("共 " + total + " 条，第 " + followerCurrentPageNum + " / " + displayTotalPages + " 页");
                     
                     followerPrevButton.setDisable(followerCurrentPageNum <= 1);
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    followerNextButton.setDisable(followerCurrentPageNum >= totalPages);
+                    followerNextButton.setDisable(followerCurrentPageNum >= displayTotalPages);
                 }
             });
         });

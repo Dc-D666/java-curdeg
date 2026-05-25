@@ -52,6 +52,8 @@ public class MyFollowingController extends ToolController {
 
     @FXML
     public void initialize() {
+        followingTotalLabel.setVisible(false);
+        followingTotalLabel.setManaged(false);
         setupFollowingTable();
         
         loadFollowing();
@@ -219,12 +221,12 @@ public class MyFollowingController extends ToolController {
                     followingTableView.getItems().addAll(pageResult.getList());
                     
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    followingTotalLabel.setText("共 " + total + " 条");
-                    followingPageInfoLabel.setText("第 " + followingCurrentPageNum + " 页");
+                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                    int displayTotalPages = Math.max(totalPages, 1);
+                    followingPageInfoLabel.setText("共 " + total + " 条，第 " + followingCurrentPageNum + " / " + displayTotalPages + " 页");
                     
                     followingPrevButton.setDisable(followingCurrentPageNum <= 1);
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    followingNextButton.setDisable(followingCurrentPageNum >= totalPages);
+                    followingNextButton.setDisable(followingCurrentPageNum >= displayTotalPages);
                 }
             });
         });

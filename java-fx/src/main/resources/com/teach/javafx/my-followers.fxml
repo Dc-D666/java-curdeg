@@ -8,23 +8,23 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.MyFollowersController" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:controller="com.teach.javafx.controller.MyFollowersController" styleClass="data-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
     <center>
-        <BorderPane>
+        <BorderPane styleClass="data-root">
             <top>
-                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="data-toolbar">
                     <padding>
-                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
+                        <Insets bottom="18.0" left="22.0" right="22.0" top="22.0"/>
                     </padding>
                     <children>
-                        <Label style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: white;" text="我的粉丝"/>
-                        <Label fx:id="followerTotalLabel" style="-fx-text-fill: white;" text=""/>
-                        <Button fx:id="followerRefreshButton" mnemonicParsing="false" text="刷新"/>
+                        <Label styleClass="section-title" text="我的粉丝"/>
+                        <Label fx:id="followerTotalLabel" styleClass="profile-subtitle" text=""/>
+                        <Button fx:id="followerRefreshButton" mnemonicParsing="false" styleClass="btn-secondary" text="刷新"/>
                     </children>
                 </HBox>
             </top>
             <center>
-                <TableView fx:id="followerTableView" prefHeight="200.0" prefWidth="200.0">
+                <TableView fx:id="followerTableView" prefHeight="200.0" prefWidth="200.0" styleClass="data-table">
                     <columns>
                         <TableColumn fx:id="followerAvatarColumn" prefWidth="80.0" text="头像"/>
                         <TableColumn fx:id="followerNicknameColumn" prefWidth="120.0" text="昵称"/>
@@ -37,14 +37,11 @@
                 </TableView>
             </center>
             <bottom>
-                <HBox alignment="CENTER" spacing="20.0">
-                    <padding>
-                        <Insets bottom="10.0" left="10.0" right="10.0" top="10.0"/>
-                    </padding>
+                <HBox alignment="CENTER" spacing="18.0" styleClass="pagination-bar">
                     <children>
-                        <Button fx:id="followerPrevButton" mnemonicParsing="false" text="上一页"/>
-                        <Label fx:id="followerPageInfoLabel" text=""/>
-                        <Button fx:id="followerNextButton" mnemonicParsing="false" text="下一页"/>
+                        <Button fx:id="followerPrevButton" mnemonicParsing="false" styleClass="pagination-button" text="上一页"/>
+                        <Label fx:id="followerPageInfoLabel" styleClass="pagination-info" text="共 0 条，第 1 / 1 页"/>
+                        <Button fx:id="followerNextButton" mnemonicParsing="false" styleClass="pagination-button" text="下一页"/>
                     </children>
                 </HBox>
             </bottom>

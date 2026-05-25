@@ -539,6 +539,7 @@ public class UserHomeController extends ToolController {
     }
     
     private void displayUserPosts(Map<String, Object> result) {
+        long totalElements = getLong(result, "totalElements", getLong(result, "total", 0));
         Object contentObj = result.get("content");
         if (contentObj instanceof Iterable) {
             Iterable<?> posts = (Iterable<?>) contentObj;
@@ -569,9 +570,18 @@ public class UserHomeController extends ToolController {
             totalPages = ((Number) totalPagesObj).intValue();
         }
         
-        pageInfoLabel.setText("第 " + currentPage + " 页 / 共 " + totalPages + " 页");
+        int displayTotalPages = Math.max(totalPages, 1);
+        pageInfoLabel.setText("共 " + totalElements + " 条，第 " + currentPage + " / " + displayTotalPages + " 页");
         prevPageButton.setDisable(currentPage <= 1);
-        nextPageButton.setDisable(currentPage >= totalPages);
+        nextPageButton.setDisable(currentPage >= displayTotalPages);
+    }
+
+    private long getLong(Map<String, Object> data, String key, long defaultValue) {
+        Object value = data.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return defaultValue;
     }
     
     private void addPostToView(Map<String, Object> postData) {

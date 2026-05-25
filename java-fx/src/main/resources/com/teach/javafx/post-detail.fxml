@@ -14,7 +14,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.PostDetailController" styleClass="post-detail-root" stylesheets="@css/bbs-comments.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:controller="com.teach.javafx.controller.PostDetailController" styleClass="post-detail-root" stylesheets="@css/personal-center.css,@css/bbs-comments.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
    <top>
       <VBox spacing="10.0" styleClass="post-header" BorderPane.alignment="CENTER">
          <padding>
@@ -25,51 +25,68 @@
                <children>
                   <Button fx:id="backButton" mnemonicParsing="false" styleClass="ghost-button" text="返回" />
                   <Label text="›" style="-fx-text-fill: #888;" />
-                  <Label fx:id="breadcrumbLabel" text="首页" style="-fx-text-fill: #1890ff; -fx-cursor: hand;" />
+                  <Label fx:id="breadcrumbLabel" text="首页" styleClass="link-label" />
                   <Label text="›" style="-fx-text-fill: #888;" />
                   <Label fx:id="boardLabel" text="板块" />
                </children>
             </HBox>
-            <HBox spacing="10.0" alignment="CENTER_LEFT">
+            <VBox spacing="10.0" maxWidth="Infinity">
                <children>
-                  <Label fx:id="titleLabel" styleClass="post-title" text="帖子标题" />
-                  <Button fx:id="refreshButton" mnemonicParsing="false" styleClass="ghost-button" text="刷新" />
-                  <ProgressIndicator fx:id="refreshProgress" visible="false" prefWidth="24.0" prefHeight="24.0" />
-               </children>
-            </HBox>
-            <HBox spacing="15.0" alignment="CENTER_LEFT">
-               <children>
-                  <ImageView fx:id="authorImageView" fitHeight="40.0" fitWidth="40.0" preserveRatio="true" />
-                  <VBox spacing="2.0">
+                  <HBox spacing="10.0" alignment="CENTER_LEFT">
                      <children>
-                        <Label fx:id="authorLabel" text="作者：测试学生" style="-fx-font-weight: bold;" />
-                        <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" style="-fx-text-fill: #666; -fx-font-size: 12px;" />
-                     </children>
-                  </VBox>
-                  <Button fx:id="followButton" mnemonicParsing="false" styleClass="secondary-button" text="关注" />
-                  <Separator orientation="VERTICAL" />
-                  <Label fx:id="viewCountLabel" text="浏览量：0" style="-fx-text-fill: #666;" />
-                  <Label fx:id="likeCountLabel" text="点赞量：0" style="-fx-text-fill: #666;" />
-                  <Label fx:id="commentCountLabel" text="评论量：0" style="-fx-text-fill: #666;" />
-                  <Label fx:id="favoriteCountLabel" text="收藏量：0" style="-fx-text-fill: #666;" />
-               </children>
-            </HBox>
-            <HBox spacing="10.0" alignment="CENTER_LEFT">
-               <children>
-                  <Label fx:id="statusLabel" text="置顶 加精" style="-fx-text-fill: #f5222d; -fx-font-weight: bold;" />
-                  <Label fx:id="moderationStatusLabel" style="-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px;" />
-               </children>
-            </HBox>
-            <VBox fx:id="moderationFlowCard" spacing="14.0" styleClass="moderation-flow-card">
-               <children>
-                  <HBox alignment="CENTER_LEFT" spacing="10.0">
-                     <children>
-                        <Label text="帖子审核流程" styleClass="moderation-flow-title" />
-                        <Label text="真实流转" styleClass="moderation-flow-badge" />
+                        <Label fx:id="titleLabel" styleClass="post-title" text="帖子标题" wrapText="true" maxWidth="Infinity" HBox.hgrow="ALWAYS" />
+                        <Button fx:id="refreshButton" mnemonicParsing="false" styleClass="ghost-button" text="刷新" />
+                        <ProgressIndicator fx:id="refreshProgress" visible="false" prefWidth="24.0" prefHeight="24.0" />
                      </children>
                   </HBox>
-                  <HBox fx:id="moderationFlowStepsBox" alignment="CENTER_LEFT" spacing="0.0" />
-                  <Label fx:id="moderationFlowSummaryLabel" styleClass="moderation-flow-summary" text="AI正在审核，审核完成前帖子暂不公开" wrapText="true" />
+                  <BorderPane maxWidth="Infinity" styleClass="post-meta-layout">
+                     <left>
+                        <VBox spacing="8.0" BorderPane.alignment="CENTER_LEFT">
+                           <children>
+                              <HBox spacing="15.0" alignment="CENTER_LEFT">
+                                 <children>
+                                    <ImageView fx:id="authorImageView" fitHeight="40.0" fitWidth="40.0" preserveRatio="true" />
+                                    <VBox spacing="2.0">
+                                       <children>
+                                          <Label fx:id="authorLabel" text="作者：测试学生" style="-fx-font-weight: bold;" />
+                                          <Label fx:id="createTimeLabel" text="发布时间：2026-03-20 10:00:00" style="-fx-text-fill: #666; -fx-font-size: 12px;" />
+                                       </children>
+                                    </VBox>
+                                    <Button fx:id="followButton" mnemonicParsing="false" styleClass="secondary-button" text="关注" />
+                                 </children>
+                              </HBox>
+                              <HBox spacing="10.0" alignment="CENTER_LEFT">
+                                 <children>
+                                    <Label fx:id="statusLabel" text="置顶 加精" style="-fx-text-fill: #f5222d; -fx-font-weight: bold;" />
+                                    <Label text="审核状态：" styleClass="post-meta-label" />
+                                    <Label fx:id="moderationStatusLabel" style="-fx-padding: 2 8; -fx-background-radius: 4; -fx-font-size: 12px;" />
+                                 </children>
+                              </HBox>
+                           </children>
+                        </VBox>
+                     </left>
+                     <right>
+                        <HBox spacing="16.0" alignment="CENTER_RIGHT" styleClass="post-stats-row" BorderPane.alignment="CENTER_RIGHT">
+                           <children>
+                              <Label fx:id="viewCountLabel" text="浏览量：0" styleClass="post-stat-label" />
+                              <Label fx:id="likeCountLabel" text="点赞量：0" styleClass="post-stat-label" />
+                              <Label fx:id="commentCountLabel" text="评论量：0" styleClass="post-stat-label" />
+                              <Label fx:id="favoriteCountLabel" text="收藏量：0" styleClass="post-stat-label" />
+                           </children>
+                        </HBox>
+                     </right>
+                  </BorderPane>
+                  <TitledPane expanded="false" text="查看完整审核流程" styleClass="moderation-flow-pane">
+                     <content>
+                        <VBox fx:id="moderationFlowCard" spacing="10.0" styleClass="moderation-flow-card moderation-flow-card-compact" maxWidth="Infinity">
+                           <children>
+                              <Label text="帖子审核流程" styleClass="moderation-flow-title moderation-flow-title-compact" />
+                              <HBox fx:id="moderationFlowStepsBox" alignment="CENTER_LEFT" spacing="0.0" />
+                              <Label fx:id="moderationFlowSummaryLabel" styleClass="moderation-flow-summary moderation-flow-summary-compact" text="AI正在审核，审核完成前帖子暂不公开" wrapText="true" />
+                           </children>
+                        </VBox>
+                     </content>
+                  </TitledPane>
                </children>
             </VBox>
          </children>
@@ -90,14 +107,14 @@
                         <Label fx:id="violationFragmentLabel" style="-fx-font-size: 12px; -fx-text-fill: #666;" wrapText="true" />
                         <Label fx:id="violationSuggestionLabel" style="-fx-font-size: 13px;" wrapText="true" />
                         <Label fx:id="violationRemarkLabel" style="-fx-font-size: 12px; -fx-text-fill: #666;" wrapText="true" />
-                        <Button fx:id="editViolationButton" mnemonicParsing="false" text="编辑重新提交" style="-fx-background-color: #1890ff; -fx-text-fill: white;" />
+                        <Button fx:id="editViolationButton" mnemonicParsing="false" text="编辑重新提交" styleClass="primary-button" />
                      </children>
                   </VBox>
-                  <ScrollPane fitToWidth="true" maxHeight="500.0" style="-fx-background: transparent; -fx-background-color: transparent;">
-                     <content>
-                        <Label fx:id="contentLabel" text="帖子内容" wrapText="true" style="-fx-font-size: 14px; -fx-line-spacing: 5px; -fx-text-fill: black;" />
-                     </content>
-                  </ScrollPane>
+                  <VBox styleClass="post-content-card" maxWidth="Infinity">
+                     <children>
+                        <Label fx:id="contentLabel" text="帖子内容" wrapText="true" maxWidth="Infinity" styleClass="post-content-text" />
+                     </children>
+                  </VBox>
                   <VBox fx:id="postImagesVBox" spacing="10.0" />
                   <VBox fx:id="postAttachmentsVBox" spacing="8.0" />
                   <Separator />

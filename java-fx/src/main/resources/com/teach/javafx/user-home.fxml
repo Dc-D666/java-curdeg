@@ -157,11 +157,11 @@
                             </padding>
                         </VBox>
 
-                        <HBox alignment="CENTER" spacing="10.0">
+                        <HBox alignment="CENTER" spacing="18.0" styleClass="pagination-bar">
                             <children>
-                                <Button fx:id="prevPageButton" mnemonicParsing="false" styleClass="btn-secondary" text="上一页" />
-                                <Label fx:id="pageInfoLabel" styleClass="profile-subtitle" text="第 1 页 / 共 1 页" />
-                                <Button fx:id="nextPageButton" mnemonicParsing="false" styleClass="btn-secondary" text="下一页" />
+                                <Button fx:id="prevPageButton" mnemonicParsing="false" styleClass="pagination-button" text="上一页" />
+                                <Label fx:id="pageInfoLabel" styleClass="pagination-info" text="共 0 条，第 1 / 1 页" />
+                                <Button fx:id="nextPageButton" mnemonicParsing="false" styleClass="pagination-button" text="下一页" />
                             </children>
                         </HBox>
                     </children>

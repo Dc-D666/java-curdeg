@@ -267,11 +267,12 @@ public class AdminReportController extends ToolController {
                     }
 
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " 页");
+                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                    int displayTotalPages = Math.max(totalPages, 1);
+                    pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + displayTotalPages + " 页");
 
                     prevButton.setDisable(currentPageNum <= 1);
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
-                    nextButton.setDisable(currentPageNum >= totalPages);
+                    nextButton.setDisable(currentPageNum >= displayTotalPages);
                 }
             });
         });

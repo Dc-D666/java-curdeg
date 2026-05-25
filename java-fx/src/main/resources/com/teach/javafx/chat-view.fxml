@@ -12,28 +12,31 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="com.teach.javafx.controller.ChatViewController" fx:id="rootPane"
-            stylesheets="@css/chat-view.css">
+            styleClass="data-root" stylesheets="@css/personal-center.css,@css/chat-view.css">
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="16.0" style="-fx-background-color: white; -fx-padding: 16;">
+        <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="data-toolbar">
             <children>
                 <ImageView fx:id="avatarImageView" fitHeight="50.0" fitWidth="50.0" preserveRatio="true" />
                 <VBox alignment="CENTER_LEFT" spacing="4.0">
                     <children>
-                        <Label fx:id="nicknameLabel" style="-fx-font-size: 18px; -fx-font-weight: bold;" text="用户昵称" />
-                        <Label fx:id="statusLabel" style="-fx-font-size: 12px; -fx-text-fill: #52c41a;" text="互相关注" />
+                        <Label fx:id="nicknameLabel" styleClass="section-title" text="用户昵称" />
+                        <Label fx:id="statusLabel" styleClass="status-chip" text="互相关注" />
                     </children>
                 </VBox>
             </children>
         </HBox>
     </top>
     <center>
-        <ScrollPane fx:id="messageScrollPane" fitToWidth="true" style="-fx-background-color: #f5f5f5;">
-            <VBox fx:id="messageList" alignment="BOTTOM_LEFT" spacing="12.0" style="-fx-padding: 16;">
+        <ScrollPane fx:id="messageScrollPane" fitToWidth="true" styleClass="profile-scroll-pane">
+            <VBox fx:id="messageList" alignment="BOTTOM_LEFT" spacing="12.0" styleClass="profile-page">
+                <padding>
+                    <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+                </padding>
             </VBox>
         </ScrollPane>
     </center>
     <bottom>
-        <VBox spacing="8.0" style="-fx-background-color: white; -fx-padding: 12;">
+        <VBox spacing="8.0" styleClass="data-toolbar">
             <children>
                 <HBox fx:id="warningBox" alignment="CENTER_LEFT" spacing="8.0" visible="false">
                     <children>
@@ -41,11 +44,11 @@
                         <Label fx:id="warningLabel" style="-fx-text-fill: #faad14; -fx-font-size: 12px;" text="对方还没有关注你，你只能发送一条消息" />
                     </children>
                 </HBox>
-                <TextArea fx:id="messageTextArea" prefRowCount="3" promptText="输入消息..." style="-fx-background-color: white; -fx-border-color: #e8e8e8; -fx-border-radius: 4;" />
+                <TextArea fx:id="messageTextArea" prefRowCount="3" promptText="输入消息..." styleClass="form-input" />
                 <HBox alignment="CENTER_RIGHT" spacing="12.0">
                     <children>
-                        <Button fx:id="imageButton" onAction="#onSelectImage" style="-fx-background-color: #1890ff; -fx-text-fill: white;" text="选择图片" />
-                        <Button fx:id="sendButton" onAction="#onSendMessage" style="-fx-background-color: #52c41a; -fx-text-fill: white;" text="发送" />
+                        <Button fx:id="imageButton" onAction="#onSelectImage" styleClass="btn-secondary" text="选择图片" />
+                        <Button fx:id="sendButton" onAction="#onSendMessage" styleClass="success-button" text="发送" />
                     </children>
                 </HBox>
             </children>

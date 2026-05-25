@@ -6,7 +6,8 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.Pagination;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -28,11 +29,16 @@ public class PointHistoryController extends ToolController {
     @FXML
     private TableColumn<PointRecordItem, String> balanceColumn;
     @FXML
-    private Pagination pagination;
+    private Button prevButton;
+    @FXML
+    private Button nextButton;
+    @FXML
+    private Label pageInfoLabel;
 
     private int pageSize = 20;
     private int currentPage = 0;
     private int totalPages = 1;
+    private long totalElements = 0;
 
     @FXML
     public void initialize() {
@@ -41,9 +47,17 @@ public class PointHistoryController extends ToolController {
         changeColumn.setCellValueFactory(new PropertyValueFactory<>("pointsChange"));
         balanceColumn.setCellValueFactory(new PropertyValueFactory<>("balanceAfter"));
 
-        pagination.currentPageIndexProperty().addListener((obs, oldIndex, newIndex) -> {
-            currentPage = newIndex.intValue();
-            loadData();
+        prevButton.setOnAction(event -> {
+            if (currentPage > 0) {
+                currentPage--;
+                loadData();
+            }
+        });
+        nextButton.setOnAction(event -> {
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                loadData();
+            }
         });
 
         loadData();
@@ -96,8 +110,19 @@ public class PointHistoryController extends ToolController {
         if (totalPagesObj instanceof Number) {
             totalPages = ((Number) totalPagesObj).intValue();
         }
-        pagination.setPageCount(Math.max(totalPages, 1));
-        pagination.setCurrentPageIndex(currentPage);
+
+        Object totalElementsObj = result.get("totalElements");
+        if (totalElementsObj instanceof Number) {
+            totalElements = ((Number) totalElementsObj).longValue();
+        } else {
+            Object totalObj = result.get("total");
+            totalElements = totalObj instanceof Number ? ((Number) totalObj).longValue() : items.size();
+        }
+
+        int displayTotalPages = Math.max(totalPages, 1);
+        pageInfoLabel.setText("共 " + totalElements + " 条，第 " + (currentPage + 1) + " / " + displayTotalPages + " 页");
+        prevButton.setDisable(currentPage <= 0);
+        nextButton.setDisable(currentPage >= displayTotalPages - 1);
     }
 
     private String getString(Map<String, Object> map, String key) {

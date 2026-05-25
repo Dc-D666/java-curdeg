@@ -9,14 +9,17 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 <!-- 前端应用主框架FXML配置文件 对应页面交互控制类 com.teach.javafx.controller.base.MainFrameController -->
 <?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.TreeView?>
-<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.base.MainFrameController">
+<BorderPane styleClass="app-shell" stylesheets="@../css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.base.MainFrameController">
   <top>
-    <MenuBar fx:id="menuBar">
+    <MenuBar fx:id="menuBar" styleClass="app-menu-bar">
       <menus>
         <Menu fx:id="menuHome" text="首页">
           <items>
@@ -48,14 +51,31 @@
     </MenuBar>
   </top>
   <left>
-    <TreeView fx:id="menuTree" prefWidth="200"/>
+    <TreeView fx:id="menuTree" prefWidth="210" styleClass="app-menu-tree"/>
   </left>
   <center>
-    <TabPane fx:id="contentTabPane"  tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
-    </TabPane>
+    <StackPane BorderPane.alignment="CENTER">
+      <children>
+        <TabPane fx:id="contentTabPane" styleClass="app-content-tabs" tabClosingPolicy="UNAVAILABLE" BorderPane.alignment="CENTER">
+        </TabPane>
+        <StackPane fx:id="emptyStatePane" pickOnBounds="false" styleClass="welcome-empty-state">
+          <children>
+            <VBox alignment="CENTER" maxWidth="520.0" spacing="14.0" styleClass="welcome-empty-panel">
+              <children>
+                <Label styleClass="welcome-empty-badge" text="学生交流社区" />
+                <Label styleClass="welcome-empty-title" text="欢迎回来" />
+                <Label styleClass="welcome-empty-subtitle" text="从左侧菜单进入个人中心、帖子广场或系统管理，开始今天的校园交流与内容管理。" wrapText="true" />
+                <Region prefHeight="8.0" />
+                <Label styleClass="welcome-empty-hint" text="当前还没有打开标签页" />
+              </children>
+            </VBox>
+          </children>
+        </StackPane>
+      </children>
+    </StackPane>
   </center>
   <bottom>
-    <HBox id="HBox" alignment="CENTER_LEFT" spacing="5.0">
+    <HBox id="HBox" alignment="CENTER_LEFT" spacing="5.0" styleClass="app-status-bar">
       <children>
         <Label maxHeight="1.7976931348623157E308" maxWidth="-1.0" text="Left status" HBox.hgrow="ALWAYS" fx:id="systemPrompt" >
           <font>
