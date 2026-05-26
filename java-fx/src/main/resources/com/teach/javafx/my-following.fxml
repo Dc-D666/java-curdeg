@@ -3,48 +3,88 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 
-<BorderPane fx:controller="com.teach.javafx.controller.MyFollowingController" styleClass="data-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+<BorderPane fx:controller="com.teach.javafx.controller.MyFollowingController" styleClass="following-root" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
     <center>
-        <BorderPane styleClass="data-root">
-            <top>
-                <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="data-toolbar">
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="following-scroll">
+            <content>
+                <VBox spacing="18.0" styleClass="following-page">
                     <padding>
-                        <Insets bottom="18.0" left="22.0" right="22.0" top="22.0"/>
+                        <Insets bottom="22.0" left="26.0" right="26.0" top="22.0"/>
                     </padding>
                     <children>
-                        <Label styleClass="section-title" text="我的关注"/>
-                        <Label fx:id="followingTotalLabel" styleClass="profile-subtitle" text=""/>
-                        <Button fx:id="followingRefreshButton" mnemonicParsing="false" styleClass="btn-secondary" text="刷新"/>
+                        <VBox spacing="8.0" styleClass="following-hero">
+                            <children>
+                                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                                    <children>
+                                        <Label styleClass="following-hero-title" text="我的关注"/>
+                                        <Label styleClass="following-title-mark" text="❖"/>
+                                        <Region HBox.hgrow="ALWAYS"/>
+                                        <Button fx:id="followingRefreshButton" mnemonicParsing="false" styleClass="following-refresh-button" text="刷新"/>
+                                    </children>
+                                </HBox>
+                                <Label styleClass="following-hero-hint" text="双击头像或昵称可进入对方主页，点击右侧按钮可取消关注"/>
+                            </children>
+                        </VBox>
+
+                        <VBox spacing="14.0" styleClass="following-section">
+                            <children>
+                                <Label styleClass="following-section-title" text="关注概览"/>
+                                <GridPane hgap="14.0" vgap="14.0">
+                                    <children>
+                                        <VBox styleClass="following-stat-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                            <children>
+                                                <Label styleClass="following-stat-title" text="关注总数"/>
+                                                <Label fx:id="followingTotalValueLabel" styleClass="following-stat-value" text="0 人"/>
+                                            </children>
+                                        </VBox>
+                                        <VBox styleClass="following-stat-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                            <children>
+                                                <Label styleClass="following-stat-title" text="本周新增关注"/>
+                                                <Label fx:id="followingWeekValueLabel" styleClass="following-stat-value" text="0 人"/>
+                                            </children>
+                                        </VBox>
+                                        <VBox styleClass="following-stat-card" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                                            <children>
+                                                <Label styleClass="following-stat-title" text="互动最频繁"/>
+                                                <Label fx:id="followingTopUserValueLabel" styleClass="following-stat-value" text="暂无"/>
+                                            </children>
+                                        </VBox>
+                                        <VBox styleClass="following-stat-card" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                                            <children>
+                                                <Label styleClass="following-stat-title" text="活跃用户占比"/>
+                                                <Label fx:id="followingActiveRateValueLabel" styleClass="following-stat-value" text="0%"/>
+                                            </children>
+                                        </VBox>
+                                    </children>
+                                </GridPane>
+                            </children>
+                        </VBox>
+
+                        <VBox spacing="14.0" styleClass="following-section">
+                            <children>
+                                <Label styleClass="following-section-title" text="关注列表"/>
+                                <VBox fx:id="followingCardList" spacing="12.0"/>
+                            </children>
+                        </VBox>
                     </children>
-                </HBox>
-            </top>
-            <center>
-                <TableView fx:id="followingTableView" prefHeight="200.0" prefWidth="200.0" styleClass="data-table">
-                    <columns>
-                        <TableColumn fx:id="followingAvatarColumn" prefWidth="80.0" text="头像"/>
-                        <TableColumn fx:id="followingNicknameColumn" prefWidth="120.0" text="昵称"/>
-                        <TableColumn fx:id="followingSignatureColumn" prefWidth="200.0" text="个性签名"/>
-                        <TableColumn fx:id="followingPostCountColumn" prefWidth="80.0" text="发帖数"/>
-                        <TableColumn fx:id="followingFollowerCountColumn" prefWidth="80.0" text="粉丝数"/>
-                        <TableColumn fx:id="followingTimeColumn" prefWidth="150.0" text="关注时间"/>
-                        <TableColumn fx:id="followingActionColumn" prefWidth="120.0" text="操作"/>
-                    </columns>
-                </TableView>
-            </center>
-            <bottom>
-                <HBox alignment="CENTER" spacing="18.0" styleClass="pagination-bar">
-                    <children>
-                        <Button fx:id="followingPrevButton" mnemonicParsing="false" styleClass="pagination-button" text="上一页"/>
-                        <Label fx:id="followingPageInfoLabel" styleClass="pagination-info" text="共 0 条，第 1 / 1 页"/>
-                        <Button fx:id="followingNextButton" mnemonicParsing="false" styleClass="pagination-button" text="下一页"/>
-                    </children>
-                </HBox>
-            </bottom>
-        </BorderPane>
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
+    <bottom>
+        <HBox alignment="CENTER" spacing="18.0" styleClass="following-pagination-bar">
+            <children>
+                <Button fx:id="followingPrevButton" mnemonicParsing="false" styleClass="pagination-button" text="上一页"/>
+                <Label fx:id="followingPageInfoLabel" styleClass="pagination-info" text="共 0 条，第 1 / 1 页"/>
+                <Button fx:id="followingNextButton" mnemonicParsing="false" styleClass="pagination-button" text="下一页"/>
+            </children>
+        </HBox>
+    </bottom>
 </BorderPane>

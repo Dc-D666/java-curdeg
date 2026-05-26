@@ -11,11 +11,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -25,6 +25,7 @@ import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.Region;
 
 import java.time.LocalDate;
@@ -34,6 +35,13 @@ import java.util.*;
 public class UserStatisticsController extends ToolController {
     private static final double WHEEL_STEP_PX = 120.0;
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final int TREND_BUCKET_DAYS = 3;
+    private static final List<String> INTERACTION_BAR_COLORS = List.of(
+            "#4f8fbf", "#63a78a", "#7f95c9", "#5fa8a0", "#9aa7b8"
+    );
+    private static final List<String> STATUS_BAR_COLORS = List.of(
+            "#4f8fbf", "#7f95c9", "#9aa7b8", "#b77985"
+    );
 
     @FXML
     private ScrollPane mainScrollPane;
@@ -70,7 +78,11 @@ public class UserStatisticsController extends ToolController {
     @FXML
     private NumberAxis interactionTrendYAxis;
     @FXML
-    private PieChart interactionPieChart;
+    private BarChart<String, Number> interactionStructureChart;
+    @FXML
+    private CategoryAxis interactionStructureXAxis;
+    @FXML
+    private NumberAxis interactionStructureYAxis;
     @FXML
     private BarChart<String, Number> postStatusChart;
     @FXML
@@ -139,21 +151,52 @@ public class UserStatisticsController extends ToolController {
         interactionTrendChart.setCreateSymbols(false);
         contentTrendYAxis.setForceZeroInRange(true);
         interactionTrendYAxis.setForceZeroInRange(true);
+        interactionStructureYAxis.setForceZeroInRange(true);
         postStatusYAxis.setForceZeroInRange(true);
-        contentTrendXAxis.setLabel("日期");
-        interactionTrendXAxis.setLabel("日期");
+        contentTrendYAxis.setMinorTickVisible(false);
+        interactionTrendYAxis.setMinorTickVisible(false);
+        interactionStructureYAxis.setMinorTickVisible(false);
+        postStatusYAxis.setMinorTickVisible(false);
+        contentTrendYAxis.setTickUnit(1);
+        interactionTrendYAxis.setTickUnit(1);
+        contentTrendXAxis.setLabel("");
+        contentTrendYAxis.setLabel("");
+        interactionTrendXAxis.setLabel("");
+        interactionTrendYAxis.setLabel("");
+        interactionStructureXAxis.setLabel("");
+        interactionStructureYAxis.setLabel("");
+        postStatusXAxis.setLabel("");
+        postStatusYAxis.setLabel("");
+        contentTrendXAxis.setTickLabelRotation(0);
+        interactionTrendXAxis.setTickLabelRotation(0);
+        interactionStructureXAxis.setTickLabelRotation(0);
+        postStatusXAxis.setTickLabelRotation(0);
+        interactionStructureChart.setCategoryGap(26);
+        interactionStructureChart.setBarGap(6);
+        postStatusChart.setCategoryGap(34);
+        postStatusChart.setBarGap(6);
+        styleXYChart(contentTrendChart);
+        styleXYChart(interactionTrendChart);
+        styleXYChart(interactionStructureChart);
+        styleXYChart(postStatusChart);
         
         contentTrendChart.setLegendSide(javafx.geometry.Side.BOTTOM);
         interactionTrendChart.setLegendSide(javafx.geometry.Side.BOTTOM);
-        interactionPieChart.setLegendSide(javafx.geometry.Side.BOTTOM);
         postStatusChart.setLegendSide(javafx.geometry.Side.BOTTOM);
+    }
+
+    private void styleXYChart(XYChart<?, ?> chart) {
+        chart.setVerticalGridLinesVisible(false);
+        chart.setAlternativeColumnFillVisible(false);
+        chart.setAlternativeRowFillVisible(false);
+        chart.setVerticalZeroLineVisible(false);
+        chart.setHorizontalZeroLineVisible(false);
     }
     
     private void updateLegendLayout() {
         Platform.runLater(() -> {
             setupLegendLayout(contentTrendChart);
             setupLegendLayout(interactionTrendChart);
-            setupLegendLayout(interactionPieChart);
             setupLegendLayout(postStatusChart);
         });
     }
@@ -162,13 +205,12 @@ public class UserStatisticsController extends ToolController {
         javafx.scene.Node legend = chart.lookup(".chart-legend");
         if (legend != null) {
             if (legend instanceof javafx.scene.layout.FlowPane flowPane) {
-                // 设置非常大的包装长度，强制所有项目在一行
-                flowPane.setPrefWrapLength(100000);
-                flowPane.setHgap(15);
-                flowPane.setVgap(0);
-                flowPane.setMinWidth(800);
-                flowPane.setPrefWidth(2000);
-                flowPane.setMaxWidth(10000);
+                flowPane.setPrefWrapLength(620);
+                flowPane.setHgap(14);
+                flowPane.setVgap(6);
+                flowPane.setMinWidth(Region.USE_COMPUTED_SIZE);
+                flowPane.setPrefWidth(Region.USE_COMPUTED_SIZE);
+                flowPane.setMaxWidth(Region.USE_COMPUTED_SIZE);
             }
         }
     }
@@ -284,7 +326,7 @@ public class UserStatisticsController extends ToolController {
         updateOverview(Collections.emptyMap());
         contentTrendChart.getData().clear();
         interactionTrendChart.getData().clear();
-        interactionPieChart.getData().clear();
+        interactionStructureChart.getData().clear();
         postStatusChart.getData().clear();
         topPostRows.clear();
     }
@@ -314,13 +356,14 @@ public class UserStatisticsController extends ToolController {
         interactionTrendChart.getData().clear();
 
         List<String> last30Days = generateLast30Days();
+        List<DateBucket> trendBuckets = buildDateBuckets(last30Days);
         
-        addLineSeriesWithFullData(contentTrendChart, "发帖", asList(trends.get("postTrend")), last30Days);
-        addLineSeriesWithFullData(contentTrendChart, "评论", asList(trends.get("commentTrend")), last30Days);
+        addLineSeriesWithBuckets(contentTrendChart, "发帖", asList(trends.get("postTrend")), trendBuckets);
+        addLineSeriesWithBuckets(contentTrendChart, "评论", asList(trends.get("commentTrend")), trendBuckets);
 
-        addLineSeriesWithFullData(interactionTrendChart, "获赞", asList(trends.get("receivedLikeTrend")), last30Days);
-        addLineSeriesWithFullData(interactionTrendChart, "被收藏", asList(trends.get("favoriteTrend")), last30Days);
-        addLineSeriesWithFullData(interactionTrendChart, "新增粉丝", asList(trends.get("followTrend")), last30Days);
+        addLineSeriesWithBuckets(interactionTrendChart, "获赞", asList(trends.get("receivedLikeTrend")), trendBuckets);
+        addLineSeriesWithBuckets(interactionTrendChart, "被收藏", asList(trends.get("favoriteTrend")), trendBuckets);
+        addLineSeriesWithBuckets(interactionTrendChart, "新增粉丝", asList(trends.get("followTrend")), trendBuckets);
     }
 
     private List<String> generateLast30Days() {
@@ -332,7 +375,19 @@ public class UserStatisticsController extends ToolController {
         return dates;
     }
 
-    private void addLineSeriesWithFullData(LineChart<String, Number> chart, String name, List<Map<String, Object>> data, List<String> allDates) {
+    private List<DateBucket> buildDateBuckets(List<String> allDates) {
+        List<DateBucket> buckets = new ArrayList<>();
+        for (int i = 0; i < allDates.size(); i += TREND_BUCKET_DAYS) {
+            List<String> dates = allDates.subList(i, Math.min(i + TREND_BUCKET_DAYS, allDates.size()));
+            String start = dates.get(0);
+            String end = dates.get(dates.size() - 1);
+            String label = bucketLabel(start, end);
+            buckets.add(new DateBucket(label, new ArrayList<>(dates)));
+        }
+        return buckets;
+    }
+
+    private void addLineSeriesWithBuckets(LineChart<String, Number> chart, String name, List<Map<String, Object>> data, List<DateBucket> buckets) {
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName(name);
         
@@ -343,10 +398,12 @@ public class UserStatisticsController extends ToolController {
             dataMap.put(date, count);
         }
         
-        for (String date : allDates) {
-            int count = dataMap.getOrDefault(date, 0);
-            String displayDate = date.length() > 5 ? date.substring(5) : date;
-            series.getData().add(new XYChart.Data<>(displayDate, count));
+        for (DateBucket bucket : buckets) {
+            int count = 0;
+            for (String date : bucket.dates()) {
+                count += dataMap.getOrDefault(date, 0);
+            }
+            series.getData().add(new XYChart.Data<>(bucket.label(), count));
         }
         
         if (series.getData().isEmpty()) {
@@ -355,15 +412,30 @@ public class UserStatisticsController extends ToolController {
         chart.getData().add(series);
     }
 
+    private String bucketLabel(String start, String end) {
+        if (start == null || end == null || start.length() < 10 || end.length() < 10) {
+            return shortDate(start) + "-" + shortDate(end);
+        }
+        String startMonth = start.substring(5, 7);
+        String startDay = start.substring(8, 10);
+        String endMonth = end.substring(5, 7);
+        String endDay = end.substring(8, 10);
+        if (startMonth.equals(endMonth)) {
+            return startMonth + "/" + startDay + "-" + endDay;
+        }
+        return startMonth + "/" + startDay + "-" + endMonth + "/" + endDay;
+    }
+
+    private String shortDate(String date) {
+        return date != null && date.length() > 5 ? date.substring(5).replace("-", "/") : String.valueOf(date);
+    }
+
     private void updateDistribution(Map<String, Object> distribution, Map<String, Object> overview) {
-        updateInteractionPie(asList(distribution.get("interaction")), overview);
+        updateInteractionStructureChart(asList(distribution.get("interaction")), overview);
         updatePostStatusChart(asList(distribution.get("postStatus")));
     }
 
-    private void updateInteractionPie(List<Map<String, Object>> items, Map<String, Object> overview) {
-        interactionPieChart.getData().clear();
-        ObservableList<PieChart.Data> pieData = FXCollections.observableArrayList();
-
+    private void updateInteractionStructureChart(List<Map<String, Object>> items, Map<String, Object> overview) {
         List<Map<String, Object>> source = items;
         if (source.isEmpty()) {
             source = new ArrayList<>();
@@ -374,29 +446,123 @@ public class UserStatisticsController extends ToolController {
             source.add(Map.of("name", "粉丝", "count", getInt(overview, "followerCount")));
         }
 
+        interactionStructureChart.getData().clear();
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("互动结构");
+        List<Integer> values = new ArrayList<>();
         for (Map<String, Object> item : source) {
             int count = getInt(item, "count");
-            if (count > 0) {
-                pieData.add(new PieChart.Data(getString(item, "name"), count));
-            }
+            values.add(count);
+            series.getData().add(new XYChart.Data<>(getString(item, "name"), count));
         }
-        if (pieData.isEmpty()) {
-            pieData.add(new PieChart.Data("暂无数据", 1));
+        if (series.getData().isEmpty()) {
+            series.getData().add(new XYChart.Data<>("暂无", 0));
+            values.add(0);
         }
-        interactionPieChart.setData(pieData);
+        interactionStructureChart.getData().add(series);
+        configureBarAxis(interactionStructureYAxis, values);
+        decorateBarSeries(series, INTERACTION_BAR_COLORS);
     }
 
     private void updatePostStatusChart(List<Map<String, Object>> items) {
         postStatusChart.getData().clear();
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("帖子状态");
+        Map<String, Integer> values = new LinkedHashMap<>();
+        values.put("已发布", 0);
+        values.put("待审核", 0);
+        values.put("草稿", 0);
+        values.put("已隐藏", 0);
+
         for (Map<String, Object> item : items) {
-            series.getData().add(new XYChart.Data<>(getString(item, "name"), getInt(item, "count")));
+            String normalizedName = normalizePostStatus(getString(item, "name"));
+            values.merge(normalizedName, getInt(item, "count"), Integer::sum);
+        }
+        for (Map.Entry<String, Integer> entry : values.entrySet()) {
+            series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
         }
         if (series.getData().isEmpty()) {
             series.getData().add(new XYChart.Data<>("暂无", 0));
         }
         postStatusChart.getData().add(series);
+        configureBarAxis(postStatusYAxis, values.values());
+        decorateBarSeries(series, STATUS_BAR_COLORS);
+    }
+
+    private void configureBarAxis(NumberAxis axis, Collection<Integer> values) {
+        int max = values.stream().mapToInt(Integer::intValue).max().orElse(0);
+        double upperBound = niceUpperBound(max);
+        axis.setAutoRanging(false);
+        axis.setLowerBound(0);
+        axis.setUpperBound(upperBound);
+        axis.setTickUnit(Math.max(1, upperBound / 5));
+    }
+
+    private double niceUpperBound(int max) {
+        if (max <= 0) {
+            return 5;
+        }
+        double padded = max * 1.18;
+        double magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
+        double normalized = padded / magnitude;
+        double niceNormalized;
+        if (normalized <= 1.5) {
+            niceNormalized = 1.5;
+        } else if (normalized <= 2) {
+            niceNormalized = 2;
+        } else if (normalized <= 2.5) {
+            niceNormalized = 2.5;
+        } else if (normalized <= 5) {
+            niceNormalized = 5;
+        } else {
+            niceNormalized = 10;
+        }
+        return niceNormalized * magnitude;
+    }
+
+    private void decorateBarSeries(XYChart.Series<String, Number> series, List<String> colors) {
+        Platform.runLater(() -> {
+            for (int i = 0; i < series.getData().size(); i++) {
+                XYChart.Data<String, Number> data = series.getData().get(i);
+                if (data.getNode() != null) {
+                    String color = colors.get(i % colors.size());
+                    data.getNode().setStyle("-fx-bar-fill: " + color + "; -fx-background-color: " + color + ";");
+                }
+                if (data.getYValue().doubleValue() <= 0) {
+                    continue;
+                }
+                if (data.getNode() instanceof StackPane node) {
+                    Label label = new Label(String.valueOf(data.getYValue().intValue()));
+                    label.getStyleClass().add("statistics-bar-value");
+                    label.setMouseTransparent(true);
+                    label.setTranslateY(-18);
+                    StackPane.setAlignment(label, Pos.TOP_CENTER);
+                    node.getChildren().removeIf(child -> child instanceof Label && child.getStyleClass().contains("statistics-bar-value"));
+                    node.getChildren().add(label);
+                    label.toFront();
+                }
+            }
+        });
+    }
+
+    private String normalizePostStatus(String rawName) {
+        String name = rawName == null ? "" : rawName.trim();
+        if (name.contains("待") || name.equalsIgnoreCase("pending")) {
+            return "待审核";
+        }
+        if (name.contains("草稿") || name.equalsIgnoreCase("draft")) {
+            return "草稿";
+        }
+        if (name.contains("隐藏") || name.contains("删除") || name.equalsIgnoreCase("hidden")) {
+            return "已隐藏";
+        }
+        if (name.isEmpty() || name.contains("发布") || name.contains("true") || name.equalsIgnoreCase("published")) {
+            return "已发布";
+        }
+        if (name.contains("false")) {
+            return "已隐藏";
+        }
+        return name;
     }
 
     private void updateTopPosts(List<Map<String, Object>> posts) {
@@ -504,5 +670,8 @@ public class UserStatisticsController extends ToolController {
             int heat,
             String createTime
     ) {
+    }
+
+    private record DateBucket(String label, List<String> dates) {
     }
 }

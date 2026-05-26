@@ -108,10 +108,10 @@ public class MenuController {
             if("1".equals(str)) {
                 nodeAdminCheckBox.setSelected(true);
             }else if("2".equals(str)) {
-                nodeStudentCheckBox.setSelected(true);
+                nodeTeacherCheckBox.setSelected(true);
             }
             if("3".equals(str)) {
-                nodeTeacherCheckBox.setSelected(true);
+                nodeStudentCheckBox.setSelected(true);
             }
         }
     }
@@ -196,19 +196,13 @@ public class MenuController {
         editNode.setTitle(nodeTitleField.getText());
         String str = null;
         if(nodeAdminCheckBox.isSelected()) {
-            if(str == null)
-                str ="1";
-            else str +=",1";
-        }
-        if(nodeStudentCheckBox.isSelected()) {
-            if(str == null)
-                str ="2";
-            else str +=",2";
+            str = appendRoleId(str, "1");
         }
         if(nodeTeacherCheckBox.isSelected()) {
-            if(str == null)
-                str ="3";
-            else str +=",3";
+            str = appendRoleId(str, "2");
+        }
+        if(nodeStudentCheckBox.isSelected()) {
+            str = appendRoleId(str, "3");
         }
         editNode.setUserTypeIds(str);
         editNode.setLabel(editNode.getId()+"-"+editNode.getTitle());
@@ -226,5 +220,18 @@ public class MenuController {
         }else {
             MessageDialog.showDialog(res.getMsg());
         }
+    }
+
+    private String appendRoleId(String roleIds, String roleId) {
+        if(roleIds == null || roleIds.length() == 0) {
+            return roleId;
+        }
+        StringTokenizer tokenizer = new StringTokenizer(roleIds, ",");
+        while(tokenizer.hasMoreTokens()) {
+            if(roleId.equals(tokenizer.nextToken())) {
+                return roleIds;
+            }
+        }
+        return roleIds + "," + roleId;
     }
 }

@@ -5,7 +5,6 @@
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.NumberAxis?>
-<?import javafx.scene.chart.PieChart?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
@@ -20,17 +19,17 @@
 
 <ScrollPane fx:id="mainScrollPane" fitToWidth="true" hbarPolicy="NEVER" pannable="true" styleClass="profile-scroll-pane" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.UserStatisticsController">
     <content>
-        <VBox maxWidth="1.7976931348623157E308" minWidth="0.0" spacing="18.0" styleClass="profile-page">
+        <VBox maxWidth="1.7976931348623157E308" minWidth="0.0" spacing="18.0" styleClass="profile-page statistics-profile-page">
             <padding>
                 <Insets bottom="28.0" left="28.0" right="28.0" top="26.0" />
             </padding>
             <children>
-                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="profile-title-row">
+                <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="statistics-profile-header">
                     <children>
                         <VBox spacing="4.0" HBox.hgrow="ALWAYS">
                             <children>
-                                <Label styleClass="profile-title" text="数据统计" />
-                                <Label styleClass="profile-subtitle" text="查看你的内容产出、互动反馈和社区影响力" />
+                                <Label styleClass="statistics-title" text="数据统计" />
+                                <Label styleClass="statistics-subtitle" text="查看你的内容产出、互动反馈和社区影响力" />
                             </children>
                         </VBox>
                         <Label fx:id="statusLabel" styleClass="stats-status" text="正在加载..." />
@@ -38,7 +37,7 @@
                     </children>
                 </HBox>
 
-                <GridPane hgap="14.0" vgap="14.0" styleClass="stats-grid">
+                <GridPane hgap="14.0" vgap="14.0" styleClass="stats-grid statistics-personal-grid">
                     <columnConstraints>
                         <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
                         <ColumnConstraints hgrow="ALWAYS" minWidth="132.0" percentWidth="25.0" />
@@ -107,10 +106,10 @@
                         <ColumnConstraints hgrow="ALWAYS" percentWidth="50.0" />
                     </columnConstraints>
                     <children>
-                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                        <VBox spacing="12.0" styleClass="profile-card statistics-chart-card" GridPane.columnIndex="0" GridPane.rowIndex="0">
                             <children>
-                                <Label styleClass="section-title" text="近30天内容趋势" />
-                                <LineChart fx:id="contentTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="stats-chart">
+                                <Label styleClass="statistics-card-title" text="近30天内容趋势" />
+                                <LineChart fx:id="contentTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="statistics-chart">
                                     <xAxis>
                                         <CategoryAxis fx:id="contentTrendXAxis" label="日期" />
                                     </xAxis>
@@ -120,10 +119,10 @@
                                 </LineChart>
                             </children>
                         </VBox>
-                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                        <VBox spacing="12.0" styleClass="profile-card statistics-chart-card" GridPane.columnIndex="1" GridPane.rowIndex="0">
                             <children>
-                                <Label styleClass="section-title" text="近30天互动反馈" />
-                                <LineChart fx:id="interactionTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="stats-chart">
+                                <Label styleClass="statistics-card-title" text="近30天互动反馈" />
+                                <LineChart fx:id="interactionTrendChart" animated="false" legendVisible="true" prefHeight="300.0" styleClass="statistics-chart">
                                     <xAxis>
                                         <CategoryAxis fx:id="interactionTrendXAxis" label="日期" />
                                     </xAxis>
@@ -133,16 +132,23 @@
                                 </LineChart>
                             </children>
                         </VBox>
-                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                        <VBox spacing="12.0" styleClass="profile-card statistics-chart-card" GridPane.columnIndex="0" GridPane.rowIndex="1">
                             <children>
-                                <Label styleClass="section-title" text="互动结构" />
-                                <PieChart fx:id="interactionPieChart" animated="false" legendVisible="true" prefHeight="286.0" styleClass="stats-chart" />
+                                <Label styleClass="statistics-card-title" text="互动结构" />
+                                <BarChart fx:id="interactionStructureChart" animated="false" legendVisible="false" prefHeight="286.0" styleClass="statistics-chart structure-bar-chart">
+                                    <xAxis>
+                                        <CategoryAxis fx:id="interactionStructureXAxis" label="类型" />
+                                    </xAxis>
+                                    <yAxis>
+                                        <NumberAxis fx:id="interactionStructureYAxis" label="数量" />
+                                    </yAxis>
+                                </BarChart>
                             </children>
                         </VBox>
-                        <VBox spacing="12.0" styleClass="profile-card" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                        <VBox spacing="12.0" styleClass="profile-card statistics-chart-card" GridPane.columnIndex="1" GridPane.rowIndex="1">
                             <children>
-                                <Label styleClass="section-title" text="帖子状态" />
-                                <BarChart fx:id="postStatusChart" animated="false" legendVisible="false" prefHeight="286.0" styleClass="stats-chart">
+                                <Label styleClass="statistics-card-title" text="帖子状态" />
+                                <BarChart fx:id="postStatusChart" animated="false" legendVisible="false" prefHeight="286.0" styleClass="statistics-chart structure-bar-chart">
                                     <xAxis>
                                         <CategoryAxis fx:id="postStatusXAxis" label="状态" />
                                     </xAxis>
@@ -155,11 +161,11 @@
                     </children>
                 </GridPane>
 
-                <VBox spacing="12.0" styleClass="profile-card">
+                <VBox spacing="12.0" styleClass="profile-card statistics-table-card">
                     <children>
                         <HBox alignment="CENTER_LEFT" spacing="10.0">
                             <children>
-                                <Label styleClass="section-title" text="热门内容 Top 10" HBox.hgrow="ALWAYS" />
+                                <Label styleClass="statistics-section-title" text="热门内容 Top 10" HBox.hgrow="ALWAYS" />
                                 <Label styleClass="section-hint" text="按浏览、点赞、评论、收藏综合热度排序" />
                             </children>
                         </HBox>

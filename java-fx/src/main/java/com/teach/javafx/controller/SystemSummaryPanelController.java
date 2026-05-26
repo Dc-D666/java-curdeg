@@ -276,7 +276,7 @@ public class SystemSummaryPanelController extends ToolController {
                 // 并行加载多个数据源
                 Map<String, Object> overview = HttpRequestUtil.get("/api/bbs/statistics/overview");
                 if (overview != null) {
-                    result.put("overview", overview.get("data"));
+                    result.put("overview", overview);
                 }
 
                 List<Map<String, Object>> userGrowth = HttpRequestUtil.getList("/api/bbs/statistics/user-growth?days=" + currentUserTrendDays);
@@ -316,7 +316,7 @@ public class SystemSummaryPanelController extends ToolController {
 
                 Map<String, Object> moderationOverview = HttpRequestUtil.get("/api/bbs/statistics/moderation-overview");
                 if (moderationOverview != null) {
-                    result.put("moderationOverview", moderationOverview.get("data"));
+                    result.put("moderationOverview", moderationOverview);
                 }
 
                 List<Map<String, Object>> moderationTrend = HttpRequestUtil.getList("/api/bbs/statistics/moderation-trend?days=7");
@@ -326,7 +326,7 @@ public class SystemSummaryPanelController extends ToolController {
 
                 Map<String, Object> reportStats = HttpRequestUtil.get("/api/bbs/statistics/report-statistics");
                 if (reportStats != null) {
-                    result.put("reportStats", reportStats.get("data"));
+                    result.put("reportStats", reportStats);
                 }
 
                 return result;
@@ -389,7 +389,7 @@ public class SystemSummaryPanelController extends ToolController {
         // 10. AI审核通过率（从overview直接获取）
         if (overview.get("aiPassRate") != null) {
             double passRate = toDouble(overview.get("aiPassRate"));
-            aiPassRateLabel.setText(String.format("%.1f%%", passRate));
+            setLabelText(aiPassRateLabel, String.format("%.1f%%", passRate));
         }
 
         // 同时也检查单独的reportStats和moderationOverview，作为后备方案
@@ -404,21 +404,18 @@ public class SystemSummaryPanelController extends ToolController {
         if (moderationOverview != null && overview.get("aiPassRate") == null) {
             System.out.println("moderationOverview data: " + moderationOverview);
             double passRate = toDouble(moderationOverview.get("passRate"));
-            aiPassRateLabel.setText(String.format("%.1f%%", passRate));
+            setLabelText(aiPassRateLabel, String.format("%.1f%%", passRate));
             animateValue(totalModerationsLabel, toInt(moderationOverview.get("totalModeration")), "总审核: ");
         }
 
         // 根据待审核数量设置健康状态
         int pendingCount = toInt(overview.get("pendingModerationCount"));
         if (pendingCount > 100) {
-            healthIndicator.setFill(javafx.scene.paint.Color.web("#f59e0b"));
-            healthStatusLabel.setText("负载较高");
+            setHealthStatus("#f59e0b", "负载较高");
         } else if (pendingCount > 50) {
-            healthIndicator.setFill(javafx.scene.paint.Color.web("#3b82f6"));
-            healthStatusLabel.setText("运行正常");
+            setHealthStatus("#3b82f6", "运行正常");
         } else {
-            healthIndicator.setFill(javafx.scene.paint.Color.web("#10b981"));
-            healthStatusLabel.setText("运行正常");
+            setHealthStatus("#10b981", "运行正常");
         }
     }
 
@@ -625,31 +622,233 @@ public class SystemSummaryPanelController extends ToolController {
     private void updateAISuggestions(Map<String, Object> data) {
         Map<String, Object> overview = (Map<String, Object>) data.get("overview");
         Map<String, Object> moderationOverview = (Map<String, Object>) data.get("moderationOverview");
+        Map<String, Object> reportStats = (Map<String, Object>) data.get("reportStats");
+        List<Map<String, Object>> moderationTrend = (List<Map<String, Object>>) data.get("moderationTrend");
+        List<Map<String, Object>> violationTypes = (List<Map<String, Object>>) data.get("violationTypes");
+        List<Map<String, Object>> hotPosts = (List<Map<String, Object>>) data.get("hotPosts");
+        List<Map<String, Object>> activeUsers = (List<Map<String, Object>>) data.get("activeUsers");
+        List<Map<String, Object>> postTrend = (List<Map<String, Object>>) data.get("postTrend");
+        List<Map<String, Object>> userGrowth = (List<Map<String, Object>>) data.get("userGrowth");
 
-        String suggestion1 = "系统运行正常，建议保持当前审核策略。";
-        String suggestion2 = "近期帖子质量良好，社区氛围健康。";
-        String suggestion3 = "暂无异常提醒。";
+        List<AiSuggestion> suggestions = buildAiSuggestions(
+                overview,
+                moderationOverview,
+                reportStats,
+                moderationTrend,
+                violationTypes,
+                hotPosts,
+                activeUsers,
+                postTrend,
+                userGrowth
+        );
 
-        if (overview != null && moderationOverview != null) {
-            int pendingModeration = toInt(overview.get("pendingModerationCount"));
-            double passRate = toDouble(moderationOverview.get("passRate"));
+        suggestion1Label.setText(suggestions.get(0).text());
+        suggestion2Label.setText(suggestions.get(1).text());
+        suggestion3Label.setText(suggestions.get(2).text());
+    }
 
-            if (pendingModeration > 50) {
-                suggestion1 = String.format("当前待审核帖子较多（%d条），建议加快审核进度。", pendingModeration);
-            }
+    private List<AiSuggestion> buildAiSuggestions(
+            Map<String, Object> overview,
+            Map<String, Object> moderationOverview,
+            Map<String, Object> reportStats,
+            List<Map<String, Object>> moderationTrend,
+            List<Map<String, Object>> violationTypes,
+            List<Map<String, Object>> hotPosts,
+            List<Map<String, Object>> activeUsers,
+            List<Map<String, Object>> postTrend,
+            List<Map<String, Object>> userGrowth
+    ) {
+        List<AiSuggestion> suggestions = new ArrayList<>();
 
-            if (passRate < 80) {
-                suggestion2 = String.format("近期内容审核通过率为 %.1f%%，略低于正常水平，建议关注内容质量。", passRate);
-            }
+        int pendingModeration = mapInt(overview, "pendingModerationCount");
+        int pendingReports = Math.max(mapInt(overview, "pendingReports"), mapInt(reportStats, "pendingReports"));
+        int todayPosts = mapInt(overview, "todayNewPosts");
+        int todayComments = mapInt(overview, "todayNewComments");
+        int monthlyActiveUsers = mapInt(overview, "monthlyActiveUsers");
+        int totalUsers = mapInt(overview, "userCount");
+        int totalModeration = mapInt(moderationOverview, "totalModeration");
+        double passRate = mapDouble(moderationOverview, "passRate");
+        if (passRate == 0.0) {
+            passRate = mapDouble(overview, "aiPassRate");
+        }
+        double rejectRate = mapDouble(moderationOverview, "rejectRate");
+        double reportHandleRate = mapDouble(reportStats, "handleRate");
 
-            if (passRate > 95) {
-                suggestion3 = "系统运行良好，社区内容质量较高，继续保持！";
+        TrendSummary moderationSummary = summarizeModerationTrend(moderationTrend);
+        TrendSummary postSummary = summarizeCountTrend(postTrend, "count");
+        TrendSummary userSummary = summarizeCountTrend(userGrowth, "count");
+        Map<String, Object> topViolation = maxByCount(violationTypes);
+        Map<String, Object> topPost = maxByScore(hotPosts, "likeCount", "commentCount");
+        Map<String, Object> topUser = maxByScore(activeUsers, "postCount", "commentCount");
+
+        if (pendingModeration >= 20) {
+            suggestions.add(new AiSuggestion(100, String.format(
+                    "当前有 %d 条内容等待审核，建议先处理待审队列；按近 7 天日均 %.1f 条估算，积压已经偏高。",
+                    pendingModeration, moderationSummary.dailyAverage()
+            )));
+        } else if (pendingModeration > 0) {
+            suggestions.add(new AiSuggestion(78, String.format(
+                    "待审核内容为 %d 条，数量可控；建议在本轮巡检中清零，避免用户发布反馈延迟。",
+                    pendingModeration
+            )));
+        } else {
+            suggestions.add(new AiSuggestion(55, String.format(
+                    "当前无待审核内容，审核队列通畅；今日已处理 %d 条，可维持现有节奏。",
+                    moderationSummary.todayTotal()
+            )));
+        }
+
+        if (pendingReports >= 10) {
+            suggestions.add(new AiSuggestion(96, String.format(
+                    "待处理举报有 %d 条，建议优先打开举报处理；当前举报处理率 %.1f%%。",
+                    pendingReports, reportHandleRate
+            )));
+        } else if (pendingReports > 0) {
+            suggestions.add(new AiSuggestion(75, String.format(
+                    "还有 %d 条举报未处理，建议与内容审核一起完成复核，避免重复投诉。",
+                    pendingReports
+            )));
+        } else if (reportStats != null) {
+            suggestions.add(new AiSuggestion(46, String.format(
+                    "暂无待处理举报，举报处理率 %.1f%%；可以把精力放在内容质量巡检上。",
+                    reportHandleRate
+            )));
+        }
+
+        if (passRate > 0 && passRate < 70) {
+            suggestions.add(new AiSuggestion(94, String.format(
+                    "AI 审核通过率只有 %.1f%%，违规占比偏高；建议复盘最近被拒内容并补充发布规范。",
+                    passRate
+            )));
+        } else if (passRate > 0 && passRate < 85) {
+            suggestions.add(new AiSuggestion(82, String.format(
+                    "AI 审核通过率为 %.1f%%，低于理想区间；建议关注近期高频违规主题。",
+                    passRate
+            )));
+        } else if (passRate >= 95 && totalModeration > 0) {
+            suggestions.add(new AiSuggestion(62, String.format(
+                    "AI 审核通过率 %.1f%%，内容整体健康；可继续保持当前阈值和人工复核比例。",
+                    passRate
+            )));
+        } else if (totalModeration > 0) {
+            suggestions.add(new AiSuggestion(58, String.format(
+                    "AI 已累计审核 %d 条，通过率 %.1f%%、违规率 %.1f%%，指标处于可观察状态。",
+                    totalModeration, passRate, rejectRate
+            )));
+        }
+
+        if (moderationSummary.todayRejected() >= 5) {
+            suggestions.add(new AiSuggestion(90, String.format(
+                    "今日识别到 %d 条违规内容，建议查看违规样本，必要时更新敏感词和板块公告。",
+                    moderationSummary.todayRejected()
+            )));
+        } else if (moderationSummary.todayRejected() > 0) {
+            suggestions.add(new AiSuggestion(70, String.format(
+                    "今日已有 %d 条内容被判违规，数量不高；建议抽查判断是否集中在同一话题。",
+                    moderationSummary.todayRejected()
+            )));
+        }
+
+        if (topViolation != null && toInt(topViolation.get("count")) > 0) {
+            suggestions.add(new AiSuggestion(86, String.format(
+                    "近期最常见违规类型是「%s」，共 %d 次；建议在发帖页提示中强化这类规则。",
+                    safeText(topViolation.get("name")), toInt(topViolation.get("count"))
+            )));
+        }
+
+        if (moderationSummary.pendingDelta() >= 5) {
+            suggestions.add(new AiSuggestion(84, String.format(
+                    "待审量较昨日增加 %d 条，审核压力正在上升；建议临时提升人工审核频次。",
+                    moderationSummary.pendingDelta()
+            )));
+        } else if (moderationSummary.pendingDelta() <= -5) {
+            suggestions.add(new AiSuggestion(54, String.format(
+                    "待审量较昨日减少 %d 条，积压正在下降；当前处理策略有效。",
+                    Math.abs(moderationSummary.pendingDelta())
+            )));
+        }
+
+        if (postSummary.todayTotal() >= Math.max(8, postSummary.dailyAverage() * 2)) {
+            suggestions.add(new AiSuggestion(72, String.format(
+                    "今日发帖 %d 条，高于近 %d 天均值 %.1f；建议关注热门帖评论区的后续互动。",
+                    postSummary.todayTotal(), postSummary.days(), postSummary.dailyAverage()
+            )));
+        } else if (postSummary.days() > 0 && postSummary.dailyAverage() < 1 && todayPosts == 0) {
+            suggestions.add(new AiSuggestion(48, "近几天发帖活跃度偏低，可以考虑引导话题或置顶优质讨论。"));
+        }
+
+        if (todayComments >= Math.max(10, todayPosts * 3) && todayComments > 0) {
+            suggestions.add(new AiSuggestion(68, String.format(
+                    "今日评论 %d 条，互动明显高于发帖量；建议重点巡检热门讨论下的回复质量。",
+                    todayComments
+            )));
+        }
+
+        if (topPost != null) {
+            int likeCount = toInt(topPost.get("likeCount"));
+            int commentCount = toInt(topPost.get("commentCount"));
+            if (likeCount + commentCount >= 20) {
+                suggestions.add(new AiSuggestion(64, String.format(
+                        "热门帖「%s」互动较高（%d 赞、%d 评），建议保持可见并留意评论走向。",
+                        truncate(safeText(topPost.get("title")), 18), likeCount, commentCount
+                )));
             }
         }
 
-        suggestion1Label.setText(suggestion1);
-        suggestion2Label.setText(suggestion2);
-        suggestion3Label.setText(suggestion3);
+        if (topUser != null) {
+            int postCount = toInt(topUser.get("postCount"));
+            int commentCount = toInt(topUser.get("commentCount"));
+            if (postCount + commentCount >= 20) {
+                suggestions.add(new AiSuggestion(52, String.format(
+                        "用户「%s」近期活跃度最高（%d 帖、%d 评），可作为社区活跃样本持续观察。",
+                        safeText(topUser.get("nickname")), postCount, commentCount
+                )));
+            }
+        }
+
+        if (totalUsers > 0 && monthlyActiveUsers > 0) {
+            double activeRate = monthlyActiveUsers * 100.0 / totalUsers;
+            if (activeRate < 25) {
+                suggestions.add(new AiSuggestion(50, String.format(
+                        "月活用户占比约 %.1f%%，偏低；建议结合热门话题做一次活跃引导。",
+                        activeRate
+                )));
+            } else {
+                suggestions.add(new AiSuggestion(42, String.format(
+                        "月活用户占比约 %.1f%%，社区活跃基础稳定；可继续扩大优质内容曝光。",
+                        activeRate
+                )));
+            }
+        }
+
+        if (userSummary.todayTotal() > 0) {
+            suggestions.add(new AiSuggestion(40, String.format(
+                    "今日新增用户 %d 人，建议关注新用户首帖和评论体验。",
+                    userSummary.todayTotal()
+            )));
+        }
+
+        suggestions.sort(Comparator
+                .comparingInt(AiSuggestion::priority)
+                .reversed()
+                .thenComparing(AiSuggestion::text));
+
+        List<AiSuggestion> uniqueSuggestions = suggestions.stream()
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toMap(AiSuggestion::text, item -> item, (a, b) -> a.priority() >= b.priority() ? a : b, LinkedHashMap::new),
+                        map -> new ArrayList<>(map.values())
+                ));
+
+        List<AiSuggestion> fallbackSuggestions = List.of(
+                new AiSuggestion(10, "当前数据波动较小，建议保持日常巡检，并持续观察审核与举报趋势。"),
+                new AiSuggestion(9, "建议每日固定查看待审内容、待处理举报和违规类型变化，及时发现异常苗头。"),
+                new AiSuggestion(8, "社区运行暂无明显风险，可继续沉淀热门内容和活跃用户画像。")
+        );
+        int fallbackIndex = 0;
+        while (uniqueSuggestions.size() < 3 && fallbackIndex < fallbackSuggestions.size()) {
+            uniqueSuggestions.add(fallbackSuggestions.get(fallbackIndex++));
+        }
+        return uniqueSuggestions.subList(0, 3);
     }
 
     @FXML
@@ -744,7 +943,6 @@ public class SystemSummaryPanelController extends ToolController {
 
     @FXML
     private void onRefreshAISuggestions() {
-        // TODO: 刷新 AI 建议
         loadAISuggestions();
     }
 
@@ -755,8 +953,22 @@ public class SystemSummaryPanelController extends ToolController {
                 Map<String, Object> result = new HashMap<>();
                 Map<String, Object> overview = HttpRequestUtil.get("/api/bbs/statistics/overview");
                 Map<String, Object> moderationOverview = HttpRequestUtil.get("/api/bbs/statistics/moderation-overview");
-                if (overview != null) result.put("overview", overview.get("data"));
-                if (moderationOverview != null) result.put("moderationOverview", moderationOverview.get("data"));
+                Map<String, Object> reportStats = HttpRequestUtil.get("/api/bbs/statistics/report-statistics");
+                List<Map<String, Object>> moderationTrend = HttpRequestUtil.getList("/api/bbs/statistics/moderation-trend?days=7");
+                List<Map<String, Object>> violationTypes = HttpRequestUtil.getList("/api/bbs/statistics/violation-types");
+                List<Map<String, Object>> hotPosts = HttpRequestUtil.getList("/api/bbs/statistics/hot-posts?sortBy=composite");
+                List<Map<String, Object>> activeUsers = HttpRequestUtil.getList("/api/bbs/statistics/active-users?sortBy=composite");
+                List<Map<String, Object>> postTrend = HttpRequestUtil.getList("/api/bbs/statistics/post-trend?days=7");
+                List<Map<String, Object>> userGrowth = HttpRequestUtil.getList("/api/bbs/statistics/user-growth?days=7");
+                if (overview != null) result.put("overview", overview);
+                if (moderationOverview != null) result.put("moderationOverview", moderationOverview);
+                if (reportStats != null) result.put("reportStats", reportStats);
+                if (moderationTrend != null) result.put("moderationTrend", moderationTrend);
+                if (violationTypes != null) result.put("violationTypes", violationTypes);
+                if (hotPosts != null) result.put("hotPosts", hotPosts);
+                if (activeUsers != null) result.put("activeUsers", activeUsers);
+                if (postTrend != null) result.put("postTrend", postTrend);
+                if (userGrowth != null) result.put("userGrowth", userGrowth);
                 return result;
             }
         };
@@ -801,6 +1013,113 @@ public class SystemSummaryPanelController extends ToolController {
     }
 
     // 辅助方法
+    private void setLabelText(Label label, String text) {
+        if (label != null) {
+            label.setText(text);
+        }
+    }
+
+    private void setHealthStatus(String color, String text) {
+        if (healthIndicator != null) {
+            healthIndicator.setFill(javafx.scene.paint.Color.web(color));
+        }
+        setLabelText(healthStatusLabel, text);
+    }
+
+    private int mapInt(Map<String, Object> map, String key) {
+        if (map == null) {
+            return 0;
+        }
+        return toInt(map.get(key));
+    }
+
+    private double mapDouble(Map<String, Object> map, String key) {
+        if (map == null) {
+            return 0.0;
+        }
+        return toDouble(map.get(key));
+    }
+
+    private TrendSummary summarizeModerationTrend(List<Map<String, Object>> trend) {
+        if (trend == null || trend.isEmpty()) {
+            return new TrendSummary(0, 0, 0, 0, 0, 0, 0);
+        }
+        int total = 0;
+        int todayPassed = 0;
+        int todayRejected = 0;
+        int todayPending = 0;
+        int previousPending = 0;
+        for (int i = 0; i < trend.size(); i++) {
+            Map<String, Object> item = trend.get(i);
+            int passed = toInt(item.get("passed"));
+            int rejected = toInt(item.get("rejected"));
+            int pending = toInt(item.get("pending"));
+            total += passed + rejected + pending;
+            if (i == trend.size() - 2) {
+                previousPending = pending;
+            }
+            if (i == trend.size() - 1) {
+                todayPassed = passed;
+                todayRejected = rejected;
+                todayPending = pending;
+            }
+        }
+        int todayTotal = todayPassed + todayRejected + todayPending;
+        int pendingDelta = trend.size() > 1 ? todayPending - previousPending : 0;
+        return new TrendSummary(trend.size(), total, todayTotal, todayPassed, todayRejected, todayPending, pendingDelta);
+    }
+
+    private TrendSummary summarizeCountTrend(List<Map<String, Object>> trend, String countKey) {
+        if (trend == null || trend.isEmpty()) {
+            return new TrendSummary(0, 0, 0, 0, 0, 0, 0);
+        }
+        int total = 0;
+        int todayTotal = 0;
+        for (int i = 0; i < trend.size(); i++) {
+            int count = toInt(trend.get(i).get(countKey));
+            total += count;
+            if (i == trend.size() - 1) {
+                todayTotal = count;
+            }
+        }
+        return new TrendSummary(trend.size(), total, todayTotal, todayTotal, 0, 0, 0);
+    }
+
+    private Map<String, Object> maxByCount(List<Map<String, Object>> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return null;
+        }
+        return rows.stream()
+                .filter(Objects::nonNull)
+                .max(Comparator.comparingInt(row -> toInt(row.get("count"))))
+                .orElse(null);
+    }
+
+    private Map<String, Object> maxByScore(List<Map<String, Object>> rows, String firstKey, String secondKey) {
+        if (rows == null || rows.isEmpty()) {
+            return null;
+        }
+        return rows.stream()
+                .filter(Objects::nonNull)
+                .max(Comparator.comparingInt(row -> toInt(row.get(firstKey)) + toInt(row.get(secondKey))))
+                .orElse(null);
+    }
+
+    private String safeText(Object value) {
+        if (value == null) {
+            return "未知";
+        }
+        String text = String.valueOf(value).trim();
+        return text.isEmpty() || "null".equalsIgnoreCase(text) ? "未知" : text;
+    }
+
+    private String truncate(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength) {
+            return text;
+        }
+        return text.substring(0, Math.max(0, maxLength - 1)) + "...";
+    }
+
     private int toInt(Object obj) {
         if (obj == null) return 0;
         if (obj instanceof Number) return ((Number) obj).intValue();
@@ -836,6 +1155,9 @@ public class SystemSummaryPanelController extends ToolController {
     }
 
     private void animateValue(Label label, int targetValue, String prefix) {
+        if (label == null) {
+            return;
+        }
         AnimationTimer timer = new AnimationTimer() {
             private int current = 0;
             private long lastUpdate = 0;
@@ -932,5 +1254,22 @@ public class SystemSummaryPanelController extends ToolController {
         public String nickname() { return nickname; }
         public int posts() { return posts; }
         public int comments() { return comments; }
+    }
+
+    private record AiSuggestion(int priority, String text) {
+    }
+
+    private record TrendSummary(
+            int days,
+            int total,
+            int todayTotal,
+            int todayPassed,
+            int todayRejected,
+            int todayPending,
+            int pendingDelta
+    ) {
+        double dailyAverage() {
+            return days == 0 ? 0.0 : total * 1.0 / days;
+        }
     }
 }

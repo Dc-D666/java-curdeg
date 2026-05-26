@@ -14,9 +14,14 @@
 }
 
 .page-title {
-    -fx-font-size: 20px;
+    -fx-font-size: 24px;
     -fx-font-weight: bold;
     -fx-text-fill: #1f2937;
+}
+
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: #64748b;
 }
 
 .unread-badge {
@@ -30,19 +35,20 @@
 
 /* ===== Tab Buttons ===== */
 .tab-group {
-    -fx-spacing: 4;
+    -fx-spacing: 8;
     -fx-alignment: CENTER_LEFT;
 }
 
 .tab-btn {
-    -fx-background-color: #f1f5f9;
-    -fx-text-fill: #64748b;
-    -fx-font-size: 13px;
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #475569;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-padding: 6 14;
-    -fx-background-radius: 6;
-    -fx-border-color: transparent;
-    -fx-border-radius: 6;
+    -fx-padding: 10 18;
+    -fx-background-radius: 8;
+    -fx-border-color: #dbe3ef;
+    -fx-border-radius: 8;
+    -fx-min-width: 124;
     -fx-cursor: hand;
 }
 
@@ -52,13 +58,14 @@
 }
 
 .tab-btn-active {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
+    -fx-background-color: #eff6ff;
+    -fx-text-fill: #1d4ed8;
+    -fx-border-color: #93c5fd;
 }
 
 .tab-btn-active:hover {
-    -fx-background-color: #1d4ed8;
-    -fx-text-fill: white;
+    -fx-background-color: #dbeafe;
+    -fx-text-fill: #1d4ed8;
 }
 
 /* ===== Toolbar Buttons ===== */
@@ -67,7 +74,7 @@
     -fx-text-fill: #4b5563;
     -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-padding: 6 14;
+    -fx-padding: 9 14;
     -fx-background-radius: 6;
     -fx-border-color: #e5e7eb;
     -fx-border-radius: 6;

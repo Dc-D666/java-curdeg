@@ -28,13 +28,13 @@
             <children>
                <HBox fx:id="tabGroup" styleClass="tab-group">
                   <children>
-                     <Button fx:id="tabAll" text="全部" styleClass="tab-btn tab-btn-active" />
-                     <Button fx:id="tabUnread" text="未读" styleClass="tab-btn" />
-                     <Button fx:id="tabRead" text="已读" styleClass="tab-btn" />
+                     <Button fx:id="tabAll" text="系统通知" styleClass="tab-btn tab-btn-active" />
+                     <Button fx:id="tabUnread" text="新增评论" styleClass="tab-btn" />
+                     <Button fx:id="tabRead" text="其他" styleClass="tab-btn" />
                   </children>
                </HBox>
                <Region HBox.hgrow="ALWAYS" />
-               <Button fx:id="markAllReadButton" text="全部已读" styleClass="toolbar-btn" />
+               <Button fx:id="markAllReadButton" text="一键已读" styleClass="toolbar-btn" />
                <Button fx:id="refreshButton" text="刷新" styleClass="toolbar-btn" style="-fx-margin: 0 0 0 8;" />
             </children>
          </HBox>
@@ -54,8 +54,8 @@
                <StackPane styleClass="empty-icon-box">
                   <Label text="!" styleClass="empty-icon-text" />
                </StackPane>
-               <Label text="暂无通知" styleClass="empty-title" />
-               <Label text="当您收到新通知时会在这里显示" styleClass="empty-subtitle" />
+               <Label text="这个分类暂时没有通知" styleClass="empty-title" />
+               <Label text="切换上方分类可以查看其他提醒" styleClass="empty-subtitle" />
                <Button fx:id="emptyRefreshButton" text="刷新" styleClass="empty-button" />
             </children>
          </VBox>

@@ -15,9 +15,6 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -401,14 +398,16 @@ public class StatisticsController extends ToolController {
     
     private VBox createStatCard(String title, String value, String color) {
         VBox card = new VBox(8);
-        card.setStyle("-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0); -fx-padding: 20; -fx-alignment: center;");
+        card.getStyleClass().add("statistics-metric-card");
+        card.setStyle("-fx-border-color: #e2e8f0 #e2e8f0 #e2e8f0 " + color + "; -fx-border-width: 1 1 1 4;");
 
-        // 使用 Label 替代 Text 并使用内联样式固定字体大小
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #7f8c8d;");
+        titleLabel.getStyleClass().add("statistics-metric-title");
+        titleLabel.setWrapText(true);
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+        valueLabel.getStyleClass().add("statistics-metric-value");
+        valueLabel.setStyle("-fx-text-fill: " + color + ";");
 
         card.getChildren().addAll(titleLabel, valueLabel);
         return card;

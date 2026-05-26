@@ -78,21 +78,21 @@
                                      <Insets top="3.0" />
                                  </GridPane.margin>
                                 <children>
-                                   <CheckBox fx:id="nodeAdminCheckBox" mnemonicParsing="false" text="管理员" >
+                                   <CheckBox fx:id="nodeAdminCheckBox" mnemonicParsing="false" text="Super" >
                                        <padding>
                                            <Insets left="10" />
                                        </padding>
                                    </CheckBox>
-                                   <CheckBox fx:id="nodeStudentCheckBox" mnemonicParsing="false" text="学生" >
+                                   <CheckBox fx:id="nodeTeacherCheckBox" mnemonicParsing="false" text="Admin" >
                                        <padding>
                                            <Insets left="10" />
                                        </padding>
                                    </CheckBox>
-                                    <CheckBox fx:id="nodeTeacherCheckBox" mnemonicParsing="false" text="教师" >
-                                        <padding>
-                                            <Insets left="10" />
-                                        </padding>
-                                    </CheckBox>
+                                   <CheckBox fx:id="nodeStudentCheckBox" mnemonicParsing="false" text="User" >
+                                       <padding>
+                                           <Insets left="10" />
+                                       </padding>
+                                   </CheckBox>
                                 </children>
                              </HBox>
                        </children>
