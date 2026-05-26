@@ -3169,7 +3169,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         HttpRequest httpRequest = builder.build();
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            System.out.println("get request: " + url + ", response: " + response.body());
+            logHttpResponse("get request", url, response);
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<Map<String, Object>>>(){}.getType();
                 DataResponse<Map<String, Object>> dataResponse = gson.fromJson(response.body(), responseType);
@@ -3196,7 +3196,7 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         HttpRequest httpRequest = builder.build();
         try {
             HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
-            System.out.println("getList request: " + url + ", response: " + response.body());
+            logHttpResponse("getList request", url, response);
             if (response.statusCode() == 200) {
                 Type responseType = new TypeToken<DataResponse<List<Map<String, Object>>>>(){}.getType();
                 DataResponse<List<Map<String, Object>>> dataResponse = gson.fromJson(response.body(), responseType);
@@ -3208,6 +3208,16 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static void logHttpResponse(String action, String url, HttpResponse<String> response) {
+        String body = response.body();
+        int length = body == null ? 0 : body.length();
+        String preview = body == null ? "" : body.replace("\r", "").replace("\n", " ");
+        if (preview.length() > 500) {
+            preview = preview.substring(0, 500) + "...";
+        }
+        System.out.println(action + ": " + url + ", status=" + response.statusCode() + ", bodyLength=" + length + ", preview=" + preview);
     }
 
     public static List<Map<String, Object>> getConversationList() {

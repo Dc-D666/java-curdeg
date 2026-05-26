@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 
 public class MyNotificationController extends ToolController {
 
-    private enum FilterMode { ALL, UNREAD, READ }
+    private enum NotificationCategory { SYSTEM, COMMENT, OTHER }
 
     @FXML
     private ListView<Object> notificationListView;
@@ -61,7 +61,7 @@ public class MyNotificationController extends ToolController {
     private VBox emptyPane;
 
     private List<Notification> allNotifications = new ArrayList<>();
-    private FilterMode filterMode = FilterMode.ALL;
+    private NotificationCategory categoryMode = NotificationCategory.SYSTEM;
 
     private static final Pattern POST_ID_PATTERN = Pattern.compile(
             "(?:帖子ID|帖子 ID|postId|post_id|帖子)[:：]?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
@@ -77,6 +77,7 @@ public class MyNotificationController extends ToolController {
     private static final int TYPE_COMMENT = 4;
     private static final int TYPE_FOLLOWER = 5;
     private static final int TYPE_FOLLOW_POST = 6;
+    private static final int TYPE_POST_REVIEW = 7;
 
     static class DateHeader {
         String dateLabel;
@@ -98,13 +99,13 @@ public class MyNotificationController extends ToolController {
     }
 
     private void setupTabs() {
-        tabAll.setOnAction(e -> switchTab(FilterMode.ALL));
-        tabUnread.setOnAction(e -> switchTab(FilterMode.UNREAD));
-        tabRead.setOnAction(e -> switchTab(FilterMode.READ));
+        tabAll.setOnAction(e -> switchCategory(NotificationCategory.SYSTEM));
+        tabUnread.setOnAction(e -> switchCategory(NotificationCategory.COMMENT));
+        tabRead.setOnAction(e -> switchCategory(NotificationCategory.OTHER));
     }
 
-    private void switchTab(FilterMode mode) {
-        this.filterMode = mode;
+    private void switchCategory(NotificationCategory mode) {
+        this.categoryMode = mode;
         updateTabStyles();
         rebuildDisplayList();
     }
@@ -114,19 +115,19 @@ public class MyNotificationController extends ToolController {
         tabUnread.getStyleClass().removeAll("tab-btn-active");
         tabRead.getStyleClass().removeAll("tab-btn-active");
 
-        switch (filterMode) {
-            case ALL: tabAll.getStyleClass().add("tab-btn-active"); break;
-            case UNREAD: tabUnread.getStyleClass().add("tab-btn-active"); break;
-            case READ: tabRead.getStyleClass().add("tab-btn-active"); break;
+        switch (categoryMode) {
+            case SYSTEM: tabAll.getStyleClass().add("tab-btn-active"); break;
+            case COMMENT: tabUnread.getStyleClass().add("tab-btn-active"); break;
+            case OTHER: tabRead.getStyleClass().add("tab-btn-active"); break;
         }
 
-        int total = allNotifications.size();
-        long unread = allNotifications.stream().filter(n -> n.getIsRead() == null || n.getIsRead() != 1).count();
-        long read = total - unread;
+        long systemCount = allNotifications.stream().filter(n -> getCategory(n) == NotificationCategory.SYSTEM).count();
+        long commentCount = allNotifications.stream().filter(n -> getCategory(n) == NotificationCategory.COMMENT).count();
+        long otherCount = allNotifications.stream().filter(n -> getCategory(n) == NotificationCategory.OTHER).count();
 
-        tabAll.setText("全部 " + total);
-        tabUnread.setText("未读 " + unread);
-        tabRead.setText("已读 " + read);
+        tabAll.setText("系统通知 " + systemCount);
+        tabUnread.setText("新增评论 " + commentCount);
+        tabRead.setText("其他 " + otherCount);
     }
 
     private void setupListView() {
@@ -210,14 +211,12 @@ public class MyNotificationController extends ToolController {
                 unreadBadge.setText(unread + " 条未读");
                 unreadBadge.setVisible(unread > 0);
                 unreadBadge.setManaged(unread > 0);
-                bottomInfoLabel.setText("共 " + allNotifications.size() + " 条通知 · " + unread + " 条未读");
+                updateCurrentBottomInfo();
             });
         });
 
         task.setOnFailed(event -> {
-            Platform.runLater(() -> {
-                bottomInfoLabel.setText("共 " + allNotifications.size() + " 条通知");
-            });
+            Platform.runLater(this::updateCurrentBottomInfo);
         });
 
         new Thread(task).start();
@@ -236,11 +235,8 @@ public class MyNotificationController extends ToolController {
 
         List<Notification> filtered = new ArrayList<>();
         for (Notification n : allNotifications) {
-            boolean isUnread = n.getIsRead() == null || n.getIsRead() != 1;
-            switch (filterMode) {
-                case ALL: filtered.add(n); break;
-                case UNREAD: if (isUnread) filtered.add(n); break;
-                case READ: if (!isUnread) filtered.add(n); break;
+            if (getCategory(n) == categoryMode) {
+                filtered.add(n);
             }
         }
 
@@ -258,6 +254,7 @@ public class MyNotificationController extends ToolController {
 
         notificationListView.getItems().clear();
         notificationListView.getItems().addAll(displayList);
+        updateBottomInfo(filtered.size());
 
         if (filtered.isEmpty()) {
             showEmptyState();
@@ -284,6 +281,41 @@ public class MyNotificationController extends ToolController {
     private void hideEmptyState() {
         emptyPane.setVisible(false); emptyPane.setManaged(false);
         notificationListView.setVisible(true); notificationListView.setManaged(true);
+    }
+
+    private NotificationCategory getCategory(Notification notification) {
+        Integer type = notification != null ? notification.getType() : null;
+        if (type != null && type == TYPE_COMMENT) {
+            return NotificationCategory.COMMENT;
+        }
+        if (type != null && (type == TYPE_SYSTEM || type == TYPE_REPORT || type == TYPE_REVIEW || type == TYPE_POST_REVIEW)) {
+            return NotificationCategory.SYSTEM;
+        }
+        return NotificationCategory.OTHER;
+    }
+
+    private void updateBottomInfo(int currentCount) {
+        long unread = allNotifications.stream().filter(n -> n.getIsRead() == null || n.getIsRead() != 1).count();
+        bottomInfoLabel.setText(currentCategoryTitle() + " " + currentCount + " 条 · 全部未读 " + unread + " 条");
+    }
+
+    private void updateCurrentBottomInfo() {
+        int currentCount = 0;
+        for (Notification notification : allNotifications) {
+            if (getCategory(notification) == categoryMode) {
+                currentCount++;
+            }
+        }
+        updateBottomInfo(currentCount);
+    }
+
+    private String currentCategoryTitle() {
+        switch (categoryMode) {
+            case SYSTEM: return "系统通知";
+            case COMMENT: return "新增评论";
+            case OTHER: return "其他";
+            default: return "通知";
+        }
     }
 
     // ---- Card Rendering ----
@@ -454,6 +486,7 @@ public class MyNotificationController extends ToolController {
             case TYPE_REPORT:
                 boxStyle = "type-icon-box-report"; textStyle = "type-icon-text-report"; text = "举"; break;
             case TYPE_REVIEW:
+            case TYPE_POST_REVIEW:
                 boxStyle = "type-icon-box-review"; textStyle = "type-icon-text-review"; text = "审"; break;
             case TYPE_COMMENT:
                 boxStyle = "type-icon-box-comment"; textStyle = "type-icon-text-comment"; text = "评"; break;
@@ -509,6 +542,7 @@ public class MyNotificationController extends ToolController {
             case TYPE_SYSTEM: return "系统通知";
             case TYPE_REPORT: return "举报处理通知";
             case TYPE_REVIEW: return "帖子审核通知";
+            case TYPE_POST_REVIEW: return "帖子审核通知";
             case TYPE_COMMENT: return "评论回复通知";
             case TYPE_FOLLOWER: return "新增粉丝通知";
             case TYPE_FOLLOW_POST: return "关注用户发帖通知";
@@ -621,7 +655,7 @@ public class MyNotificationController extends ToolController {
         }
 
         Integer type = notification.getType();
-        if (type != null && (type == TYPE_REVIEW || type == TYPE_COMMENT || type == TYPE_FOLLOW_POST)) {
+        if (type != null && (type == TYPE_REVIEW || type == TYPE_POST_REVIEW || type == TYPE_COMMENT || type == TYPE_FOLLOW_POST)) {
             Matcher contentMatcher = CONTENT_ID_PATTERN.matcher(source);
             if (contentMatcher.find()) {
                 return parseLong(contentMatcher.group(1));
