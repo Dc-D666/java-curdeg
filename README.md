@@ -11,7 +11,7 @@
 **前端 (java-fx)**
 
 * Java 21 + JavaFX 21 + FXML
-* Gson 2.8.9 (JSON 序列化)
+* Gson 2.8.9
 * 桌面客户端应用
 
 **后端 (java-server)**
@@ -20,10 +20,10 @@
 * Spring Data JPA + Spring Security + JWT
 * MySQL 数据库
 * Lombok 1.18.36
-* Apache POI 5.2.2 (Excel 处理)
-* RestTemplate (HTTP 请求)
+* Apache POI 5.2.2
+* RestTemplate
 * 异步任务处理 (@Async)
-* Server-Sent Events (SSE) 流式传输
+* SSE流式传输
 
 ### 架构特点
 
@@ -35,42 +35,39 @@
 * ✅ 多项 AI 特色功能
 * ✅ 丰富的数据统计功能
 
-\---
+---
 
 ## 功能特性
 
 ### 用户功能
 
-* ✅ 用户注册与登录（含邮箱验证码验证）
+* ✅ 用户注册与登录
 * ✅ 记住密码、修改密码和忘记密码功能
 * ✅ 个人资料编辑
-* ✅ 个人中心（我的帖子、我的收藏、我的关注、我的举报、我的通知、我的私信）
+* ✅ 个人中心
 * ✅ 隐私设置
-* ✅ 私信功能（互关用户可无限畅聊，非互关用户只能发送一条消息）
+* ✅ 私信功能
 * ✅ 反馈与建议功能
 
 ### 管理功能
 
-* ✅ 帖子管理（置顶、加精、删除）
+* ✅ 帖子管理
 * ✅ 板块管理
 * ✅ 用户管理
-* ✅ 举报审核处理（删除内容 / 驳回举报 / 清空违规资料）
+* ✅ 举报审核处理
 * ✅ 举报下架帖子对作者和管理员保留可见，普通用户不可见
 * ✅ 举报流程可视化
-* ✅ 内容审核管理（人工审核）
+* ✅ 内容审核管理
 * ✅ 审核历史记录查看
-* ✅ 数据统计分析（多维度统计、趋势图表、分布图、排行榜）
-* ✅ 数据导出功能（帖子/用户/统计，支持 CSV/Excel/JSON 格式）
+* ✅ 数据统计分析
+* ✅ 数据导出功能
 * ✅ 反馈管理
-
-
 
 ### 论坛功能
 
 * ✅ 板块列表与导航
 * ✅ 帖子浏览与分页
-* ✅ 帖子广场左右分栏布局（帖子列表约 70%，为你推荐约 30%）
-* ✅ 帖子详情页优化（折叠式审核流程、扩大正文阅读区、统计信息右侧展示）
+* ✅ 帖子广场左右分栏布局
 * ✅ 帖子发布、编辑、删除
 * ✅ 图片上传支持
 * ✅ 帖子与评论附件上传
@@ -79,19 +76,19 @@
 * ✅ 用户关注功能
 * ✅ 帖子举报、评论举报、个人主页资料卡举报
 * ✅ 通知系统
-* ✅ 智能搜索（标题搜索、全文搜索、搜索结果高亮）
-* ✅ AI 智能搜索（流式 SSE 输出）
-* ✅ AI 写作助手（帮写、续写、润色、自定义指令）
+* ✅ 智能搜索
+* ✅ AI 智能搜索
+* ✅ AI 写作助手
 * ✅ AI 帖子总结功能
 * ✅ AI 一键配图功能
-* ✅ AI 内容审核（发帖自动审核）
+* ✅ AI 内容审核
 * ✅ 本地草稿保存功能
 * ✅ 帖子预览功能
 * ✅ 实时字数统计
-* ✅ 帖子列表多维度排序（最新发布、最新回复、最多浏览、最多点赞、精华帖优先）
+* ✅ 帖子列表多维度排序
 * ✅ 置顶帖、精华帖视觉区分展示
-* ✅ 个性化推荐系统（根据浏览历史推荐、关注用户最新发帖、相似帖子推荐）
-* ✅ 全站列表分页控件统一（底部展示、统一按钮样式与页码文案）
+* ✅ 个性化推荐系统
+* ✅ 全站列表分页控件统一
 
 ### 积分与等级体系
 
@@ -104,11 +101,14 @@
 * ✅ **积分明细页面**：分页展示积分变动记录（时间、行为、变动、余额）
 * ✅ **等级特权页面**：展示当前用户特权详情及 Lv.0-12 完整等级体系
 * ✅ **用户主页/个人资料**：展示用户等级、积分、等级图标
-\---
 
-## AI 内容审核功能
+---
 
-### 审核流程
+## AI 特色功能
+
+### AI 内容审核
+
+#### 1. 审核流程
 
 1. **用户发帖** → 自动设置为"审核中"状态
 2. **异步审核** → 后台调用 AI 接口进行内容审核
@@ -116,16 +116,16 @@
 4. **通知用户** → 审核完成后发送通知
 5. **人工复核** → 如需要，管理员可进行人工审核
 
-### 审核状态
+#### 2. 审核状态
 
-|状态|说明|可见性|
-|-|-|-|
-|`pending`|审核中|仅作者和管理员可见|
-|`pass`|审核通过|所有用户可见|
-|`reject`|内容违规|仅作者和管理员可见，作者可编辑重新审核|
-|`manual`|待人工审核|仅作者和管理员可见|
+| 状态        | 说明    | 可见性                 |
+|-----------|-------|---------------------|
+| `pending` | 审核中   | 仅作者和管理员可见           |
+| `pass`    | 审核通过  | 所有用户可见              |
+| `reject`  | 内容违规  | 仅作者和管理员可见，作者可编辑重新审核 |
+| `manual`  | 待人工审核 | 仅作者和管理员可见           |
 
-### 审核结果字段
+#### 3. 审核结果字段
 
 * **审核状态**：审核通过/内容违规/待人工审核
 * **违规等级**：严重/一般/无
@@ -134,45 +134,12 @@
 * **审核建议**：AI 给出的修改建议
 * **审核置信度**：0-100 分
 
-\---
-
-## 举报流程
-
-### 举报流转
-
-1. **用户发起举报** → 支持举报帖子、评论、个人主页资料卡
-2. **系统记录举报信息** → 资料卡举报会额外保存举报快照（昵称、头像、签名、抓取时间）
-3. **人工审核** → 管理员在举报处理页查看举报详情与当前流转状态
-4. **处理结果** → 支持删除内容、驳回举报、清空违规资料
-5. **通知回执** → 举报人收到处理结果通知；资料卡被清理时，被举报用户也会收到通知
-
-### 举报对象与处理方式
-
-|举报对象|支持处理方式|
-|-|-|
-|帖子|删除内容、驳回举报|
-|评论|删除内容、驳回举报|
-|个人主页资料卡|清空违规资料、驳回举报|
-
-### 举报流程可视化
-
-* **管理员端**：举报处理页支持查看 `发起举报 -> 人工审核 -> 处理结果` 的流程卡片
-* **用户端**：我的举报详情支持查看举报状态、处理方式、处理备注与资料卡举报快照
-
-\---
-
-## AI 搜索与总结功能
-
 ### AI 搜索
 
-* **同步搜索**：等待完整结果返回
 * **流式搜索**：使用 SSE 协议，实时增量显示结果
-* **搜索流程**：先搜索相关帖子，再调用 AI 进行智能分析和回答
-* **引导发帖**：无论是否有搜索结果，都提供引导发帖功能，AI 自动生成建议内容
 
 ### AI 帖子总结
 
-* 智能判断帖子内容长度，短内容提示无需总结
 * 自动总结帖子内容和评论热点
 * 支持异步加载，显示进度动画
 
@@ -187,50 +154,49 @@
 
 * 自动从帖子标题和内容提取配图提示词
 * 支持多种预设图片尺寸选择
-* 实时进度条提示，友好的生成阶段状态
 * 图片预览与重新生成功能
 * 一键确认添加到帖子图片列表
 * 图片自动下载保存到服务器本地
 
-\---
+---
 
 ## 数据库设计
 
 ### 核心数据表
 
-|表名|说明|
-|-|-|
-|`user`|用户表（包含社区相关字段）|
-|`user\_type`|用户类型表|
-|`person`|人员信息表|
-|`bbs\_board`|板块表|
-|`bbs\_post`|帖子表（含审核字段）|
-|`bbs\_comment`|评论表|
-|`bbs\_like`|帖子点赞表|
-|`bbs\_comment\_like`|评论点赞表|
-|`bbs\_follow`|用户关注表|
-|`bbs\_favorite`|用户收藏表|
-|`bbs\_notification`|通知表|
-|`bbs\_report`|举报表（含资料卡举报快照）|
-|`bbs\_sensitive\_word`|敏感词表|
-|`bbs\_moderation\_log`|审核历史记录表|
-|`student`|学生信息表|
-|`course`|课程表|
-|`score`|成绩表|
-|`student\_leave`|学生请假表|
-|`menu\_info`|菜单表|
-|`email\_verification`|邮箱验证表|
-|`statistics\_day`|每日统计表|
-|`feedback`|反馈表|
-|`bbs\_conversation`|私信会话表|
-|`bbs\_message`|私信消息表|
-|`bbs\_point\_rule`|积分规则配置表|
-|`bbs\_point\_record`|积分变动记录表（按月分区）|
-|`bbs\_level\_config`|等级配置表（含 JSON 特权定义）|
-|`bbs\_daily\_limit`|每日限制表|
-|`bbs\_user\_item`|用户道具背包表（预留）|
-|`bbs\_item`|道具定义表（预留）|
-|`ai\_usage\_record`|AI 使用记录表|
+| 表名                   | 说明            |
+|----------------------|---------------|
+| `user`               | 用户表（包含社区相关字段） |
+| `user_type`          | 用户类型表         |
+| `person`             | 人员信息表         |
+| `bbs_board`          | 板块表           |
+| `bbs_post`           | 帖子表           |
+| `bbs_comment`        | 评论表           |
+| `bbs_like`           | 帖子点赞表         |
+| `bbs_comment_like`   | 评论点赞表         |
+| `bbs_follow`         | 用户关注表         |
+| `bbs_favorite`       | 用户收藏表         |
+| `bbs_notification`   | 通知表           |
+| `bbs_report`         | 举报表           |
+| `bbs_sensitive_word` | 敏感词表          |
+| `bbs_moderation_log` | 审核历史记录表       |
+| `student`            | 学生信息表         |
+| `course`             | 课程表           |
+| `score`              | 成绩表           |
+| `student_leave`      | 学生请假表         |
+| `menu_info`          | 菜单表           |
+| `email_verification` | 邮箱验证表         |
+| `statistics_day`     | 每日统计表         |
+| `feedback`           | 反馈表           |
+| `bbs_conversation`   | 私信会话表         |
+| `bbs_message`        | 私信消息表         |
+| `bbs_point_rule`     | 积分规则配置表       |
+| `bbs_point_record`   | 积分变动记录表       |
+| `bbs_level_config`   | 等级配置表         |
+| `bbs_daily_limit`    | 每日限制表         |
+| `bbs_user_item`      | 用户道具背包表（预留）   |
+| `bbs_item`           | 道具定义表（预留）     |
+| `ai_usage_record`    | AI 使用记录表      |
 
 ### 数据库初始化
 
@@ -241,16 +207,15 @@
 
 **注意事项**
 
-* 数据库需提前创建（`CREATE DATABASE java\_2\_48 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4\_unicode\_ci;`）
+* 数据库需提前创建（`CREATE DATABASE java_2_48 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`）
 * MySQL 客户端需添加到系统 PATH 环境变量
 * 字符集要求：utf8mb4
-* Windows 平台专用；Linux/macOS 用户可参考脚本中的 SQL 执行顺序手动执行
 
 **手动初始化（可选）**
 
-如需手动执行，按编号顺序运行 `java-server/src/main/resources/sql/` 目录下的 SQL 文件（从 `00\_full\_reset.sql` 到 `31\_fix\_report\_deleted\_posts.sql`，跳过 `99\_` 开头的调试脚本）。
+如需手动执行，按编号顺序运行 `java-server/src/main/resources/sql/` 目录下的 SQL 文件。
 
-\---
+---
 
 ## 快速开始
 
@@ -259,17 +224,14 @@
 * JDK 21
 * Maven 3.8+
 * MySQL 8.0+
-* （可选）Redis（后端配置中有，但不是必须的）
 
 ### 后端部署
 
 1. **克隆项目**
-
 ```bash
 git clone https://github.com/Dc-D666/java-curdeg
 cd java-curdeg
 ```
-
 2. **配置数据库**
 
 编辑 `java-server/src/main/resources/application.yml`，修改数据库连接信息：
@@ -277,9 +239,9 @@ cd java-curdeg
 ```yaml
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/java\_2\_48?allowPublicKeyRetrieval=true\&useSSL=false
-    username: your\_username
-    password: your\_password
+    url: jdbc:mysql://localhost:3306/java_2_48?allowPublicKeyRetrieval=true&useSSL=false
+    username: your_username
+    password: your_password
 ```
 
 3. **启动后端服务**
@@ -310,7 +272,7 @@ mvn clean install
 mvn javafx:run
 ```
 
-\---
+---
 
 ## 项目结构
 
@@ -319,25 +281,35 @@ java-curdeg/
 ├── java-fx/                          # 前端 JavaFX 项目
 │   ├── src/main/java/com/teach/javafx/
 │   │   ├── controller/               # 控制器层
-│   │   │   ├── base/                 # 基础控制器（登录、注册、主框架等）
-│   │   │   ├── Post\*Controller.java  # 帖子相关控制器
-│   │   │   ├── Personal\*Controller.java # 个人中心控制器
-│   │   │   ├── Admin\*Controller.java # 管理员控制器
+│   │   │   ├── base/                 # 基础控制器
+│   │   │   ├── Post*Controller.java  # 帖子相关控制器
+│   │   │   ├── Personal*Controller.java # 个人中心控制器
+│   │   │   ├── Admin*Controller.java # 管理员控制器
+│   │   │   ├── My*Controller.java    # "我的"页面控制器
+│   │   │   ├── dialog/               # 弹窗控制器
 │   │   │   └── ...                   # 其他业务控制器
 │   │   ├── models/                   # 数据模型
-│   │   ├── request/                  # HTTP 请求工具
-│   │   └── util/                     # 工具类
+│   │   ├── request/                  # HTTP 请求工具及 DTO
+│   │   ├── util/                     # 工具类
+│   │   ├── AppStore.java             # 全局状态管理
+│   │   └── MainApplication.java      # JavaFX 应用入口
 │   └── src/main/resources/
 │       └── com/teach/javafx/         # FXML 界面文件 + CSS 样式
 ├── java-server/                      # 后端 Spring Boot 项目
-│   └── src/main/java/cn/edu/sdu/java/server/
-│       ├── configs/                  # 配置类
-│       ├── controllers/              # 控制器层（REST API）
-│       ├── services/                 # 服务层（业务逻辑）
-│       ├── repositorys/              # 数据访问层
-│       ├── models/                   # 实体模型
-│       └── util/                     # 工具类
-└── .trae/                            # 项目开发文档（计划、规范等）
+│   ├── src/main/java/cn/edu/sdu/java/server/
+│   │   ├── configs/                  # 配置类
+│   │   ├── controllers/              # 控制器层
+│   │   ├── services/                 # 服务层
+│   │   ├── repositorys/              # 数据访问层
+│   │   ├── models/                   # 实体模型
+│   │   ├── payload/                  # 请求/响应 DTO
+│   │   │   ├── request/              # 请求 DTO
+│   │   │   └── response/             # 响应 DTO
+│   │   └── util/                     # 工具类
+│   └── src/main/resources/
+│       ├── application.yml           # 应用配置文件
+│       └── sql/                      # 数据库初始化脚本
+└── docs/                             # 设计文档
 ```
 
 \---
@@ -346,105 +318,105 @@ java-curdeg/
 
 ### 认证相关
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/auth/login`|用户登录|
-|POST|`/api/auth/getValidateCode`|获取验证码|
-|POST|`/api/auth/testValidateInfo`|验证验证码信息|
-|POST|`/api/auth/sendEmailCode`|发送邮箱验证码|
-|POST|`/api/auth/registerUser`|用户注册|
-|POST|`/api/auth/resetAdminPassword`|重置管理员密码（开发调试用）|
-|POST|`/api/bbs/user/me/password/code`|发送修改密码邮箱验证码（发送到当前账号绑定邮箱）|
-|POST|`/api/bbs/user/me/password`|修改当前登录用户密码（旧密码 + 邮箱验证码）|
+| 方法   | 路径                               | 说明          |
+|------|----------------------------------|-------------|
+| POST | `/api/auth/login`                | 用户登录        |
+| POST | `/api/auth/getValidateCode`      | 获取验证码       |
+| POST | `/api/auth/testValidateInfo`     | 验证验证码信息     |
+| POST | `/api/auth/sendEmailCode`        | 发送邮箱验证码     |
+| POST | `/api/auth/registerUser`         | 用户注册        |
+| POST | `/api/auth/resetAdminPassword`   | 重置管理员密码     |
+| POST | `/api/bbs/user/me/password/code` | 发送修改密码邮箱验证码 |
+| POST | `/api/bbs/user/me/password`      | 修改当前登录用户密码  |
 
 ### 文件相关
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/bbs/file/upload-image`|上传帖子/评论图片|
-|POST|`/api/bbs/file/upload-attachment`|上传帖子/评论通用附件|
+| 方法   | 路径                                | 说明          |
+|------|-----------------------------------|-------------|
+| POST | `/api/bbs/file/upload-image`      | 上传帖子/评论图片   |
+| POST | `/api/bbs/file/upload-attachment` | 上传帖子/评论通用附件 |
 
 ### 帖子相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/post/list`|获取帖子列表（支持分页、板块筛选、关键词、排序）|
-|GET|`/api/bbs/post/{id}`|获取帖子详情|
-|POST|`/api/bbs/post`|发布帖子（自动触发 AI 审核）|
-|PUT|`/api/bbs/post/{id}`|修改帖子（编辑后重新触发 AI 审核）|
-|DELETE|`/api/bbs/post/{id}`|删除帖子|
-|POST|`/api/bbs/post/{id}/top`|置顶/取消置顶帖子（管理员）|
-|POST|`/api/bbs/post/{id}/feature`|加精/取消加精帖子（管理员）|
-|GET|`/api/bbs/post/{id}/like/status`|获取点赞状态|
-|POST|`/api/bbs/post/{id}/like`|点赞/取消点赞|
-|GET|`/api/bbs/post/{id}/favorite/status`|获取收藏状态|
-|POST|`/api/bbs/post/{id}/favorite`|收藏/取消收藏|
-|GET|`/api/bbs/post/search`|帖子搜索（支持关键词、搜索类型）|
-|POST|`/api/bbs/post/ai-search`|AI 搜索（同步）|
-|GET|`/api/bbs/post/ai-search-stream`|AI 搜索（流式 SSE）|
-|POST|`/api/bbs/post/{postId}/summary`|获取帖子总结（需要登录）|
+| 方法     | 路径                                   | 说明        |
+|--------|--------------------------------------|-----------|
+| GET    | `/api/bbs/post/list`                 | 获取帖子列表    |
+| GET    | `/api/bbs/post/{id}`                 | 获取帖子详情    |
+| POST   | `/api/bbs/post`                      | 发布帖子      |
+| PUT    | `/api/bbs/post/{id}`                 | 修改帖子      |
+| DELETE | `/api/bbs/post/{id}`                 | 删除帖子      |
+| POST   | `/api/bbs/post/{id}/top`             | 置顶/取消置顶帖子 |
+| POST   | `/api/bbs/post/{id}/feature`         | 加精/取消加精帖子 |
+| GET    | `/api/bbs/post/{id}/like/status`     | 获取点赞状态    |
+| POST   | `/api/bbs/post/{id}/like`            | 点赞/取消点赞   |
+| GET    | `/api/bbs/post/{id}/favorite/status` | 获取收藏状态    |
+| POST   | `/api/bbs/post/{id}/favorite`        | 收藏/取消收藏   |
+| GET    | `/api/bbs/post/search`               | 帖子搜索      |
+| POST   | `/api/bbs/post/ai-search`            | AI 搜索     |
+| GET    | `/api/bbs/post/ai-search-stream`     | AI 搜索     |
+| POST   | `/api/bbs/post/{postId}/summary`     | 获取帖子总结    |
 
 ### 评论相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/comment/post/{postId}`|获取帖子的评论列表|
-|GET|`/api/bbs/comment/detail/{id}`|获取评论详情|
-|POST|`/api/bbs/comment/post/{postId}`|发布评论|
-|PUT|`/api/bbs/comment/{id}`|修改评论|
-|DELETE|`/api/bbs/comment/{id}`|删除评论|
-|GET|`/api/bbs/comment/{id}/like/status`|获取评论点赞状态|
-|POST|`/api/bbs/comment/{id}/like`|评论点赞/取消点赞|
+| 方法     | 路径                                  | 说明        |
+|--------|-------------------------------------|-----------|
+| GET    | `/api/bbs/comment/post/{postId}`    | 获取帖子的评论列表 |
+| GET    | `/api/bbs/comment/detail/{id}`      | 获取评论详情    |
+| POST   | `/api/bbs/comment/post/{postId}`    | 发布评论      |
+| PUT    | `/api/bbs/comment/{id}`             | 修改评论      |
+| DELETE | `/api/bbs/comment/{id}`             | 删除评论      |
+| GET    | `/api/bbs/comment/{id}/like/status` | 获取评论点赞状态  |
+| POST   | `/api/bbs/comment/{id}/like`        | 评论点赞/取消点赞 |
 
 ### 板块相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/board/list`|获取板块列表|
-|POST|`/api/bbs/board`|创建板块（管理员）|
-|PUT|`/api/bbs/board/{id}`|修改板块（管理员）|
-|DELETE|`/api/bbs/board/{id}`|删除板块（管理员）|
+| 方法     | 路径                    | 说明        |
+|--------|-----------------------|-----------|
+| GET    | `/api/bbs/board/list` | 获取板块列表    |
+| POST   | `/api/bbs/board`      | 创建板块（管理员） |
+| PUT    | `/api/bbs/board/{id}` | 修改板块（管理员） |
+| DELETE | `/api/bbs/board/{id}` | 删除板块（管理员） |
 
 ### 关注相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/follow/check`|检查关注状态|
-|POST|`/api/bbs/follow`|关注/取消关注|
-|GET|`/api/bbs/follow/followers/{userId}`|获取粉丝列表|
-|GET|`/api/bbs/follow/following/{userId}`|获取关注列表|
+| 方法   | 路径                                   | 说明      |
+|------|--------------------------------------|---------|
+| GET  | `/api/bbs/follow/check`              | 检查关注状态  |
+| POST | `/api/bbs/follow`                    | 关注/取消关注 |
+| GET  | `/api/bbs/follow/followers/{userId}` | 获取粉丝列表  |
+| GET  | `/api/bbs/follow/following/{userId}` | 获取关注列表  |
 
 ### 通知相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/notification/unread-count`|获取未读通知数|
-|GET|`/api/bbs/notification/my-list`|获取我的通知列表|
-|POST|`/api/bbs/notification/{id}/read`|标记通知已读|
-|POST|`/api/bbs/notification/mark-all-read`|全部标记已读|
+| 方法   | 路径                                    | 说明       |
+|------|---------------------------------------|----------|
+| GET  | `/api/bbs/notification/unread-count`  | 获取未读通知数  |
+| GET  | `/api/bbs/notification/my-list`       | 获取我的通知列表 |
+| POST | `/api/bbs/notification/{id}/read`     | 标记通知已读   |
+| POST | `/api/bbs/notification/mark-all-read` | 全部标记已读   |
 
 ### 举报相关
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/bbs/report`|提交举报（支持帖子、评论、个人主页资料卡）|
-|GET|`/api/bbs/report/my-list`|获取我的举报记录|
-|GET|`/api/bbs/report/admin-list`|获取举报列表（管理员）|
-|POST|`/api/bbs/report/{id}/handle`|处理举报（管理员，支持删除内容 / 驳回举报 / 清空违规资料）|
+| 方法   | 路径                            | 说明                               |
+|------|-------------------------------|----------------------------------|
+| POST | `/api/bbs/report`             | 提交举报（支持帖子、评论、个人主页资料卡）            |
+| GET  | `/api/bbs/report/my-list`     | 获取我的举报记录                         |
+| GET  | `/api/bbs/report/admin-list`  | 获取举报列表（管理员）                      |
+| POST | `/api/bbs/report/{id}/handle` | 处理举报（管理员，支持删除内容 / 驳回举报 / 清空违规资料） |
 
 ### 文件相关
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/bbs/file/upload`|文件上传|
+| 方法   | 路径                     | 说明   |
+|------|------------------------|------|
+| POST | `/api/bbs/file/upload` | 文件上传 |
 
 ### 内容审核相关（管理员）
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/admin/moderation/pending`|获取待审核帖子列表|
-|GET|`/api/admin/moderation/posts`|获取全部审核帖子（含历史）|
-|POST|`/api/admin/moderation/{postId}/review`|人工审核帖子（decision: pass/reject）|
+| 方法   | 路径                                      | 说明        |
+|------|-----------------------------------------|-----------|
+| GET  | `/api/admin/moderation/pending`         | 获取待审核帖子列表 |
+| GET  | `/api/admin/moderation/posts`           | 获取全部审核帖子  |
+| POST | `/api/admin/moderation/{postId}/review` | 人工审核帖子    |
 
 ### 统计相关（管理员）
 
@@ -452,101 +424,101 @@ java-curdeg/
 
 #### 数据概览
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/statistics/overview`|获取系统概览|
+| 方法  | 路径                             | 说明     |
+|-----|--------------------------------|--------|
+| GET | `/api/bbs/statistics/overview` | 获取系统概览 |
 
 #### 用户统计
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/statistics/user-growth`|用户增长趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/user-type`|用户类型分布|
-|GET|`/api/bbs/statistics/active-users`|活跃用户列表（支持排序）|
-|GET|`/api/bbs/statistics/user-activity`|用户活跃度分布|
-|GET|`/api/bbs/statistics/banned-users`|被封禁用户统计|
+| 方法  | 路径                                  | 说明      |
+|-----|-------------------------------------|---------|
+| GET | `/api/bbs/statistics/user-growth`   | 用户增长趋势  |
+| GET | `/api/bbs/statistics/user-type`     | 用户类型分布  |
+| GET | `/api/bbs/statistics/active-users`  | 活跃用户列表  |
+| GET | `/api/bbs/statistics/user-activity` | 用户活跃度分布 |
+| GET | `/api/bbs/statistics/banned-users`  | 被封禁用户统计 |
 
 #### 内容统计
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/statistics/post-trend`|发帖趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/board-distribution`|板块分布|
-|GET|`/api/bbs/statistics/hot-posts`|热门帖子（支持排序）|
-|GET|`/api/bbs/statistics/post-status`|帖子状态分布|
-|GET|`/api/bbs/statistics/image-post-ratio`|图文贴比例|
+| 方法  | 路径                                       | 说明     |
+|-----|------------------------------------------|--------|
+| GET | `/api/bbs/statistics/post-trend`         | 发帖趋势   |
+| GET | `/api/bbs/statistics/board-distribution` | 板块分布   |
+| GET | `/api/bbs/statistics/hot-posts`          | 热门帖子   |
+| GET | `/api/bbs/statistics/post-status`        | 帖子状态分布 |
+| GET | `/api/bbs/statistics/image-post-ratio`   | 图文贴比例  |
 
 #### 互动统计
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/statistics/comment-trend`|评论趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/like-trend`|点赞趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/favorite-trend`|收藏趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/follow-trend`|关注趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/hot-comments`|热门评论|
+| 方法  | 路径                                   | 说明   |
+|-----|--------------------------------------|------|
+| GET | `/api/bbs/statistics/comment-trend`  | 评论趋势 |
+| GET | `/api/bbs/statistics/like-trend`     | 点赞趋势 |
+| GET | `/api/bbs/statistics/favorite-trend` | 收藏趋势 |
+| GET | `/api/bbs/statistics/follow-trend`   | 关注趋势 |
+| GET | `/api/bbs/statistics/hot-comments`   | 热门评论 |
 
 #### 内容安全统计
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/statistics/moderation-overview`|审核概览（总数、待审核、通过率等）|
-|GET|`/api/bbs/statistics/moderation-trend`|审核趋势（支持天数参数）|
-|GET|`/api/bbs/statistics/violation-types`|违规类型分布|
-|GET|`/api/bbs/statistics/report-statistics`|举报统计|
+| 方法  | 路径                                        | 说明     |
+|-----|-------------------------------------------|--------|
+| GET | `/api/bbs/statistics/moderation-overview` | 审核概览   |
+| GET | `/api/bbs/statistics/moderation-trend`    | 审核趋势   |
+| GET | `/api/bbs/statistics/violation-types`     | 违规类型分布 |
+| GET | `/api/bbs/statistics/report-statistics`   | 举报统计   |
 
 ### 数据导出相关（管理员）
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/admin/export/posts`|导出帖子数据（支持范围、字段、格式选择）|
-|POST|`/api/admin/export/users`|导出用户数据（支持字段、格式选择）|
-|POST|`/api/admin/export/statistics`|导出统计数据（支持格式选择）|
+| 方法   | 路径                             | 说明     |
+|------|--------------------------------|--------|
+| POST | `/api/admin/export/posts`      | 导出帖子数据 |
+| POST | `/api/admin/export/users`      | 导出用户数据 |
+| POST | `/api/admin/export/statistics` | 导出统计数据 |
 
 ### 反馈相关
 
-|方法|路径|说明|
-|-|-|-|
-|POST|`/api/bbs/feedback`|提交反馈（需要登录）|
-|GET|`/api/bbs/feedback/list`|获取我的反馈列表|
-|GET|`/api/admin/feedback/list`|获取全部反馈列表（管理员）|
-|POST|`/api/admin/feedback/{id}/handle`|处理反馈（管理员）|
+| 方法   | 路径                                | 说明       |
+|------|-----------------------------------|----------|
+| POST | `/api/bbs/feedback`               | 提交反馈     |
+| GET  | `/api/bbs/feedback/list`          | 获取我的反馈列表 |
+| GET  | `/api/admin/feedback/list`        | 获取全部反馈列表 |
+| POST | `/api/admin/feedback/{id}/handle` | 处理反馈     |
 
 ### 私信相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/conversation/list`|获取我的会话列表|
-|POST|`/api/bbs/conversation/send`|发送私信（互关用户无限量、非互关仅1条）|
-|GET|`/api/bbs/conversation/{conversationId}/messages`|获取会话的消息列表|
-|POST|`/api/bbs/conversation/{conversationId}/read`|标记会话为已读|
+| 方法   | 路径                                                | 说明        |
+|------|---------------------------------------------------|-----------|
+| GET  | `/api/bbs/conversation/list`                      | 获取我的会话列表  |
+| POST | `/api/bbs/conversation/send`                      | 发送私信      |
+| GET  | `/api/bbs/conversation/{conversationId}/messages` | 获取会话的消息列表 |
+| POST | `/api/bbs/conversation/{conversationId}/read`     | 标记会话为已读   |
 
 
 
 ### 积分与等级相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/points/me`|获取我的积分、等级、排名、进度条信息|
-|GET|`/api/bbs/points/me/history`|分页获取积分变动历史|
-|GET|`/api/bbs/points/rank`|积分总榜排行|
-|GET|`/api/bbs/points/rank/weekly`|积分周榜排行|
-|GET|`/api/bbs/points/level/config`|获取所有等级配置|
-|GET|`/api/bbs/points/level/my-privileges`|获取当前用户完整特权信息|
-|GET|`/api/bbs/points/rules`|获取所有积分规则|
-|GET|`/api/bbs/points/ai-usage`|获取 AI 搜索/配图当日使用情况|
+| 方法  | 路径                                    | 说明                 |
+|-----|---------------------------------------|--------------------|
+| GET | `/api/bbs/points/me`                  | 获取我的积分、等级、排名、进度条信息 |
+| GET | `/api/bbs/points/me/history`          | 分页获取积分变动历史         |
+| GET | `/api/bbs/points/rank`                | 积分总榜排行             |
+| GET | `/api/bbs/points/rank/weekly`         | 积分周榜排行             |
+| GET | `/api/bbs/points/level/config`        | 获取所有等级配置           |
+| GET | `/api/bbs/points/level/my-privileges` | 获取当前用户完整特权信息       |
+| GET | `/api/bbs/points/rules`               | 获取所有积分规则           |
+| GET | `/api/bbs/points/ai-usage`            | 获取 AI 搜索/配图当日使用情况  |
 
 ### 推荐相关
 
-|方法|路径|说明|
-|-|-|-|
-|GET|`/api/bbs/recommendation/list`|获取个性化推荐（需要登录）|
-|POST|`/api/bbs/recommendation/browse`|记录帖子浏览历史（需要登录）|
-|POST|`/api/bbs/recommendation/clear-history`|清除浏览历史（需要登录）|
+| 方法   | 路径                                      | 说明             |
+|------|-----------------------------------------|----------------|
+| GET  | `/api/bbs/recommendation/list`          | 获取个性化推荐（需要登录）  |
+| POST | `/api/bbs/recommendation/browse`        | 记录帖子浏览历史（需要登录） |
+| POST | `/api/bbs/recommendation/clear-history` | 清除浏览历史（需要登录）   |
 
 
 
-\---
+---
 
 ## 配置说明
 
@@ -592,25 +564,25 @@ attach:
 建议通过环境变量配置发件邮箱，避免把真实授权码写入仓库：
 
 ```bash
-MAIL\_USERNAME=your\_qq\_email@qq.com
-MAIL\_PASSWORD=your\_qq\_smtp\_auth\_code
+MAIL_USERNAME=your_qq_email@qq.com
+MAIL_PASSWORD=your_qq_smtp_auth_code
 ```
 
-`MAIL\_PASSWORD` 需要填写 QQ 邮箱的 SMTP 授权码，不是 QQ 登录密码。若发送失败，后端会返回“邮箱授权码无效或 SMTP 服务未开启”等明确提示，并且不会保存验证码或占用发送冷却时间。
+`MAIL_PASSWORD` 需要填写 QQ 邮箱的 SMTP 授权码，不是 QQ 登录密码。若发送失败，后端会返回“邮箱授权码无效或 SMTP 服务未开启”等明确提示。
 
-\---
+---
 
 ## 权限说明
 
 ### 用户角色
 
-|角色|权限范围|
-|-|-|
-|`ROLE\_STUDENT`|普通学生：发帖、评论、点赞、收藏等基础功能|
-|`ROLE\_ADMIN`|管理员：学生功能 + 帖子管理、举报处理、内容审核、统计查看|
-|`ROLE\_SUPER`|超级管理员：管理员功能 + 板块管理、用户管理、系统配置、教务管理|
+| 角色             | 权限范围                           |
+|----------------|--------------------------------|
+| `ROLE_STUDENT` | 普通学生：发帖、评论、点赞、收藏等基础功能          |
+| `ROLE_ADMIN`   | 管理员：学生功能 + 帖子管理、举报处理、内容审核、统计查看 |
+| `ROLE_SUPER`   | 超级管理员：管理员功能 + 板块管理、用户管理、系统配置   |
 
-\---
+---
 
 ## 开发说明
 
@@ -621,59 +593,14 @@ MAIL\_PASSWORD=your\_qq\_smtp\_auth\_code
    * 遵循项目现有代码风格
    * 合理使用 Lombok 注解
    * 保持命名规范统一
-2. **提交规范**
 
-   * 清晰的提交信息
-   * 功能提交：`feat: xxx`
-   * 修复提交：`fix: xxx`
-   * 文档提交：`docs: xxx`
-3. **接口设计**
+2. **接口设计**
 
    * 统一使用 `DataRequest` 和 `DataResponse`
    * 保持 RESTful 风格
    * 合理使用 HTTP 状态码
 
-\---
-
-## 常见问题
-
-### Q: 后端启动失败，提示数据库连接错误？
-
-A: 请检查 `application.yml` 中的数据库配置，确保 MySQL 服务已启动，且数据库名、用户名、密码正确。
-
-### Q: 前端无法连接后端服务？
-
-A: 请检查：
-
-1. 后端服务是否正常启动
-2. `HttpRequestUtil.java` 中的 `serverUrl` 配置是否正确
-3. 防火墙是否阻止了连接
-
-### Q: 通知列表无法加载？
-
-A: 请确保已完成最新的修复：
-
-* Notification 模型已添加 SerializedName 注解
-* createTime 字段类型已调整为 String
-* 检查控制台的调试日志
-
-### Q: AI 审核没有生效？
-
-A: 请检查：
-
-1. `application.yml` 中的 `moderation.enabled` 是否为 `true`
-2. AI API 的 url、key、model 配置是否正确
-3. 查看后端控制台的调试输出
-
-### Q: 流式搜索没有正常工作？
-
-A: 请检查：
-
-1. 后端是否正确发送 SSE 事件
-2. 前端是否正确处理 SSE 流
-3. 网络连接是否稳定
-
-\---
+---
 
 ## 更新日志
 
@@ -681,136 +608,69 @@ A: 请检查：
 
 **新增与优化**
 
-* 优化个人中心「数据统计」页面，重构统计卡片、趋势图、互动结构图、帖子状态图和热门内容表格的整体视觉风格
-* 优化近 30 天趋势图展示逻辑，将密集日期按 3 天区间聚合，减少横轴拥挤和文字重叠
-* 将「互动结构」由饼图改为柱状图，提升浏览、获赞、收藏、评论、粉丝等指标的对比可读性
-* 优化柱状图配色，去除突兀橙色，改用更柔和的蓝绿、灰蓝等低饱和色系
-* 优化柱状图数值标签，将数字展示在柱体顶部上方，并自动为图表顶部保留空间
-* 优化系统管理「数据统计」页面，改为仪表盘式布局，统一指标卡、图表卡片、表格卡片和标签页样式
-* 优化「系统概览」AI 智能建议，基于审核、举报、趋势、热门帖子和活跃用户等真实数据生成建议
-* 优化「我的关注」页面，新增关注概览、用户卡片、分页和更清晰的取消关注操作
-* 优化「我的通知」页面，按系统通知、新增评论和其他提醒分组展示，移除冗余提示文案
-* 优化菜单管理角色展示，将角色统一调整为 `Super`、`Admin`、`User`
+* 重构个人中心「数据统计」页面，统一统计卡片、趋势图、互动结构图、帖子状态图和热门内容表格的视觉风格
+* 优化近 30 天趋势图，密集日期按 3 天区间聚合，减少横轴拥挤
+* 「互动结构」由饼图改为柱状图，提升多指标对比可读性，配色改为低饱和蓝绿色系
+* 系统管理「数据统计」改为仪表盘式布局，统一指标卡、图表卡片和标签页样式
+* 「系统概览」AI 智能建议基于真实数据生成
+* 优化「我的关注」页面，新增关注概览和用户卡片
+* 优化「我的通知」页面，按类型分组展示
+* 菜单管理角色统一调整为 `Super`、`Admin`、`User`
 
 **修复问题**
 
-* 修复系统概览智能建议未正确读取接口数据导致建议内容不准确的问题
-* 修复部分统计图表横轴文字过密、图例和标签挤压导致可读性较差的问题
-* 修复帖子状态统计返回布尔状态文案时展示为 `状态true` 的问题
-* 减少部分统计接口响应日志输出过长导致前端运行卡顿的风险
-* 更新文档版本号为 `v3.1`
+* 修复系统概览智能建议数据读取不准确的问题
+* 修复统计图表横轴文字过密、图例挤压的问题
+* 修复帖子状态统计布尔值展示为 `状态true` 的问题
+* 减少统计接口日志输出过长导致前端卡顿的风险
 
 ### v3.0 (2026-05-25) - 前端整体统一美化与欢迎页升级
 
 **新增与优化**
 
-* 统一 JavaFX 客户端整体视觉风格，主界面、登录注册、个人中心、帖子相关页面、管理页面统一收敛到同一套浅灰工作区 + 白色卡片 + 蓝色主操作的设计语言
-* 重构主框架菜单栏、左侧树形菜单、Tab 标签、状态栏、表格、表单和按钮的全局样式，减少页面之间的视觉割裂
-* 优化学生管理、请假管理、成绩管理、课程管理、举报处理、内容审核、浏览历史、我的帖子、我的收藏、我的关注、我的粉丝等页面布局
-* 优化帖子广场布局，帖子列表与「为你推荐」改为左右分栏展示，帖子列表约占 70% 宽度，推荐区域约占 30% 宽度
-* 优化帖子详情页顶部信息区，作者信息、关注按钮、审核状态与浏览/点赞/评论/收藏统计分区展示，减少标题区拥挤
-* 优化帖子详情页正文阅读体验，移除正文内层受限滚动框，改为更大的正文阅读块，长帖随主页面自然滚动
-* 优化帖子详情页审核流程展示，默认折叠完整审核流程，仅保留当前审核状态，点击后展开 `已提交 -> AI 审核 -> 人工审核 -> 审核结果`
-* 统一帖子列表、我的帖子、我的收藏、我的关注、我的粉丝、浏览历史、举报列表、内容审核、积分明细、用户主页等页面的分页控件，统一放置在底部并使用相同按钮顺序与文案格式
-* 优化举报处理与内容审核相关流程展示，精简流程说明，不再额外展示「真实流转」标签
-* 新增主工作区空白态欢迎页，在未打开任何标签页时展示欢迎信息
-* 新增欢迎页背景图支持，主空白区可展示山东大学校徽与校名图片
-* 优化欢迎页背景图显示逻辑，空白态显示、打开标签页后自动隐藏，不影响原有业务功能
-* 统一登录页、注册页、忘记密码页、发帖页、搜索页、私信页、积分页等入口界面样式，使整体前端风格与帖子广场一致
+* 统一 JavaFX 客户端整体视觉风格，采用浅灰工作区 + 白色卡片 + 蓝色主操作的设计语言，覆盖主界面、登录注册、个人中心、帖子相关页面、管理页面等
+* 重构主框架菜单栏、左侧树形菜单、Tab 标签、状态栏、表格、表单和按钮的全局样式
+* 优化帖子广场布局，帖子列表与「为你推荐」改为左右分栏展示
+* 优化帖子详情页：顶部信息区分区展示，正文移除内层滚动框改为自然滚动，审核流程默认折叠
+* 统一所有列表页面的分页控件样式、位置和文案
+* 新增主工作区空白态欢迎页，支持山东大学校徽与校名背景图，打开标签页后自动隐藏
+* 统一登录页、注册页、发帖页、搜索页、私信页、积分页等入口界面样式
 * 新增全局主题注入逻辑，所有 Scene 自动加载统一样式资源
 
 **修复问题**
 
-* 修复主工作区初始状态只有纯色空白背景的问题
-* 修复欢迎背景层被 TabPane 遮挡导致背景图不显示的问题
-* 修复旧背景图样式残留导致部分页面视觉不统一的问题
-* 修复部分页面内联样式过多、控件默认外观不一致的问题
-* 修复帖子详情页审核流程常驻右侧导致正文阅读区域被压缩的问题
-* 修复部分页面分页控件位置、顺序、文案和样式不一致的问题
-* 修复帖子详情页顶部统计信息全部堆在左侧导致显示拥挤的问题
-* 更新文档版本号为 `v3.0`
+* 修复主工作区初始状态纯色空白背景的问题
+* 修复欢迎背景层被 TabPane 遮挡的问题
+* 修复旧背景图样式残留导致页面视觉不统一的问题
+* 修复帖子详情页审核流程常驻右侧压缩正文区域的问题
+* 修复帖子详情页顶部统计信息堆叠拥挤的问题
 
 ### v2.13 (2026-05-25) - 资源兜底与交互状态修复
 
-**优化与修复**
-
-* 修复「我的关注」跳转到用户主页后，关注按钮未正确显示为「已关注」的问题
-* 修复查看私信后，「我的私信」列表未读红点/数字不会及时消失的问题
-* 修复附件下载与 `uploads` 目录解析逻辑，避免因启动目录变化导致资源找不到
-* 优化图片资源缺失时的兜底机制，新增默认占位图回退，避免空白或直接报错
-* 更新文档版本号为 `v2.13`
+* 修复「我的关注」跳转到用户主页后关注按钮状态未同步的问题
+* 修复查看私信后未读红点未及时消失的问题
+* 修复附件下载目录解析逻辑，避免因启动目录变化导致资源找不到
+* 优化图片资源缺失时的兜底机制，新增默认占位图回退
 
 ### v2.12 (2026-05-24) - 个性化推荐系统与帖子列表功能增强
 
 **新增功能**
 
-* 新增用户浏览历史表 `bbs\_user\_browse\_history`，记录用户浏览过的帖子
-* 新增个性化推荐系统，包含三种推荐维度：
-
-  * 根据浏览历史推荐：基于用户最近浏览的帖子，推荐同板块或相似作者的高热度帖子
-  * 关注用户最新发帖：展示用户关注对象的最新发布内容
-  * 相似帖子推荐：基于当前浏览帖子，推荐同板块或同作者的相似内容
-* 新增后端 BbsUserBrowseHistory 实体类和 Repository
-* 新增后端 BbsRecommendationService 服务类，实现三种推荐算法
-* 新增后端 BbsRecommendationController 控制器，提供推荐接口
-* 新增后端接口 `/api/bbs/recommendation/list`，返回三类推荐帖子列表
-* 新增后端接口 `/api/bbs/recommendation/browse`，记录用户浏览历史
-* 新增后端接口 `/api/bbs/recommendation/clear-history`，清除用户浏览历史
-* 修改帖子详情接口，当用户查看帖子详情时自动记录浏览历史
-* 新增前端 HttpRequestUtil 方法：getRecommendations()、recordBrowse()、clearBrowseHistory()
-* 新增前端 PostListController 推荐区域展示，在帖子广场顶部显示推荐内容
-* 推荐区域采用 Tab 切换设计，支持「根据浏览历史」「关注的人」「相似帖子」三个标签页
-* 新增"浏览历史"页面，展示用户浏览过的帖子记录
-* 浏览历史页面支持分页展示，每页显示10条记录，带有上一页/下一页翻页按钮
-* 新增前端 BrowseHistoryController 控制器，管理浏览历史页面的加载和展示
-* 新增数据库脚本 `35\_add\_browse\_history.sql`，创建浏览历史表和索引
-* 左侧菜单栏新增"浏览历史"入口，方便用户快速访问
-* 新增帖子广场多维度排序功能：支持最新发布、最新回复、最多浏览、最多点赞、精华帖优先等5种排序方式
-* 扩展后端 BbsPostRepository 新增 findPostsWithSort 查询方法，支持关联评论表获取最后回复时间
-* 扩展后端 BbsPostService 新增 sort 参数处理，支持多种排序维度的 SQL 查询逻辑
-* 扩展前端 HttpRequestUtil.getPostList() 新增 sort 参数传递
-* 优化前端帖子列表筛选栏，新增排序下拉选择框
-* 优化前端 PostListController 新增排序逻辑和事件处理
-* 优化帖子广场卡片显示，让置顶帖和精华帖与普通帖子有清晰的视觉区分
-* 置顶帖：金色背景 + 金色边框（2px）+ 橙色「置顶」标签
-* 精华帖：粉色背景 + 粉色边框（2px）+ 粉色「精华」标签
-* 既是置顶又是精华：金色到粉色渐变背景 + 双色边框
-* 置顶/精华帖标题文字加深（#0f172a），更醒目
-* 新增后端接口 `/api/bbs/points/user/{userId}`，支持获取指定用户的积分和等级数据
-* 新增前端方法 `HttpRequestUtil.getUserPoints(Integer userId)`，支持获取他人积分数据
-* 优化用户主页积分显示逻辑，根据当前查看用户自动选择获取自己或他人的积分数据
-* 优化 NotificationCounter 新增 updateNotificationCount 和 updateMessageCount 方法，支持手动立即更新未读计数
-* 优化热门帖子排行榜支持按综合、点赞、评论、浏览、收藏多维度排序
-* 优化活跃用户排行榜支持按综合、发帖数、评论数排序
-* 新增@用户功能：评论中的@用户点击可跳转到对应用户主页
-* 后端新增 `mentionedUsers` 字段，返回被@的用户信息列表，提高前端渲染效率
-* 优化前端 CommentItemController.renderCommentContent() 方法，优先使用后端已找到的用户信息
+* 新增个性化推荐系统，包含三种推荐维度：浏览历史推荐、关注用户最新发帖、相似帖子推荐
+* 新增"浏览历史"页面，展示用户浏览过的帖子记录，支持分页
+* 帖子广场新增多维度排序：最新发布、最新回复、最多浏览、最多点赞、精华帖优先
+* 置顶帖和精华帖视觉区分：置顶帖金色边框+标签，精华帖粉色边框+标签，双属性帖渐变背景
+* 新增@用户功能，评论中@用户可点击跳转主页
+* 热门帖子排行榜和活跃用户排行榜支持多维度排序
 
 **修复问题**
 
-* 修复查看他人个人主页时，显示当前登录用户积分而非被查看用户积分的问题
-* 修复通知中心"全部已读"后未读消息红点提示无法实时消失的问题，优化前后端数据同步，标记已读后立即刷新 NotificationCounter 缓存，确保红点实时消失
-* 修复私信页面进入聊天后"我的私信"红点延迟消失的问题，标记会话已读后立即调用 NotificationCounter.refreshCounts() 获取最新未读计数，确保红点一次性正确消失，优化 NotificationCounter.refreshCounts() 使用异步Task避免阻塞UI线程
-* 修复私信单独发送图片时会显示图片地址的问题，优化ChatViewController.addMessageBubble()，当content看起来是图片路径时，会将其当作图片处理而不显示为文本
-* 修复数据统计页面点击交互元素后出现文字字体放大、饼状图标签重叠错位、整体布局错乱的问题
-* 修复数据统计页面关键指标文字变小的问题
-* 修复数据统计-互动统计/内容安全统计中90天周期数据异常的问题
-* 修复数据统计-内容统计中帖子状态分布饼状图仅显示单一蓝色区块的问题
-* 修复饼状图图例与饼块颜色不一致的问题
-* 修复数据统计-热门帖子排行榜分类切换功能失效的问题
-* 修复数据统计-活跃用户排行榜分类切换功能失效的问题
-* 修复系统管理菜单管理无法打开的问题
-* 修复后端 StatisticsService 的时间范围计算逻辑，补全所有趋势数据接口
-* 修复 StyleManager 清空全局样式导致界面错乱的问题
-* 修复 NotificationCounter 缺少手动更新接口的问题
-* 修复发帖上传附件保存草稿后草稿箱中附件消失的问题，优化草稿保存逻辑，使用正则表达式解析附件信息
-* 修复浏览历史页面显示的记录条数与实际展示数量不符的问题，改为统计可见帖子数量
-* 修复帖子详情页、帖子列表、评论、推荐系统、管理审核功能中头像可能不显示的问题：
-  * 后端 BbsPostService、BbsCommentService、BbsRecommendationService、AdminModerationService 中所有填充作者信息的方法，都增加即使找不到作者也设置默认头像的逻辑
-  * 前端 Post.java 和 Comment.java 模型类中 getAuthorAvatarUrl() 方法增加默认头像和特殊字符清理逻辑，自动处理 URL 中的反引号等特殊字符
-  * 前端 PostDetailController 和 PostListController 也增加默认头像 fallback 机制，确保头像始终能正常显示
-* 优化数据统计页面 createStatCard 使用 Label 替代 Text，强制固定字体大小
-* 优化菜单管理页面路径查找逻辑，支持 base/ 子目录资源加载
+* 修复他人主页显示当前用户积分的问题
+* 修复通知和私信红点延迟消失的问题
+* 修复私信发送图片显示地址文本的问题
+* 修复数据统计页面布局错乱、饼图颜色不一致的问题
+* 修复菜单管理无法打开的问题
+* 修复头像不显示的问题，增加默认头像兜底机制
 
 ### v2.11 (2026-05-21) - 积分等级体系
 
@@ -825,7 +685,7 @@ A: 请检查：
 * 新增积分明细页面，分页展示积分变动记录（时间、行为、变动、余额）
 * 新增等级特权页面，展示当前用户特权详情及 Lv.0-12 完整等级体系树
 * 新增 13 张等级图标资源图片
-* 新增 6 张数据库表（bbs\_point\_rule、bbs\_point\_record、bbs\_level\_config、bbs\_daily\_limit、bbs\_user\_item、bbs\_item）及 ai\_usage\_record 表
+* 新增 6 张数据库表（bbs_point_rule、bbs_point_record、bbs_level_config、bbs_daily_limit、bbs_user_item、bbs_item）及 AI_usage_record 表
 * 用户在主页和个人资料中可查看等级图标和积分信息
 * 新增草稿箱和评论 AI 审核功能
 
@@ -837,25 +697,17 @@ A: 请检查：
 
 **新增功能**
 
-* 新增系统设置页面，支持主题、字体大小、通知开关、默认板块、默认排序和草稿自动保存偏好配置(部分功能暂未实现请等待后续开发)
-* 新增设置持久化与主题应用逻辑，用户偏好可保存到本地并在界面切换时自动生效
-* 拆分“我的关注”和“我的粉丝”页面，新增独立“我的关注”列表，支持分页、刷新、头像展示和取消关注
+* 新增系统设置页面，支持主题、字体大小、通知开关、默认板块、默认排序和草稿自动保存偏好配置
+* 拆分"我的关注"和"我的粉丝"为独立页面，支持分页、刷新和取消关注
 * 新增关注用户发帖通知，帖子审核通过后自动向关注者发送提醒
-* 新增举报下架帖的作者侧状态展示，作者可在帖子广场看到“内容违规”，在“我的帖子”看到“举报下架”
-* 新增帖子详情页操作按钮平铺展示，将原“更多”折叠菜单中的编辑、删除、置顶、加精、AI 总结移至底部操作栏
-* 新增历史数据修复脚本 `31\_fix\_report\_deleted\_posts.sql`，用于修正旧举报处理记录对应的帖子状态
-* 新增数据库备份、恢复和菜单修复辅助脚本，便于部署维护与数据修复
+* 新增举报下架帖的作者侧状态展示（"内容违规"/"举报下架"）
+* 帖子详情页操作按钮平铺展示，编辑、删除、置顶、加精、AI 总结移至底部操作栏
 
 **修复问题**
 
-* 修复登录权限绕过漏洞，登录失败或登录态无效时不再进入主界面
-* 收紧后端接口鉴权，业务接口需要有效登录态，非法或失效 Token 会返回未授权
-* 修复举报“删除内容”后帖子仍显示审核通过的问题，举报下架帖统一标记为内容违规并从普通用户视图隐藏
-* 修复举报下架帖仅管理员可见的问题，调整为管理员和帖子作者可见、普通用户不可见
-* 修复用户发帖数、AI 审核通过/驳回后的帖子可见性与状态同步问题
-* 修复登录页背景图受主题样式覆盖导致无法显示的问题，登录页、注册页和主界面统一加载 `shanda1.jpg`
-* 优化私信与聊天体验，增强会话列表、聊天窗口、未读消息展示和头像跳转用户主页能力
-* 优化个人中心、用户主页和用户统计页面，补充用户帖子列表接口并改善个人内容展示
+* 修复登录权限绕过漏洞，收紧后端接口鉴权
+* 修复举报下架帖状态同步问题，统一标记为内容违规，管理员和作者可见、普通用户不可见
+* 优化私信与聊天体验，增强会话列表、未读消息展示和头像跳转用户主页能力
 
 ### v2.9 (2026-05-17) - 菜单栏重构、数据导出与反馈系统
 
@@ -885,14 +737,14 @@ A: 请检查：
 * 新增个人主页资料卡举报，支持举报 `头像 / 昵称 / 个性签名`
 * 举报流程升级为 `发起举报 -> 人工审核 -> 处理结果`，管理员页与我的举报详情支持流程可视化
 * 管理员举报处理新增“清空违规资料”动作，资料卡举报会保存举报快照并通知相关用户
-* 修正举报统计中的有效举报口径，并补充 `27\_add\_profile\_report\_support.sql` 数据库脚本
+* 修正举报统计中的有效举报口径，并补充 `27_add_profile_report_support.sql` 数据库脚本
 
 ### v2.6 (2026-05-11) - 修改密码安全验证
 
 * 修改个人中心“修改密码”流程，新增旧密码、绑定邮箱验证码、新密码确认三重校验
 * 新增 `/api/bbs/user/me/password/code` 接口，验证码只发送到当前账号绑定邮箱
 * 修改 `/api/bbs/user/me/password` 接口，提交时校验旧密码、新密码规则和邮箱验证码
-* 邮件发送配置支持 `MAIL\_USERNAME`、`MAIL\_PASSWORD` 环境变量，SMTP 失败时返回明确中文提示
+* 邮件发送配置支持 `MAIL_USERNAME`、`MAIL_PASSWORD` 环境变量，SMTP 失败时返回明确中文提示
 * 优化 JavaFX 修改密码页面，修复乱码，增加发送验证码倒计时、页面内状态提示和可滚动卡片式布局
 * 修改密码成功后清空登录状态并返回登录页，要求用户使用新密码重新登录
 
@@ -904,7 +756,7 @@ A: 请检查：
 * 展示用户发布的公开帖子列表（支持分页）
 * 私信功能入口预留（暂未实现）
 
-### v2.4 (2026-04-25) - AI 一键配图、搜索优化
+### v2.4 (2026-04-28) - AI 一键配图、搜索优化
 
 * 新增 AI 一键配图功能（支持尺寸选择、预览、重新生成）
 * AI 搜索优化：无论是否有结果都提供引导发帖功能，AI 自动生成建议内容
@@ -923,12 +775,12 @@ A: 请检查：
 * 新增 AI 帖子总结功能
 * 修复帖子详情页滚动问题
 
-### v2.1 (2026-04-24) - 数据统计完善
+### v2.1 (2026-04-23) - 数据统计完善
 
 * 丰富数据统计功能（多维度趋势图表、分布图、排行榜）
 * 完善审核统计和举报统计
 
-### v2.0 (2026-04-24) - AI 内容审核
+### v2.0 (2026-04-20) - AI 内容审核
 
 * 集成 AI 内容审核功能（自动审核、状态显示、历史记录）
 * 新增智能搜索和结果高亮
@@ -937,21 +789,17 @@ A: 请检查：
 
 * 基础功能：用户系统、发帖评论、关注收藏、通知举报、个人中心等
 
-\---
+---
 
 ## 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
 
-\---
+---
 
 ## 许可证
 
 本项目仅供学习交流使用。
 
-\---
-
-## 联系方式
-
-如有问题，请提交 Issue。
+---
 
