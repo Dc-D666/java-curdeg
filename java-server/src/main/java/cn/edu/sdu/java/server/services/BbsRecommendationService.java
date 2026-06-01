@@ -24,7 +24,7 @@ public class BbsRecommendationService {
     private final UserRepository userRepository;
     private final LevelPrivilegeService levelPrivilegeService;
 
-    private static final int RECOMMEND_LIMIT = 10;
+    private static final int RECOMMEND_LIMIT = 20;
 
     public Map<String, Object> getRecommendations() {
         Integer userId = CommonMethod.getPersonId();

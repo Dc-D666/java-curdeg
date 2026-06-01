@@ -448,10 +448,22 @@ public class BbsUserService {
         if (keyword != null && keyword.length() > 50) {
             return CommonMethod.getReturnMessageError("参数错误：搜索关键词长度不能超过50");
         }
+        
+        // 将空字符串转换为 null，避免查询条件处理异常
+        if (keyword != null && keyword.trim().isEmpty()) {
+            keyword = null;
+        }
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
         Page<User> userPage = userRepository.searchUsers(keyword, pageable);
+
+        // 为每个用户设置 authority 字段
+        userPage.getContent().forEach(user -> {
+            if (user.getUserType() != null) {
+                user.setAuthority(user.getUserType().getName());
+            }
+        });
 
         return CommonMethod.getReturnData(userPage);
     }
@@ -1001,5 +1013,179 @@ public class BbsUserService {
             }
         }
         return CommonMethod.getReturnData(resultList);
+    }
+
+    @Transactional
+    public DataResponse setAdmin(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer targetUserId = dataRequest.getInteger("userId");
+        if (targetUserId == null) {
+            return CommonMethod.getReturnMessageError("参数错误：userId不能为空");
+        }
+
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        if (currentUserOpt.isEmpty() || !EUserType.ROLE_SUPER.name().equals(currentUserOpt.get().getUserType().getName())) {
+            return CommonMethod.getReturnMessageError("您没有权限进行此操作");
+        }
+
+        Optional<User> targetUserOpt = userRepository.findById(targetUserId);
+        if (targetUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("目标用户不存在");
+        }
+
+        User targetUser = targetUserOpt.get();
+
+        if (EUserType.ROLE_SUPER.name().equals(targetUser.getUserType().getName())) {
+            return CommonMethod.getReturnMessageError("不能修改超级管理员的角色");
+        }
+
+        UserType adminType = userTypeRepository.findByName(EUserType.ROLE_ADMIN.name());
+        if (adminType == null) {
+            return CommonMethod.getReturnMessageError("系统错误：管理员角色不存在");
+        }
+
+        targetUser.setUserType(adminType);
+        userRepository.saveAndFlush(targetUser);
+
+        return CommonMethod.getReturnMessageOK("成功设置为管理员");
+    }
+
+    @Transactional
+    public DataResponse setUser(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer targetUserId = dataRequest.getInteger("userId");
+        if (targetUserId == null) {
+            return CommonMethod.getReturnMessageError("参数错误：userId不能为空");
+        }
+
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        if (currentUserOpt.isEmpty() || !EUserType.ROLE_SUPER.name().equals(currentUserOpt.get().getUserType().getName())) {
+            return CommonMethod.getReturnMessageError("您没有权限进行此操作");
+        }
+
+        Optional<User> targetUserOpt = userRepository.findById(targetUserId);
+        if (targetUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("目标用户不存在");
+        }
+
+        User targetUser = targetUserOpt.get();
+
+        if (EUserType.ROLE_SUPER.name().equals(targetUser.getUserType().getName())) {
+            return CommonMethod.getReturnMessageError("不能修改超级管理员的角色");
+        }
+
+        UserType userType = userTypeRepository.findByName(EUserType.ROLE_STUDENT.name());
+        if (userType == null) {
+            return CommonMethod.getReturnMessageError("系统错误：普通用户角色不存在");
+        }
+
+        targetUser.setUserType(userType);
+        userRepository.saveAndFlush(targetUser);
+
+        return CommonMethod.getReturnMessageOK("成功设置为普通用户");
+    }
+
+    @Transactional
+    public DataResponse banUser(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer targetUserId = dataRequest.getInteger("userId");
+        if (targetUserId == null) {
+            return CommonMethod.getReturnMessageError("参数错误：userId不能为空");
+        }
+
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        if (currentUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("当前用户不存在");
+        }
+
+        User currentUser = currentUserOpt.get();
+        String currentUserRole = currentUser.getUserType() != null ? currentUser.getUserType().getName() : "";
+
+        Optional<User> targetUserOpt = userRepository.findById(targetUserId);
+        if (targetUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("目标用户不存在");
+        }
+
+        User targetUser = targetUserOpt.get();
+        String targetUserRole = targetUser.getUserType() != null ? targetUser.getUserType().getName() : "";
+
+        if (EUserType.ROLE_SUPER.name().equals(targetUserRole)) {
+            return CommonMethod.getReturnMessageError("不能禁言超级管理员");
+        }
+
+        if (EUserType.ROLE_ADMIN.name().equals(currentUserRole)) {
+            if (EUserType.ROLE_ADMIN.name().equals(targetUserRole)) {
+                return CommonMethod.getReturnMessageError("管理员不能禁言另一个管理员");
+            }
+        }
+
+        if (Boolean.TRUE.equals(targetUser.getIsBanned())) {
+            return CommonMethod.getReturnMessageError("该用户已被禁言");
+        }
+
+        targetUser.setIsBanned(true);
+        userRepository.saveAndFlush(targetUser);
+
+        return CommonMethod.getReturnMessageOK("成功禁言该用户");
+    }
+
+    @Transactional
+    public DataResponse unbanUser(DataRequest dataRequest) {
+        Integer currentUserId = CommonMethod.getPersonId();
+        if (currentUserId == null) {
+            return CommonMethod.getReturnMessageError("用户未登录");
+        }
+
+        Integer targetUserId = dataRequest.getInteger("userId");
+        if (targetUserId == null) {
+            return CommonMethod.getReturnMessageError("参数错误：userId不能为空");
+        }
+
+        Optional<User> currentUserOpt = userRepository.findById(currentUserId);
+        if (currentUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("当前用户不存在");
+        }
+
+        User currentUser = currentUserOpt.get();
+        String currentUserRole = currentUser.getUserType() != null ? currentUser.getUserType().getName() : "";
+
+        Optional<User> targetUserOpt = userRepository.findById(targetUserId);
+        if (targetUserOpt.isEmpty()) {
+            return CommonMethod.getReturnMessageError("目标用户不存在");
+        }
+
+        User targetUser = targetUserOpt.get();
+        String targetUserRole = targetUser.getUserType() != null ? targetUser.getUserType().getName() : "";
+
+        if (EUserType.ROLE_SUPER.name().equals(targetUserRole)) {
+            return CommonMethod.getReturnMessageError("不能操作超级管理员");
+        }
+
+        if (EUserType.ROLE_ADMIN.name().equals(currentUserRole)) {
+            if (EUserType.ROLE_ADMIN.name().equals(targetUserRole)) {
+                return CommonMethod.getReturnMessageError("管理员不能操作另一个管理员");
+            }
+        }
+
+        if (Boolean.FALSE.equals(targetUser.getIsBanned())) {
+            return CommonMethod.getReturnMessageError("该用户未被禁言");
+        }
+
+        targetUser.setIsBanned(false);
+        userRepository.saveAndFlush(targetUser);
+
+        return CommonMethod.getReturnMessageOK("成功解封该用户");
     }
 }

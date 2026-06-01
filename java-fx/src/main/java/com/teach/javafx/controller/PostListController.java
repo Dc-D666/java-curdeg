@@ -11,9 +11,17 @@ import com.teach.javafx.request.HttpRequestUtil;
 import com.teach.javafx.util.FollowStateManager;
 import com.teach.javafx.util.NicknameStyleUtil;
 import com.teach.javafx.util.PrivilegeCache;
+import com.teach.javafx.util.SettingsManager;
+import com.teach.javafx.models.AppSettings;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
+import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.Bounds;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
@@ -117,6 +125,8 @@ public class PostListController extends ToolController {
         publishButton.setOnAction(event -> openPublishPost());
 
         refreshButton.setOnAction(event -> {
+            // 立即平滑滚动到顶部
+            smoothScrollToTop();
             currentPageNum = 1;
             loadPostList(refreshButton);
         });
@@ -150,7 +160,16 @@ public class PostListController extends ToolController {
                 "最多点赞",
                 "精华帖优先"
         );
-        sortComboBox.getSelectionModel().selectFirst();
+        // 应用设置中的默认排序方式
+        AppSettings settings = SettingsManager.getCurrentSettings();
+        String defaultSort = settings.getPostSort();
+        int sortIndex = sortComboBox.getItems().indexOf(defaultSort);
+        if (sortIndex >= 0) {
+            sortComboBox.getSelectionModel().select(sortIndex);
+            currentSort = mapSortValue(defaultSort);
+        } else {
+            sortComboBox.getSelectionModel().selectFirst();
+        }
         sortComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 currentSort = mapSortValue(newValue);
@@ -259,10 +278,14 @@ public class PostListController extends ToolController {
         boolean isLoggedIn = currentUser != null;
         boolean isBanned = isLoggedIn && Boolean.TRUE.equals(currentUser.getIsBanned());
         boolean canPostByLevel = PrivilegeCache.getInstance().canPost();
-        publishButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
-        if (isLoggedIn && !isBanned && !canPostByLevel) {
+        publishButton.setVisible(isLoggedIn);
+        publishButton.setDisable(isBanned || !canPostByLevel);
+        if (isBanned) {
+            publishButton.setText("已被禁言");
+            publishButton.setStyle("-fx-background-color: #fee2e2; -fx-text-fill: #b91c1c; -fx-border-color: #fecaca; -fx-cursor: not-allowed;");
+        } else if (isLoggedIn && !isBanned && !canPostByLevel) {
             publishButton.setText("等级不足");
-            publishButton.setStyle("-fx-background-color: #d9d9d9; -fx-text-fill: #999;");
+            publishButton.setStyle("-fx-background-color: #d9d9d9; -fx-text-fill: #999; -fx-cursor: not-allowed;");
         } else {
             publishButton.setText("发帖");
             publishButton.setStyle("");
@@ -287,7 +310,21 @@ public class PostListController extends ToolController {
                     allBoard.setName("全部");
                     boardComboBox.getItems().add(allBoard);
                     boardComboBox.getItems().addAll(boards);
-                    boardComboBox.getSelectionModel().selectFirst();
+                    
+                    // 应用设置中的默认板块
+                    AppSettings settings = SettingsManager.getCurrentSettings();
+                    String defaultBoardName = settings.getDefaultBoard();
+                    boolean found = false;
+                    for (Board board : boardComboBox.getItems()) {
+                        if (defaultBoardName.equals(board.getName())) {
+                            boardComboBox.getSelectionModel().select(board);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        boardComboBox.getSelectionModel().selectFirst();
+                    }
                 }
             });
         });
@@ -353,8 +390,6 @@ public class PostListController extends ToolController {
                     prevButton.setDisable(true);
                     nextButton.setDisable(true);
                 }
-
-                mainScrollPane.setVvalue(0);
             });
         });
 
@@ -537,6 +572,14 @@ public class PostListController extends ToolController {
     }
 
     private void openPublishPost() {
+        if (currentUser != null && Boolean.TRUE.equals(currentUser.getIsBanned())) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("账号已被禁言");
+            alert.setHeaderText(null);
+            alert.setContentText("您的账号已被禁言，无法发布新帖子。\n如需帮助，请联系管理员。");
+            alert.showAndWait();
+            return;
+        }
         if (AppStore.getMainFrameController() != null) {
             AppStore.getMainFrameController().changeContent("post-publish", "发布帖子");
         }
@@ -601,18 +644,21 @@ public class PostListController extends ToolController {
         if (browseRecommendations != null && !browseRecommendations.isEmpty()) {
             Tab browseTab = new Tab("根据浏览历史");
             browseTab.setContent(createRecommendList(browseRecommendations));
+            browseTab.setClosable(false);
             tabPane.getTabs().add(browseTab);
         }
 
         if (followingPosts != null && !followingPosts.isEmpty()) {
             Tab followingTab = new Tab("关注的人");
             followingTab.setContent(createRecommendList(followingPosts));
+            followingTab.setClosable(false);
             tabPane.getTabs().add(followingTab);
         }
 
         if (similarPosts != null && !similarPosts.isEmpty()) {
             Tab similarTab = new Tab("相似帖子");
             similarTab.setContent(createRecommendList(similarPosts));
+            similarTab.setClosable(false);
             tabPane.getTabs().add(similarTab);
         }
 
@@ -634,28 +680,20 @@ public class PostListController extends ToolController {
     }
 
     private VBox createRecommendList(List<Map<String, Object>> posts) {
-        VBox container = new VBox(8);
-        container.setStyle("-fx-padding: 10; -fx-background-color: #fafafa;");
+        VBox container = new VBox(10);
+        container.setStyle("-fx-padding: 12; -fx-background-color: #fafafa;");
 
         for (Map<String, Object> postData : posts) {
             VBox card = createRecommendCard(postData);
             container.getChildren().add(card);
         }
 
-        ScrollPane scrollPane = new ScrollPane(container);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-fit-to-width: true;");
-        scrollPane.setPrefHeight(250);
-        scrollPane.setMaxHeight(250);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        VBox wrapper = new VBox();
-        wrapper.getChildren().add(scrollPane);
-        return wrapper;
+        return container;
     }
 
     private VBox createRecommendCard(Map<String, Object> postData) {
-        VBox card = new VBox(5);
-        card.setStyle("-fx-padding: 12; -fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-cursor: hand;");
+        VBox card = new VBox(8);
+        card.setStyle("-fx-padding: 14; -fx-background-color: white; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10; -fx-cursor: hand;");
 
         Long postId = postData.get("id") instanceof Number ? ((Number) postData.get("id")).longValue() : null;
         String title = postData.get("title") != null ? postData.get("title").toString() : "";
@@ -711,13 +749,70 @@ public class PostListController extends ToolController {
         });
 
         card.setOnMouseEntered(event -> {
-            card.setStyle("-fx-padding: 12; -fx-background-color: #f5f5f5; -fx-background-radius: 8; -fx-border-color: #d1d5db; -fx-border-radius: 8; -fx-cursor: hand;");
+            card.setStyle("-fx-padding: 14; -fx-background-color: #f8f9fa; -fx-background-radius: 10; -fx-border-color: #c5cae9; -fx-border-radius: 10; -fx-cursor: hand;");
         });
 
         card.setOnMouseExited(event -> {
-            card.setStyle("-fx-padding: 12; -fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-cursor: hand;");
+            card.setStyle("-fx-padding: 14; -fx-background-color: white; -fx-background-radius: 10; -fx-border-color: #e5e7eb; -fx-border-radius: 10; -fx-cursor: hand;");
         });
 
         return card;
+    }
+
+    /**
+     * 平滑滚动到ScrollPane顶部
+     */
+    private void smoothScrollToTop() {
+        if (mainScrollPane == null) {
+            return;
+        }
+
+        // 立即设置滚动位置为0
+        mainScrollPane.setVvalue(0);
+
+        // 禁用pannable防止滚动
+        mainScrollPane.setPannable(false);
+
+        // 创建平滑动画：将内容向上移动一小段再回到原位，产生视觉反馈
+        javafx.scene.Node content = mainScrollPane.getContent();
+        if (content != null) {
+            // 获取当前垂直滚动位置
+            double currentScrollY = mainScrollPane.getVvalue();
+
+            // 创建平滑动画
+            Timeline timeline = new Timeline();
+            timeline.setCycleCount(1);
+
+            // 动画：短暂向上抖动然后回到原位
+            KeyFrame keyFrame = new KeyFrame(
+                javafx.util.Duration.millis(150),
+                new KeyValue(content.translateYProperty(), 20),
+                new KeyValue(mainScrollPane.vvalueProperty(), 0)
+            );
+            timeline.getKeyFrames().add(keyFrame);
+
+            // 第一阶段动画完成后平滑回到原位
+            timeline.setOnFinished(event1 -> {
+                Timeline returnTimeline = new Timeline();
+                returnTimeline.setCycleCount(1);
+
+                KeyFrame returnFrame = new KeyFrame(
+                    javafx.util.Duration.millis(200),
+                    new KeyValue(content.translateYProperty(), 0),
+                    new KeyValue(mainScrollPane.vvalueProperty(), 0)
+                );
+                returnTimeline.getKeyFrames().add(returnFrame);
+
+                returnTimeline.setOnFinished(event2 -> {
+                    // 动画完成后恢复pannable
+                    mainScrollPane.setPannable(true);
+                    content.setTranslateY(0);
+                });
+
+                returnTimeline.play();
+            });
+
+            timeline.play();
+        }
     }
 }

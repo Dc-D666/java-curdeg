@@ -22,25 +22,19 @@
                 <Label styleClass="profile-title" text="系统设置" />
                 
                 <TitledPane animated="false" expanded="true" text="界面设置">
-                    <content>
-                        <VBox spacing="15.0">
-                            <padding>
-                                <Insets bottom="15.0" left="10.0" right="10.0" top="15.0" />
-                            </padding>
-                            <children>
-                                <Label styleClass="form-label" text="主题" />
-                                <ComboBox fx:id="themeComboBox" prefWidth="300.0" promptText="选择主题" />
-                                <Label fx:id="themePreview" styleClass="section-hint" text="请选择主题" />
-                                
-                                <Separator />
-                                
-                                <Label styleClass="form-label" text="字体大小" />
-                                <ComboBox fx:id="fontSizeComboBox" prefWidth="300.0" promptText="选择字体大小" />
-                                <Label fx:id="fontSizePreview" styleClass="section-hint" text="请选择字体大小" />
-                            </children>
-                        </VBox>
-                    </content>
-                </TitledPane>
+            <content>
+                <VBox spacing="15.0">
+                    <padding>
+                        <Insets bottom="15.0" left="10.0" right="10.0" top="15.0" />
+                    </padding>
+                    <children>
+                        <Label styleClass="form-label" text="字体大小" />
+                        <ComboBox fx:id="fontSizeComboBox" prefWidth="300.0" promptText="选择字体大小" />
+                        <Label fx:id="fontSizePreview" styleClass="section-hint" text="请选择字体大小" />
+                    </children>
+                </VBox>
+            </content>
+        </TitledPane>
                 
                 <TitledPane animated="false" expanded="true" text="通知设置">
                     <content>
@@ -50,12 +44,10 @@
                             </padding>
                             <children>
                                 <Label styleClass="section-hint" text="配置您希望接收的通知类型" />
-                                <CheckBox fx:id="notificationSoundCheckBox" text="启用通知声音" />
                                 <CheckBox fx:id="postNotificationCheckBox" text="关注的人发帖时通知" />
                                 <CheckBox fx:id="commentNotificationCheckBox" text="收到评论/回复时通知" />
-                                <CheckBox fx:id="likeNotificationCheckBox" text="收到点赞时通知" />
                                 <CheckBox fx:id="followNotificationCheckBox" text="有人关注我时通知" />
-                                <CheckBox fx:id="messageNotificationCheckBox" text="收到私信时通知" />
+                                <CheckBox fx:id="likeNotificationCheckBox" text="收到点赞时通知" />
                             </children>
                         </VBox>
                     </content>
@@ -80,9 +72,7 @@
                                 <ComboBox fx:id="postSortComboBox" prefWidth="300.0" promptText="选择排序方式" />
                                 <Label fx:id="sortPreview" styleClass="section-hint" text="请选择排序方式" />
                                 
-                                <Separator />
-                                
-                                <CheckBox fx:id="autoSaveDraftCheckBox" text="自动保存发帖草稿" />
+
                             </children>
                         </VBox>
                     </content>

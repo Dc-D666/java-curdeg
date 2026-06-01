@@ -109,20 +109,29 @@ public class CommentItemController {
         authorLabel.setText(authorText);
         NicknameStyleUtil.applyStyle(authorLabel, comment.getAuthorNicknameStyle());
 
+        boolean isViolation = "reject".equals(comment.getModerationStatus());
+        violationTag.setVisible(isViolation);
+        violationTag.setManaged(isViolation);
+
         // 替换原来的Label为TextFlow，支持@用户高亮
         if (contentLabel != null) {
             contentLabel.setVisible(false);
             contentLabel.setManaged(false);
         }
         if (contentTextFlow != null) {
-            renderCommentContent(comment.getContent());
+            if (isViolation) {
+                // 如果是违规评论，显示"小山竹吃掉了这个评论!"
+                renderCommentContent("小山竹吃掉了这个评论!");
+            } else {
+                renderCommentContent(comment.getContent());
+            }
         } else if (contentLabel != null) {
-            contentLabel.setText(comment.getContent());
+            if (isViolation) {
+                contentLabel.setText("小山竹吃掉了这个评论!");
+            } else {
+                contentLabel.setText(comment.getContent());
+            }
         }
-
-        boolean isViolation = "reject".equals(comment.getModerationStatus());
-        violationTag.setVisible(isViolation);
-        violationTag.setManaged(isViolation);
 
         timeLabel.setText(comment.getCreateTime() != null ? dateFormat.format(comment.getCreateTime()) : "");
 
@@ -167,6 +176,14 @@ public class CommentItemController {
 
     private void displayCommentImages() {
         commentImagesVBox.getChildren().clear();
+        
+        // 如果是违规评论，不显示图片
+        boolean isViolation = "reject".equals(comment.getModerationStatus());
+        if (isViolation) {
+            commentImagesVBox.setVisible(false);
+            commentImagesVBox.setManaged(false);
+            return;
+        }
 
         String imagesStr = comment.getImageUrls();
         if (imagesStr == null || imagesStr.isBlank()) {
@@ -249,6 +266,15 @@ public class CommentItemController {
 
     private void displayCommentAttachments() {
         commentAttachmentsVBox.getChildren().clear();
+        
+        // 如果是违规评论，不显示附件
+        boolean isViolation = "reject".equals(comment.getModerationStatus());
+        if (isViolation) {
+            commentAttachmentsVBox.setVisible(false);
+            commentAttachmentsVBox.setManaged(false);
+            return;
+        }
+        
         List<AttachmentInfo> attachments = AttachmentUtil.parse(comment.getAttachmentInfos());
         if (attachments.isEmpty()) {
             commentAttachmentsVBox.setVisible(false);

@@ -94,6 +94,8 @@ public class PersonalProfileController extends ToolController {
     @FXML
     private GridPane statsGrid;
     @FXML
+    private VBox bannedStatusCard;
+    @FXML
     private VBox postCountBox;
     @FXML
     private VBox followingCountBox;
@@ -395,6 +397,12 @@ public class PersonalProfileController extends ToolController {
         postCountLabel.setText(user.getPostCount() != null ? String.valueOf(user.getPostCount()) : "0");
         followingCountLabel.setText(user.getFollowingCount() != null ? String.valueOf(user.getFollowingCount()) : "0");
         followerCountLabel.setText(user.getFollowerCount() != null ? String.valueOf(user.getFollowerCount()) : "0");
+
+        boolean isBanned = Boolean.TRUE.equals(user.getIsBanned());
+        if (bannedStatusCard != null) {
+            bannedStatusCard.setVisible(isBanned);
+            bannedStatusCard.setManaged(isBanned);
+        }
         
         // 设置隐私选项
         setPrivacyComboBoxValue(namePrivacyComboBox, user.getNamePrivacy());

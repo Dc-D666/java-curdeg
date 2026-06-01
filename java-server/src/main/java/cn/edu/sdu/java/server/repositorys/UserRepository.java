@@ -34,7 +34,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Boolean existsByStudentId(String studentId);
 
-    @Query("SELECT u FROM User u WHERE (:keyword IS NULL OR :keyword = '' OR u.nickname LIKE %:keyword% OR u.studentId LIKE %:keyword%)")
+    @Query("SELECT u FROM User u WHERE (:keyword IS NULL OR :keyword = '' OR u.nickname LIKE %:keyword% OR u.userName LIKE %:keyword% OR u.studentId LIKE %:keyword%)")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE u.nickname LIKE CONCAT(:keyword, '%') ORDER BY u.nickname ASC")

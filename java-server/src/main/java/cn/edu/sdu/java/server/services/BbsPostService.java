@@ -74,8 +74,32 @@ public class BbsPostService {
         this.levelPrivilegeService = levelPrivilegeService;
     }
 
+    private static final int TYPE_LIKE = 8;
+
+    private void createLikeNotification(BbsPost post, BbsLike like, Integer likerUserId) {
+        if (post.getAuthorId() == null) {
+            return;
+        }
+        
+        Optional<User> likerOpt = userRepository.findById(likerUserId);
+        String likerName = likerOpt.map(u -> u.getNickname()).orElse("某用户");
+        
+        BbsNotification notification = new BbsNotification();
+        notification.setReceiverId(post.getAuthorId());
+        notification.setType(TYPE_LIKE);
+        notification.setTitle("收到点赞通知");
+        notification.setContent("用户【" + likerName + "】点赞了你的帖子【" + truncateTitle(post.getTitle()) + "】(帖子ID:" + post.getId() + ")");
+        notification.setIsRead(0);
+        bbsNotificationRepository.saveAndFlush(notification);
+    }
+
+    private String truncateTitle(String title) {
+        if (title == null) return "无标题";
+        if (title.length() <= 15) return title;
+        return title.substring(0, 15) + "...";
+    }
+
     private void fillPostAuthorInfo(BbsPost post) {
-        log.info("[fillPostAuthorInfo] 开始填充帖子ID: {}, 作者ID: {}", post.getId(), post.getAuthorId());
         String originalDefaultUrl = "https://img.phb123.com/uploads/allimg/220607/810-22060G55A40-L.jpeg";
         if (post.getAuthorId() != null) {
             Optional<User> authorOptional = userRepository.findById(post.getAuthorId().intValue());
@@ -362,7 +386,7 @@ public class BbsPostService {
         boolean isAuthor = post.getAuthorId().equals(currentUserId.longValue());
         boolean isAdmin = "ROLE_ADMIN".equals(currentUserRole) || "ROLE_SUPER".equals(currentUserRole);
 
-        if (!isAuthor && !isAdmin) {
+        if (!isAuthor) {
             return CommonMethod.getReturnMessageError("您无权修改此帖子");
         }
 
@@ -562,6 +586,9 @@ public class BbsPostService {
             // 被点赞积分奖励
             if (post.getAuthorId() != null && !post.getAuthorId().equals(currentUserId.longValue())) {
                 pointService.addPoints(post.getAuthorId().intValue(), "RECEIVED_LIKE", "被点赞", like.getId(), "LIKE");
+                
+                // 创建点赞通知
+                createLikeNotification(post, like, currentUserId);
             }
         }
 

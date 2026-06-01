@@ -676,13 +676,10 @@ public class PostDetailController extends ToolController {
         featureButton.setVisible(false);
         summaryButton.setVisible(false);
         
-        // 如果是违规帖，只显示编辑和删除菜单（给作者和管理员）
+        // 如果是违规帖，作者可以编辑和删除，管理员可以删除
         if (isRejected) {
-            boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
-            if (canEditDelete) {
-                editButton.setVisible(true);
-                deleteButton.setVisible(true);
-            }
+            editButton.setVisible(isLoggedIn && !isBanned && isAuthor);
+            deleteButton.setVisible(isLoggedIn && !isBanned && (isAuthor || isAdmin));
         } else {
             // 正常显示按钮和菜单
             submitCommentButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
@@ -694,11 +691,9 @@ public class PostDetailController extends ToolController {
             addImageButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
             addAttachmentButton.setVisible(isLoggedIn && !isBanned && canPostByLevel);
             
-            boolean canEditDelete = isLoggedIn && !isBanned && (isAuthor || isAdmin);
-            if (canEditDelete) {
-                editButton.setVisible(true);
-                deleteButton.setVisible(true);
-            }
+            editButton.setVisible(isLoggedIn && !isBanned && isAuthor);
+            deleteButton.setVisible(isLoggedIn && !isBanned && (isAuthor || isAdmin));
+            
             if (isAdmin) {
                 topButton.setVisible(true);
                 featureButton.setVisible(true);
@@ -781,6 +776,9 @@ public class PostDetailController extends ToolController {
     }
     
     private void openReportDialog() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("举报");
         dialog.setHeaderText("举报帖子：" + (currentPost != null ? currentPost.getTitle() : ""));
@@ -819,6 +817,9 @@ public class PostDetailController extends ToolController {
     }
     
     private void handleShare() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         if (currentPost == null || postId == null) {
             showError("无法获取帖子信息");
             return;
@@ -1068,6 +1069,9 @@ public class PostDetailController extends ToolController {
     }
 
     private void publishCommentWithImages() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         String content = commentTextArea.getText().trim();
         if (content.isEmpty() && selectedCommentImages.isEmpty() && selectedCommentAttachments.isEmpty()) {
             showError("评论内容、图片或附件不能全为空");
@@ -1228,14 +1232,23 @@ public class PostDetailController extends ToolController {
     }
 
     private void handleAddImage() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         selectCommentImages();
     }
 
     private void handleAddAttachment() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         selectCommentAttachments();
     }
 
     private void publishComment() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         publishCommentWithImages();
     }
     
@@ -1335,6 +1348,9 @@ public class PostDetailController extends ToolController {
     }
 
     private void toggleLike() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         if (currentPost == null || postId == null) {
             return;
         }
@@ -1375,6 +1391,9 @@ public class PostDetailController extends ToolController {
     }
 
     private void toggleFavorite() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         if (currentPost == null || postId == null) {
             return;
         }
@@ -1548,7 +1567,26 @@ public class PostDetailController extends ToolController {
         alert.showAndWait();
     }
 
+    private void showBannedWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("账号已被禁言");
+        alert.setHeaderText(null);
+        alert.setContentText("您的账号已被禁言，无法执行此操作。\n如需帮助，请联系管理员。");
+        alert.showAndWait();
+    }
+
+    private boolean ensureNotBanned() {
+        if (currentUser != null && Boolean.TRUE.equals(currentUser.getIsBanned())) {
+            showBannedWarning();
+            return false;
+        }
+        return true;
+    }
+
     private void toggleFollow() {
+        if (!ensureNotBanned()) {
+            return;
+        }
         if (currentPost == null || currentPost.getUserId() == null) {
             return;
         }

@@ -98,4 +98,28 @@ public class BbsUserController {
     public DataResponse searchUsersByNickname(@RequestParam String keyword) {
         return bbsUserService.searchUsersByNickname(keyword);
     }
+
+    @PostMapping("/set-admin")
+    @PreAuthorize("hasRole('ROLE_SUPER')")
+    public DataResponse setAdmin(@Valid @RequestBody DataRequest dataRequest) {
+        return bbsUserService.setAdmin(dataRequest);
+    }
+
+    @PostMapping("/set-user")
+    @PreAuthorize("hasRole('ROLE_SUPER')")
+    public DataResponse setUser(@Valid @RequestBody DataRequest dataRequest) {
+        return bbsUserService.setUser(dataRequest);
+    }
+
+    @PostMapping("/ban-user")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
+    public DataResponse banUser(@Valid @RequestBody DataRequest dataRequest) {
+        return bbsUserService.banUser(dataRequest);
+    }
+
+    @PostMapping("/unban-user")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
+    public DataResponse unbanUser(@Valid @RequestBody DataRequest dataRequest) {
+        return bbsUserService.unbanUser(dataRequest);
+    }
 }

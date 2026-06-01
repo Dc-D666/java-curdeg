@@ -19,36 +19,46 @@
 <?import javafx.scene.control.TreeView?>
 <BorderPane styleClass="app-shell" stylesheets="@../css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.base.MainFrameController">
   <top>
-    <MenuBar fx:id="menuBar" styleClass="app-menu-bar">
-      <menus>
-        <Menu fx:id="menuHome" text="首页">
-          <items>
-            <MenuItem text="帖子广场" onAction="#onPostSquareClick" />
-          </items>
-        </Menu>
-        <Menu fx:id="menuExportMenu" text="导出" visible="false">
-          <items>
-            <MenuItem text="导出帖子数据" onAction="#onExportPostsClick" />
-            <MenuItem text="导出用户数据" onAction="#onExportUsersClick" />
-            <MenuItem text="导出统计报表" onAction="#onExportStatsClick" />
-          </items>
-        </Menu>
-        <Menu fx:id="menuSettings" text="设置">
-          <items>
-            <MenuItem text="系统设置" onAction="#onSystemSettingsClick" />
-            <SeparatorMenuItem />
-            <MenuItem fx:id="menuLogout" text="退出登录" onAction="#onLogoutMenuClick" />
-          </items>
-        </Menu>
-        <Menu fx:id="menuHelp" text="帮助">
-          <items>
-            <MenuItem text="关于" onAction="#onAboutClick" />
-            <MenuItem text="反馈与建议" onAction="#onFeedbackClick" />
-          </items>
-        </Menu>
-        <Menu fx:id="menuSwitchAccount" text="切换账号" />
-      </menus>
-    </MenuBar>
+    <VBox>
+      <children>
+        <MenuBar fx:id="menuBar" styleClass="app-menu-bar">
+          <menus>
+            <Menu fx:id="menuHome" text="首页">
+              <items>
+                <MenuItem text="帖子广场" onAction="#onPostSquareClick" />
+              </items>
+            </Menu>
+            <Menu fx:id="menuExportMenu" text="导出" visible="false">
+              <items>
+                <MenuItem text="导出帖子数据" onAction="#onExportPostsClick" />
+                <MenuItem text="导出用户数据" onAction="#onExportUsersClick" />
+                <MenuItem text="导出统计报表" onAction="#onExportStatsClick" />
+              </items>
+            </Menu>
+            <Menu fx:id="menuSettings" text="设置">
+              <items>
+                <MenuItem text="系统设置" onAction="#onSystemSettingsClick" />
+                <SeparatorMenuItem />
+                <MenuItem fx:id="menuLogout" text="退出登录" onAction="#onLogoutMenuClick" />
+              </items>
+            </Menu>
+            <Menu fx:id="menuHelp" text="帮助">
+              <items>
+                <MenuItem text="关于" onAction="#onAboutClick" />
+                <MenuItem text="反馈与建议" onAction="#onFeedbackClick" />
+              </items>
+            </Menu>
+            <Menu fx:id="menuSwitchAccount" text="切换账号" />
+          </menus>
+        </MenuBar>
+        <HBox fx:id="bannedBanner" alignment="CENTER" managed="false" spacing="10.0" style="-fx-background-color: #fef2f2; -fx-border-color: #fecaca; -fx-border-width: 0 0 1 0; -fx-padding: 8 16 8 16;" visible="false">
+          <children>
+            <Label style="-fx-font-size: 14px; -fx-text-fill: #b91c1c; -fx-font-weight: bold;" text="⚠ 您已被禁言" />
+            <Label fx:id="bannedBannerMessage" style="-fx-font-size: 13px; -fx-text-fill: #7f1d1d;" text="您的账号因违规行为已被管理员禁言，发帖、评论、点赞、收藏等互动功能已被限制。如有疑问，请联系管理员。" wrapText="true" HBox.hgrow="ALWAYS" />
+          </children>
+        </HBox>
+      </children>
+    </VBox>
   </top>
   <left>
     <TreeView fx:id="menuTree" prefWidth="210" styleClass="app-menu-tree"/>

@@ -1,8 +1,6 @@
 package com.teach.javafx;
 
-import com.teach.javafx.models.AppSettings;
 import com.teach.javafx.util.BackgroundStyle;
-import com.teach.javafx.util.SettingsManager;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -50,22 +48,6 @@ public class MainApplication extends Application {
             if (root.getStyle() == null || !root.getStyle().contains("-fx-background-image")) {
                 root.setStyle(BackgroundStyle.appBackground());
             }
-            return;
-        }
-
-        AppSettings settings = SettingsManager.getCurrentSettings();
-        String theme = settings.getTheme();
-        
-        if ("深色主题".equals(theme)) {
-            root.setStyle("-fx-base: #1e1e1e; -fx-background: #1e1e1e; -fx-control-inner-background: #2d2d2d; -fx-text-fill: #d4d4d4;");
-        } else {
-            root.setStyle("");
-        }
-    }
-
-    public static void applyCurrentTheme() {
-        if (mainStage != null && mainStage.getScene() != null) {
-            applyTheme(mainStage.getScene());
         }
     }
 

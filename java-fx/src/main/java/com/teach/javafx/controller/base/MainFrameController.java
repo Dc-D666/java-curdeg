@@ -74,6 +74,10 @@ public class MainFrameController {
     private Label systemPrompt;
     @FXML
     private Label unreadNotificationLabel;
+    @FXML
+    private javafx.scene.layout.HBox bannedBanner;
+    @FXML
+    private Label bannedBannerMessage;
 
     private ChangePanelHandler handler= null;
 
@@ -271,6 +275,13 @@ public class MainFrameController {
         if (menuExportMenu != null) {
             menuExportMenu.setVisible(isAdmin);
         }
+        
+        // 添加成员管理菜单项
+        if (isAdmin) {
+            MenuItem memberManagementItem = new MenuItem("成员管理");
+            memberManagementItem.setOnAction(e -> changeContent("member-management", "成员管理"));
+            menuExportMenu.getItems().add(0, memberManagementItem);
+        }
 
         String currentUsername = AppStore.getJwt().getUsername();
         
@@ -301,6 +312,7 @@ public class MainFrameController {
         user2Item.setOnAction(e -> switchToAccount("user2"));
 
         checkLevelZeroPrompt();
+        checkBannedStatus();
     }
 
     private void checkLevelZeroPrompt() {
@@ -341,6 +353,63 @@ public class MainFrameController {
         });
 
         new Thread(task).start();
+    }
+
+    private void checkBannedStatus() {
+        Task<User> task = new Task<>() {
+            @Override
+            protected User call() {
+                return HttpRequestUtil.getCurrentUser();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            User currentUser = task.getValue();
+            if (currentUser != null && Boolean.TRUE.equals(currentUser.getIsBanned())) {
+                Platform.runLater(() -> {
+                    showBannedBanner(true);
+                    showBannedDialog();
+                });
+            } else {
+                Platform.runLater(() -> showBannedBanner(false));
+            }
+        });
+
+        task.setOnFailed(event -> {
+            // silently ignore errors
+        });
+
+        new Thread(task).start();
+    }
+
+    public void showBannedBanner(boolean show) {
+        if (bannedBanner == null) {
+            return;
+        }
+        bannedBanner.setVisible(show);
+        bannedBanner.setManaged(show);
+    }
+
+    private void showBannedDialog() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("账号状态通知");
+        alert.setHeaderText("您的账号已被禁言");
+        alert.setContentText("您的账号因违反社区规定，已被管理员禁言。\n\n在禁言期间，您将无法：\n• 发布新帖子\n• 发表评论\n• 点赞、收藏、关注其他用户\n• 举报内容\n\n如对禁言决定有疑问，请通过\"帮助 → 反馈与建议\"联系管理员。");
+        alert.showAndWait();
+    }
+
+    public static void showBannedAlertStatic() {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("账号已被禁言");
+            alert.setHeaderText(null);
+            alert.setContentText("您当前处于禁言状态，无法执行此操作。\n如需帮助，请联系管理员。");
+            alert.showAndWait();
+        });
+    }
+
+    public void refreshBannedStatus() {
+        checkBannedStatus();
     }
 
 

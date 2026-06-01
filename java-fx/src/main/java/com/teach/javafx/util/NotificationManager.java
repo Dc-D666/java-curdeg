@@ -12,23 +12,13 @@ public class NotificationManager {
                 return settings.isPostNotification();
             case "comment":
                 return settings.isCommentNotification();
-            case "like":
-                return settings.isLikeNotification();
             case "follow":
                 return settings.isFollowNotification();
-            case "message":
-                return settings.isMessageNotification();
+            case "like":
+                return settings.isLikeNotification();
             default:
                 return true;
         }
-    }
-
-    public static boolean isSoundEnabled() {
-        return SettingsManager.getCurrentSettings().isNotificationSound();
-    }
-
-    public static boolean isAutoSaveDraftEnabled() {
-        return SettingsManager.getCurrentSettings().isAutoSaveDraft();
     }
 
     public static String getDefaultBoard() {

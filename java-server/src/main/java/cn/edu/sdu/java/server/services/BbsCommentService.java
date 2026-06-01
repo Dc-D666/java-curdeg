@@ -177,18 +177,12 @@ public class BbsCommentService {
 
         List<BbsComment> filteredList = new ArrayList<>();
         for (BbsComment comment : commentList) {
-            if ("reject".equals(comment.getModerationStatus()) && 
-                (currentUserId == null || !currentUserId.equals(comment.getAuthorId().intValue()))) {
-                continue;
-            }
+            // 违规评论对所有用户可见，但前端会处理显示内容
             fillCommentAuthorInfo(comment);
             List<BbsComment> replyList = bbsCommentRepository.findByParentIdAndStatusOrderByCreateTimeAsc(comment.getId(), 1);
             List<BbsComment> filteredReplies = new ArrayList<>();
             for (BbsComment reply : replyList) {
-                if ("reject".equals(reply.getModerationStatus()) && 
-                    (currentUserId == null || !currentUserId.equals(reply.getAuthorId().intValue()))) {
-                    continue;
-                }
+                // 违规评论对所有用户可见，但前端会处理显示内容
                 fillCommentAuthorInfo(reply);
                 filteredReplies.add(reply);
             }

@@ -17,35 +17,26 @@ import javafx.scene.layout.Pane;
 public class SystemSettingsController extends ToolController {
 
     @FXML
-    private ComboBox<String> themeComboBox;
-    @FXML
     private ComboBox<String> fontSizeComboBox;
-    @FXML
-    private CheckBox notificationSoundCheckBox;
     @FXML
     private CheckBox postNotificationCheckBox;
     @FXML
     private CheckBox commentNotificationCheckBox;
     @FXML
-    private CheckBox likeNotificationCheckBox;
-    @FXML
     private CheckBox followNotificationCheckBox;
     @FXML
-    private CheckBox messageNotificationCheckBox;
+    private CheckBox likeNotificationCheckBox;
     @FXML
     private ComboBox<String> defaultBoardComboBox;
     @FXML
     private ComboBox<String> postSortComboBox;
-    @FXML
-    private CheckBox autoSaveDraftCheckBox;
+
     @FXML
     private Button clearCacheButton;
     @FXML
     private Button saveButton;
     @FXML
     private Button resetButton;
-    @FXML
-    private Label themePreview;
     @FXML
     private Label fontSizePreview;
     @FXML
@@ -61,12 +52,6 @@ public class SystemSettingsController extends ToolController {
     }
 
     private void initializeOptions() {
-        ObservableList<String> themeOptions = FXCollections.observableArrayList(
-            "默认主题（浅色）",
-            "深色主题"
-        );
-        themeComboBox.setItems(themeOptions);
-
         ObservableList<String> fontSizeOptions = FXCollections.observableArrayList(
             "小",
             "中（默认）",
@@ -75,6 +60,7 @@ public class SystemSettingsController extends ToolController {
         fontSizeComboBox.setItems(fontSizeOptions);
 
         ObservableList<String> boardOptions = FXCollections.observableArrayList(
+            "全部",
             "学习交流",
             "校园生活",
             "公告通知",
@@ -85,9 +71,10 @@ public class SystemSettingsController extends ToolController {
 
         ObservableList<String> sortOptions = FXCollections.observableArrayList(
             "最新发布",
-            "最多回复",
+            "最新回复",
+            "最多浏览",
             "最多点赞",
-            "最多浏览"
+            "精华帖优先"
         );
         postSortComboBox.setItems(sortOptions);
     }
@@ -97,12 +84,10 @@ public class SystemSettingsController extends ToolController {
         clearCacheButton.setOnAction(this::onClearCache);
         resetButton.setOnAction(this::onReset);
 
-        themeComboBox.setOnAction(e -> updateThemePreview());
         fontSizeComboBox.setOnAction(e -> updateFontSizePreview());
         defaultBoardComboBox.setOnAction(e -> updateBoardPreview());
         postSortComboBox.setOnAction(e -> updateSortPreview());
 
-        themeComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> updateThemePreview());
         fontSizeComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> updateFontSizePreview());
         defaultBoardComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> updateBoardPreview());
         postSortComboBox.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> updateSortPreview());
@@ -111,39 +96,21 @@ public class SystemSettingsController extends ToolController {
     private void loadSettings() {
         AppSettings settings = SettingsManager.getCurrentSettings();
         
-        themeComboBox.getSelectionModel().select(settings.getTheme());
         fontSizeComboBox.getSelectionModel().select(settings.getFontSize());
-        notificationSoundCheckBox.setSelected(settings.isNotificationSound());
         postNotificationCheckBox.setSelected(settings.isPostNotification());
         commentNotificationCheckBox.setSelected(settings.isCommentNotification());
-        likeNotificationCheckBox.setSelected(settings.isLikeNotification());
         followNotificationCheckBox.setSelected(settings.isFollowNotification());
-        messageNotificationCheckBox.setSelected(settings.isMessageNotification());
+        likeNotificationCheckBox.setSelected(settings.isLikeNotification());
         defaultBoardComboBox.getSelectionModel().select(settings.getDefaultBoard());
         postSortComboBox.getSelectionModel().select(settings.getPostSort());
-        autoSaveDraftCheckBox.setSelected(settings.isAutoSaveDraft());
 
         updatePreviews();
     }
 
     private void updatePreviews() {
-        updateThemePreview();
         updateFontSizePreview();
         updateBoardPreview();
         updateSortPreview();
-    }
-
-    private void updateThemePreview() {
-        String selected = themeComboBox.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            if ("深色主题".equals(selected)) {
-                themePreview.setText("✓ 深色主题已选择，将应用深色配色方案");
-                themePreview.setStyle("-fx-text-fill: #4CAF50; -fx-font-weight: bold;");
-            } else {
-                themePreview.setText("✓ 默认主题已选择，将应用浅色配色方案");
-                themePreview.setStyle("-fx-text-fill: #2196F3; -fx-font-weight: bold;");
-            }
-        }
     }
 
     private void updateFontSizePreview() {
@@ -168,7 +135,11 @@ public class SystemSettingsController extends ToolController {
     private void updateBoardPreview() {
         String selected = defaultBoardComboBox.getSelectionModel().getSelectedItem();
         if (selected != null) {
-            boardPreview.setText(String.format("✓ 进入帖子广场时将默认显示【%s】板块", selected));
+            if ("全部".equals(selected)) {
+                boardPreview.setText("✓ 进入帖子广场时将默认显示所有板块");
+            } else {
+                boardPreview.setText(String.format("✓ 进入帖子广场时将默认显示【%s】板块", selected));
+            }
             boardPreview.setStyle("-fx-text-fill: #9C27B0; -fx-font-weight: bold;");
         }
     }
@@ -185,24 +156,17 @@ public class SystemSettingsController extends ToolController {
     private void onSave(ActionEvent event) {
         try {
             AppSettings settings = new AppSettings();
-            settings.setTheme(themeComboBox.getSelectionModel().getSelectedItem());
             settings.setFontSize(fontSizeComboBox.getSelectionModel().getSelectedItem());
-            settings.setNotificationSound(notificationSoundCheckBox.isSelected());
             settings.setPostNotification(postNotificationCheckBox.isSelected());
             settings.setCommentNotification(commentNotificationCheckBox.isSelected());
-            settings.setLikeNotification(likeNotificationCheckBox.isSelected());
             settings.setFollowNotification(followNotificationCheckBox.isSelected());
-            settings.setMessageNotification(messageNotificationCheckBox.isSelected());
+            settings.setLikeNotification(likeNotificationCheckBox.isSelected());
             settings.setDefaultBoard(defaultBoardComboBox.getSelectionModel().getSelectedItem());
             settings.setPostSort(postSortComboBox.getSelectionModel().getSelectedItem());
-            settings.setAutoSaveDraft(autoSaveDraftCheckBox.isSelected());
 
             SettingsManager.saveSettings(settings);
-            
-            applySettings();
 
             showSuccessAlert("设置保存成功！\n\n" +
-                "• 主题已立即应用\n" +
                 "• 字体大小将在重启后生效\n" +
                 "• 通知设置已更新\n" +
                 "• 板块和排序偏好已保存");
@@ -210,14 +174,6 @@ public class SystemSettingsController extends ToolController {
         } catch (Exception e) {
             showErrorAlert("保存设置时出错：" + e.getMessage());
         }
-    }
-
-    private void applySettings() {
-        MainApplication.applyCurrentTheme();
-        // 暂时禁用自动应用字体大小，避免样式问题，改为提示用户重启后生效
-        // if (MainApplication.getMainScene() != null) {
-        //     StyleManager.applyFontSizeToScene(MainApplication.getMainScene());
-        // }
     }
 
     @FXML
@@ -236,7 +192,6 @@ public class SystemSettingsController extends ToolController {
                 try {
                     SettingsManager.clearCache();
                     loadSettings();
-                    applySettings();
                     showSuccessAlert("缓存清空成功！\n\n" +
                         "所有设置已恢复为默认值。\n" +
                         "请重新配置您的偏好设置。");
@@ -258,7 +213,6 @@ public class SystemSettingsController extends ToolController {
             if (response == ButtonType.OK) {
                 SettingsManager.clearCache();
                 loadSettings();
-                applySettings();
                 showSuccessAlert("已恢复所有设置为默认值！");
             }
         });

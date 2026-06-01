@@ -78,6 +78,7 @@ public class MyNotificationController extends ToolController {
     private static final int TYPE_FOLLOWER = 5;
     private static final int TYPE_FOLLOW_POST = 6;
     private static final int TYPE_POST_REVIEW = 7;
+    private static final int TYPE_LIKE = 8;
 
     static class DateHeader {
         String dateLabel;
@@ -494,6 +495,8 @@ public class MyNotificationController extends ToolController {
                 boxStyle = "type-icon-box-follower"; textStyle = "type-icon-text-follower"; text = "粉"; break;
             case TYPE_FOLLOW_POST:
                 boxStyle = "type-icon-box-follow-post"; textStyle = "type-icon-text-follow-post"; text = "关"; break;
+            case TYPE_LIKE:
+                boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "赞"; break;
             default:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "?"; break;
         }
@@ -546,6 +549,7 @@ public class MyNotificationController extends ToolController {
             case TYPE_COMMENT: return "评论回复通知";
             case TYPE_FOLLOWER: return "新增粉丝通知";
             case TYPE_FOLLOW_POST: return "关注用户发帖通知";
+            case TYPE_LIKE: return "收到点赞通知";
             default: return "未知";
         }
     }
