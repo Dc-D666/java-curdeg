@@ -43,12 +43,13 @@
                                 <Insets bottom="15.0" left="10.0" right="10.0" top="15.0" />
                             </padding>
                             <children>
-                                <Label styleClass="section-hint" text="配置您希望接收的通知类型" />
-                                <CheckBox fx:id="postNotificationCheckBox" text="关注的人发帖时通知" />
-                                <CheckBox fx:id="commentNotificationCheckBox" text="收到评论/回复时通知" />
-                                <CheckBox fx:id="followNotificationCheckBox" text="有人关注我时通知" />
-                                <CheckBox fx:id="likeNotificationCheckBox" text="收到点赞时通知" />
-                            </children>
+                <Label styleClass="section-hint" text="配置您希望接收的通知类型" />
+                <CheckBox fx:id="postNotificationCheckBox" text="关注的人发帖时通知" />
+                <CheckBox fx:id="commentNotificationCheckBox" text="收到评论/回复时通知" />
+                <CheckBox fx:id="followNotificationCheckBox" text="有人关注我时通知" />
+                <CheckBox fx:id="likeNotificationCheckBox" text="收到帖子点赞时通知" />
+                <CheckBox fx:id="commentLikeNotificationCheckBox" text="收到评论点赞时通知" />
+            </children>
                         </VBox>
                     </content>
                 </TitledPane>

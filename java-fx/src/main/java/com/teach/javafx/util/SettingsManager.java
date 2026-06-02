@@ -10,6 +10,7 @@ public class SettingsManager {
     private static final String KEY_POST_NOTIFICATION = "postNotification";
     private static final String KEY_COMMENT_NOTIFICATION = "commentNotification";
     private static final String KEY_LIKE_NOTIFICATION = "likeNotification";
+    private static final String KEY_COMMENT_LIKE_NOTIFICATION = "commentLikeNotification";
     private static final String KEY_FOLLOW_NOTIFICATION = "followNotification";
     private static final String KEY_DEFAULT_BOARD = "defaultBoard";
     private static final String KEY_POST_SORT = "postSort";
@@ -31,6 +32,7 @@ public class SettingsManager {
         currentSettings.setPostNotification(prefs.getBoolean(KEY_POST_NOTIFICATION, currentSettings.isPostNotification()));
         currentSettings.setCommentNotification(prefs.getBoolean(KEY_COMMENT_NOTIFICATION, currentSettings.isCommentNotification()));
         currentSettings.setLikeNotification(prefs.getBoolean(KEY_LIKE_NOTIFICATION, currentSettings.isLikeNotification()));
+        currentSettings.setCommentLikeNotification(prefs.getBoolean(KEY_COMMENT_LIKE_NOTIFICATION, currentSettings.isCommentLikeNotification()));
         currentSettings.setFollowNotification(prefs.getBoolean(KEY_FOLLOW_NOTIFICATION, currentSettings.isFollowNotification()));
         currentSettings.setDefaultBoard(prefs.get(KEY_DEFAULT_BOARD, currentSettings.getDefaultBoard()));
         currentSettings.setPostSort(prefs.get(KEY_POST_SORT, currentSettings.getPostSort()));
@@ -45,6 +47,7 @@ public class SettingsManager {
         prefs.putBoolean(KEY_POST_NOTIFICATION, settings.isPostNotification());
         prefs.putBoolean(KEY_COMMENT_NOTIFICATION, settings.isCommentNotification());
         prefs.putBoolean(KEY_LIKE_NOTIFICATION, settings.isLikeNotification());
+        prefs.putBoolean(KEY_COMMENT_LIKE_NOTIFICATION, settings.isCommentLikeNotification());
         prefs.putBoolean(KEY_FOLLOW_NOTIFICATION, settings.isFollowNotification());
         prefs.put(KEY_DEFAULT_BOARD, settings.getDefaultBoard());
         prefs.put(KEY_POST_SORT, settings.getPostSort());
@@ -62,6 +65,7 @@ public class SettingsManager {
         prefs.remove(KEY_POST_NOTIFICATION);
         prefs.remove(KEY_COMMENT_NOTIFICATION);
         prefs.remove(KEY_LIKE_NOTIFICATION);
+        prefs.remove(KEY_COMMENT_LIKE_NOTIFICATION);
         prefs.remove(KEY_FOLLOW_NOTIFICATION);
         prefs.remove(KEY_DEFAULT_BOARD);
         prefs.remove(KEY_POST_SORT);

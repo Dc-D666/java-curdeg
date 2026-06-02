@@ -5,6 +5,7 @@ public class AppSettings {
     private boolean postNotification;
     private boolean commentNotification;
     private boolean likeNotification;
+    private boolean commentLikeNotification;
     private boolean followNotification;
     private String defaultBoard;
     private String postSort;
@@ -14,6 +15,7 @@ public class AppSettings {
         this.postNotification = true;
         this.commentNotification = true;
         this.likeNotification = true;
+        this.commentLikeNotification = true;
         this.followNotification = true;
         this.defaultBoard = "全部";
         this.postSort = "最新发布";
@@ -49,6 +51,14 @@ public class AppSettings {
 
     public void setLikeNotification(boolean likeNotification) {
         this.likeNotification = likeNotification;
+    }
+
+    public boolean isCommentLikeNotification() {
+        return commentLikeNotification;
+    }
+
+    public void setCommentLikeNotification(boolean commentLikeNotification) {
+        this.commentLikeNotification = commentLikeNotification;
     }
 
     public boolean isFollowNotification() {

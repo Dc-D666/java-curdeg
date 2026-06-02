@@ -275,13 +275,6 @@ public class MainFrameController {
         if (menuExportMenu != null) {
             menuExportMenu.setVisible(isAdmin);
         }
-        
-        // 添加成员管理菜单项
-        if (isAdmin) {
-            MenuItem memberManagementItem = new MenuItem("成员管理");
-            memberManagementItem.setOnAction(e -> changeContent("member-management", "成员管理"));
-            menuExportMenu.getItems().add(0, memberManagementItem);
-        }
 
         String currentUsername = AppStore.getJwt().getUsername();
         

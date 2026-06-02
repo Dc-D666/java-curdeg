@@ -543,6 +543,38 @@ public class BbsCommentService {
         bbsCommentRepository.delete(comment);
     }
 
+    private static final int TYPE_COMMENT_LIKE = 9;
+
+    private void createCommentLikeNotification(BbsComment comment, Integer likerUserId) {
+        if (comment.getAuthorId() == null) {
+            return;
+        }
+        
+        Optional<User> likerOpt = userRepository.findById(likerUserId);
+        String likerName = likerOpt.map(u -> u.getNickname()).orElse("某用户");
+        
+        // 获取帖子信息
+        String postTitle = "评论所在帖子";
+        Optional<BbsPost> postOpt = bbsPostRepository.findById(comment.getPostId());
+        if (postOpt.isPresent()) {
+            postTitle = truncateCommentContent(postOpt.get().getTitle());
+        }
+        
+        BbsNotification notification = new BbsNotification();
+        notification.setReceiverId(comment.getAuthorId());
+        notification.setType(TYPE_COMMENT_LIKE);
+        notification.setTitle("收到评论点赞通知");
+        notification.setContent("用户【" + likerName + "】点赞了你的评论【" + truncateCommentContent(comment.getContent()) + "】(评论ID:" + comment.getId() + ")");
+        notification.setIsRead(0);
+        bbsNotificationRepository.saveAndFlush(notification);
+    }
+
+    private String truncateCommentContent(String content) {
+        if (content == null) return "无内容";
+        if (content.length() <= 20) return content;
+        return content.substring(0, 20) + "...";
+    }
+
     @Transactional
     public DataResponse toggleLike(Long commentId) {
         Integer currentUserId = CommonMethod.getPersonId();
@@ -575,6 +607,8 @@ public class BbsCommentService {
             // 被点赞积分奖励
             if (comment.getAuthorId() != null && !comment.getAuthorId().equals(currentUserId.longValue())) {
                 pointService.addPoints(comment.getAuthorId().intValue(), "RECEIVED_LIKE", "被点赞", like.getId(), "LIKE");
+                // 创建评论点赞通知
+                createCommentLikeNotification(comment, currentUserId);
             }
         }
         

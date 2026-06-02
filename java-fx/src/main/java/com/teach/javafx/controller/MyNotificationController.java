@@ -2,8 +2,10 @@ package com.teach.javafx.controller;
 
 import com.teach.javafx.AppStore;
 import com.teach.javafx.controller.base.ToolController;
+import com.teach.javafx.models.AppSettings;
 import com.teach.javafx.models.Notification;
 import com.teach.javafx.request.HttpRequestUtil;
+import com.teach.javafx.util.SettingsManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
@@ -79,6 +81,7 @@ public class MyNotificationController extends ToolController {
     private static final int TYPE_FOLLOW_POST = 6;
     private static final int TYPE_POST_REVIEW = 7;
     private static final int TYPE_LIKE = 8;
+    private static final int TYPE_COMMENT_LIKE = 9;
 
     static class DateHeader {
         String dateLabel;
@@ -159,11 +162,62 @@ public class MyNotificationController extends ToolController {
         emptyRefreshButton.setOnAction(event -> { showLoading(); loadData(); });
     }
 
+    private List<Notification> filterNotificationsBySettings(List<Notification> notifications) {
+        if (notifications == null || notifications.isEmpty()) {
+            return notifications;
+        }
+        
+        AppSettings settings = SettingsManager.getCurrentSettings();
+        List<Notification> filtered = new ArrayList<>();
+        
+        for (Notification n : notifications) {
+            Integer type = n.getType();
+            if (type == null) {
+                filtered.add(n);
+                continue;
+            }
+            
+            switch (type) {
+                case TYPE_COMMENT:
+                    if (settings.isCommentNotification()) {
+                        filtered.add(n);
+                    }
+                    break;
+                case TYPE_LIKE:
+                    if (settings.isLikeNotification()) {
+                        filtered.add(n);
+                    }
+                    break;
+                case TYPE_COMMENT_LIKE:
+                    if (settings.isCommentLikeNotification()) {
+                        filtered.add(n);
+                    }
+                    break;
+                case TYPE_FOLLOW_POST:
+                    if (settings.isPostNotification()) {
+                        filtered.add(n);
+                    }
+                    break;
+                case TYPE_FOLLOWER:
+                    if (settings.isFollowNotification()) {
+                        filtered.add(n);
+                    }
+                    break;
+                default:
+                    filtered.add(n);
+                    break;
+            }
+        }
+        
+        return filtered;
+    }
+
     private void loadData() {
         Task<List<Notification>> task = new Task<List<Notification>>() {
             @Override
             protected List<Notification> call() {
-                return HttpRequestUtil.getMyNotificationList(null, null);
+                List<Notification> all = HttpRequestUtil.getMyNotificationList(null, null);
+                return filterNotificationsBySettings(all);
             }
         };
 
@@ -198,29 +252,17 @@ public class MyNotificationController extends ToolController {
     }
 
     private void loadUnreadCount() {
-        Task<Long> task = new Task<Long>() {
-            @Override
-            protected Long call() {
-                return HttpRequestUtil.getUnreadNotificationCount();
+        int unread = 0;
+        for (Notification n : allNotifications) {
+            if (n.getIsRead() == null || n.getIsRead() != 1) {
+                unread++;
             }
-        };
-
-        task.setOnSucceeded(event -> {
-            Platform.runLater(() -> {
-                Long count = task.getValue();
-                int unread = count != null ? count.intValue() : 0;
-                unreadBadge.setText(unread + " 条未读");
-                unreadBadge.setVisible(unread > 0);
-                unreadBadge.setManaged(unread > 0);
-                updateCurrentBottomInfo();
-            });
-        });
-
-        task.setOnFailed(event -> {
-            Platform.runLater(this::updateCurrentBottomInfo);
-        });
-
-        new Thread(task).start();
+        }
+        
+        unreadBadge.setText(unread + " 条未读");
+        unreadBadge.setVisible(unread > 0);
+        unreadBadge.setManaged(unread > 0);
+        updateCurrentBottomInfo();
     }
 
     private void sortNotifications() {
@@ -497,6 +539,8 @@ public class MyNotificationController extends ToolController {
                 boxStyle = "type-icon-box-follow-post"; textStyle = "type-icon-text-follow-post"; text = "关"; break;
             case TYPE_LIKE:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "赞"; break;
+            case TYPE_COMMENT_LIKE:
+                boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "赞"; break;
             default:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "?"; break;
         }
@@ -549,7 +593,8 @@ public class MyNotificationController extends ToolController {
             case TYPE_COMMENT: return "评论回复通知";
             case TYPE_FOLLOWER: return "新增粉丝通知";
             case TYPE_FOLLOW_POST: return "关注用户发帖通知";
-            case TYPE_LIKE: return "收到点赞通知";
+            case TYPE_LIKE: return "收到帖子点赞通知";
+            case TYPE_COMMENT_LIKE: return "收到评论点赞通知";
             default: return "未知";
         }
     }

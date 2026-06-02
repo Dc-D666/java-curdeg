@@ -27,6 +27,8 @@ public class SystemSettingsController extends ToolController {
     @FXML
     private CheckBox likeNotificationCheckBox;
     @FXML
+    private CheckBox commentLikeNotificationCheckBox;
+    @FXML
     private ComboBox<String> defaultBoardComboBox;
     @FXML
     private ComboBox<String> postSortComboBox;
@@ -101,6 +103,7 @@ public class SystemSettingsController extends ToolController {
         commentNotificationCheckBox.setSelected(settings.isCommentNotification());
         followNotificationCheckBox.setSelected(settings.isFollowNotification());
         likeNotificationCheckBox.setSelected(settings.isLikeNotification());
+        commentLikeNotificationCheckBox.setSelected(settings.isCommentLikeNotification());
         defaultBoardComboBox.getSelectionModel().select(settings.getDefaultBoard());
         postSortComboBox.getSelectionModel().select(settings.getPostSort());
 
@@ -161,6 +164,7 @@ public class SystemSettingsController extends ToolController {
             settings.setCommentNotification(commentNotificationCheckBox.isSelected());
             settings.setFollowNotification(followNotificationCheckBox.isSelected());
             settings.setLikeNotification(likeNotificationCheckBox.isSelected());
+            settings.setCommentLikeNotification(commentLikeNotificationCheckBox.isSelected());
             settings.setDefaultBoard(defaultBoardComboBox.getSelectionModel().getSelectedItem());
             settings.setPostSort(postSortComboBox.getSelectionModel().getSelectedItem());
 
