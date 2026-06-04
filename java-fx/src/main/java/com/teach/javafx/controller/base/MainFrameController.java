@@ -176,16 +176,24 @@ public class MainFrameController {
         menuTree.setCellFactory(treeView -> new com.teach.javafx.util.NotificationTreeCell());
         menuTree.addEventFilter(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>(){
             public void handle(MouseEvent event){
+                System.out.println("[MainFrameController] 菜单被点击");
                 Node node = event.getPickResult().getIntersectedNode();
                 TreeItem<MyTreeNode> treeItem = menuTree.getSelectionModel().getSelectedItem();
-                if(treeItem == null)
+                if(treeItem == null) {
+                    System.out.println("[MainFrameController] 没有选中的菜单项");
                     return;
+                }
                 MyTreeNode menu = treeItem.getValue();
-                if(menu == null)
+                if(menu == null) {
+                    System.out.println("[MainFrameController] 菜单节点值为空");
                     return;
+                }
                 String name = menu.getValue();
-                if(name == null || name.length() == 0)
+                System.out.println("[MainFrameController] 菜单项 name=" + name + ", label=" + menu.getLabel());
+                if(name == null || name.length() == 0) {
+                    System.out.println("[MainFrameController] 菜单项name为空");
                     return ;
+                }
                 if("logout".equals(name)) {
                     logout();
                 }else if(name.endsWith("Command")){
@@ -196,6 +204,7 @@ public class MainFrameController {
                         e.printStackTrace();
                     }
                 }else {
+                    System.out.println("[MainFrameController] 调用 changeContent, name=" + name + ", label=" + menu.getLabel());
                     changeContent(name,menu.getLabel());
                 }
             }
@@ -232,7 +241,11 @@ public class MainFrameController {
         
         menuTask.setOnSucceeded(event -> {
             List<Map> menuList = menuTask.getValue();
+            System.out.println("[MainFrameController] 菜单列表加载完成，长度: " + (menuList != null ? menuList.size() : 0));
             if (menuList != null && !menuList.isEmpty()) {
+                for (int i = 0; i < menuList.size(); i++) {
+                    System.out.println("[MainFrameController] 菜单 " + i + ": " + menuList.get(i));
+                }
                 Platform.runLater(() -> {
                     initMenuTree(menuList);
                 });
@@ -387,7 +400,7 @@ public class MainFrameController {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle("账号状态通知");
         alert.setHeaderText("您的账号已被禁言");
-        alert.setContentText("您的账号因违反社区规定，已被管理员禁言。\n\n在禁言期间，您将无法：\n• 发布新帖子\n• 发表评论\n• 点赞、收藏、关注其他用户\n• 举报内容\n\n如对禁言决定有疑问，请通过\"帮助 → 反馈与建议\"联系管理员。");
+        alert.setContentText("您的账号因违反社区规定，已被管理员禁言。\n\n在禁言期间，您将无法：\n• 发布新帖子\n• 发表评论\n• 点赞、收藏、关注其他用户\n• 举报内容\n\n如对禁言决定有疑问，请通过\"帮助 → 禁言申诉\"联系管理员。");
         alert.showAndWait();
     }
 
@@ -560,6 +573,8 @@ public class MainFrameController {
             System.out.println("Tab created and added: " + title);
         }
         contentTabPane.getSelectionModel().select(tab);
+        // 打开标签页后清除菜单的蓝色选中指示
+        menuTree.getSelectionModel().clearSelection();
         updateEmptyStateVisibility();
     }
     
@@ -630,6 +645,39 @@ public class MainFrameController {
         }
     }
 
+    public Map<String, Tab> getTabMap() {
+        return tabMap;
+    }
+    
+    public TabPane getContentTabPane() {
+        return contentTabPane;
+    }
+    
+    public void openAppealDetail(Long appealId) {
+        if (appealId == null) {
+            return;
+        }
+
+        String tabName = "appeal-detail-" + appealId;
+        Tab existingTab = tabMap.get(tabName);
+        if (existingTab != null) {
+            contentTabPane.getSelectionModel().select(existingTab);
+            return;
+        }
+
+        try {
+            FXMLLoader fxmlLoader = new FXMLLoader(MainApplication.class.getResource("appeal-detail.fxml"));
+            Scene scene = new Scene(fxmlLoader.load(), 800, 600);
+            Object controller = fxmlLoader.getController();
+            if (controller instanceof com.teach.javafx.controller.AppealDetailController) {
+                ((com.teach.javafx.controller.AppealDetailController) controller).setAppealId(appealId);
+            }
+            changeContentWithScene(tabName, "申诉详情", scene, controller);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
     public void openUserHome(Integer userId) {
         if (userId == null) {
             return;
@@ -953,6 +1001,15 @@ public class MainFrameController {
         }
     }
 
+    @FXML
+    protected void onBanAppealClick(ActionEvent event) {
+        changeContent("ban-appeal", "禁言申诉");
+    }
+    
+    @FXML
+    protected void onBanAppealAdminClick(ActionEvent event) {
+        changeContent("ban-appeal-admin", "申诉管理");
+    }
     
     public void loadUnreadNotificationCount() {
         Task<Long> task = new Task<Long>() {

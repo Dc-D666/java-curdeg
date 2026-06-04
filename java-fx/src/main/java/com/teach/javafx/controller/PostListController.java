@@ -85,9 +85,14 @@ public class PostListController extends ToolController {
     private Button prevButton;
     @FXML
     private Button nextButton;
+    @FXML
+    private TextField jumpPageTextField;
+    @FXML
+    private Button jumpButton;
 
     private int currentPageNum = 1;
     private int currentPageSize = 20;
+    private int totalPages = 1;
     private Long currentBoardId = null;
     private String currentKeyword = null;
     private String currentSort = "latest";
@@ -142,6 +147,8 @@ public class PostListController extends ToolController {
             currentPageNum++;
             loadPostList();
         });
+
+        jumpButton.setOnAction(event -> onJumpPageClick());
 
         boardComboBox.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
@@ -373,7 +380,7 @@ public class PostListController extends ToolController {
                     }
 
                     long total = pageResult.getTotal() != null ? pageResult.getTotal() : 0;
-                    int totalPages = (int) Math.ceil((double) total / currentPageSize);
+                    totalPages = (int) Math.ceil((double) total / currentPageSize);
                     int displayTotalPages = Math.max(totalPages, 1);
                     pageInfoLabel.setText("共 " + total + " 条，第 " + currentPageNum + " / " + displayTotalPages + " 页");
 
@@ -387,8 +394,14 @@ public class PostListController extends ToolController {
                     postListVBox.getChildren().add(emptyLabel);
 
                     pageInfoLabel.setText("共 0 条，第 1 / 1 页");
+                    totalPages = 1;
                     prevButton.setDisable(true);
                     nextButton.setDisable(true);
+                }
+                
+                // 只有非刷新按钮调用（刷新按钮已在点击时滚动）才需要滚动到顶部
+                if (refreshBtn == null) {
+                    smoothScrollToTop();
                 }
             });
         });
@@ -813,6 +826,36 @@ public class PostListController extends ToolController {
             });
 
             timeline.play();
+        }
+    }
+
+    /**
+     * 跳转页面处理
+     */
+    @FXML
+    private void onJumpPageClick() {
+        if (jumpPageTextField == null || jumpPageTextField.getText() == null) {
+            return;
+        }
+        
+        try {
+            int targetPage = Integer.parseInt(jumpPageTextField.getText().trim());
+            
+            if (targetPage < 1) {
+                targetPage = 1;
+            }
+            if (targetPage > totalPages) {
+                targetPage = totalPages;
+            }
+            
+            if (targetPage != currentPageNum) {
+                currentPageNum = targetPage;
+                loadPostList();
+            }
+            
+            jumpPageTextField.setText("");
+        } catch (NumberFormatException e) {
+            // 输入非数字，忽略
         }
     }
 }

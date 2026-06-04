@@ -203,9 +203,9 @@ public class CommentItemController {
             if (trimmedUrl.startsWith("http://") || trimmedUrl.startsWith("https://")) {
                 fullUrl = trimmedUrl;
             } else if (trimmedUrl.startsWith("/")) {
-                fullUrl = "http://localhost:22223" + trimmedUrl;
+                fullUrl = HttpRequestUtil.serverUrl + trimmedUrl;
             } else {
-                fullUrl = "http://localhost:22223/" + trimmedUrl;
+                fullUrl = HttpRequestUtil.serverUrl + "/" + trimmedUrl;
             }
             fullUrlList.add(fullUrl);
         }

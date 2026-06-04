@@ -396,27 +396,56 @@ public class StatisticsService {
     }
 
     public List<Map<String, Object>> getPostStatusDistribution() {
-        List<Object[]> rawData = bbsPostRepository.countPostsByStatus();
+        // 重新实现：直接使用 moderation_status 来准确统计
         List<Map<String, Object>> result = new ArrayList<>();
-        Map<Integer, String> statusMap = new HashMap<>();
-        statusMap.put(0, "待审核");
-        statusMap.put(1, "审核通过");
-        statusMap.put(2, "审核中");
-        statusMap.put(3, "审核不通过");
-        for (Object[] row : rawData) {
-            Map<String, Object> item = new HashMap<>();
-            Integer status;
-            if (row[0] instanceof Boolean) {
-                status = ((Boolean) row[0]) ? 1 : 0;
-            } else if (row[0] instanceof Number) {
-                status = ((Number) row[0]).intValue();
-            } else {
-                status = 0;
-            }
-            item.put("name", statusMap.getOrDefault(status, "未知状态"));
-            item.put("count", row[1]);
-            result.add(item);
+        
+        // 使用自定义查询，根据 moderation_status 统计
+        Long pendingCount = bbsPostRepository.countPendingModerationPosts();
+        Long passCount = bbsPostRepository.countAIPassedPosts();
+        
+        // 获取手动审核中的帖子数量
+        Long manualCount = bbsPostRepository.countManualModerationPosts();
+        
+        // 获取审核拒绝的帖子数量
+        Long rejectCount = bbsPostRepository.countRejectedPosts();
+        
+        // 添加到结果中
+        if (pendingCount != null && pendingCount > 0) {
+            Map<String, Object> pendingItem = new HashMap<>();
+            pendingItem.put("name", "待审核");
+            pendingItem.put("count", pendingCount);
+            result.add(pendingItem);
         }
+        
+        if (manualCount != null && manualCount > 0) {
+            Map<String, Object> manualItem = new HashMap<>();
+            manualItem.put("name", "审核中");
+            manualItem.put("count", manualCount);
+            result.add(manualItem);
+        }
+        
+        if (passCount != null && passCount > 0) {
+            Map<String, Object> passItem = new HashMap<>();
+            passItem.put("name", "审核通过");
+            passItem.put("count", passCount);
+            result.add(passItem);
+        }
+        
+        if (rejectCount != null && rejectCount > 0) {
+            Map<String, Object> rejectItem = new HashMap<>();
+            rejectItem.put("name", "审核不通过");
+            rejectItem.put("count", rejectCount);
+            result.add(rejectItem);
+        }
+        
+        // 如果结果为空，至少返回审核通过（可能所有帖子都是pass）
+        if (result.isEmpty()) {
+            Map<String, Object> passItem = new HashMap<>();
+            passItem.put("name", "审核通过");
+            passItem.put("count", bbsPostRepository.count());
+            result.add(passItem);
+        }
+        
         return result;
     }
 
@@ -587,23 +616,39 @@ public class StatisticsService {
 
     public Map<String, Object> getModerationOverview() {
         Map<String, Object> result = new HashMap<>();
-        Long totalModerations = bbsModerationLogRepository.countTotalModerations();
+        
+        // 统计帖子的审核完成情况（基于最终状态）
+        Long postsWithFinalDecision = bbsModerationLogRepository.countPostsWithFinalDecision();
+        Long postsFinallyPassed = bbsModerationLogRepository.countPostsFinallyPassed();
+        Long postsFinallyRejected = bbsModerationLogRepository.countPostsFinallyRejected();
+        
+        // 待审核的帖子数
         Long pendingPosts = bbsPostRepository.countPendingModerationPosts();
-        Long passedCount = bbsModerationLogRepository.countPassedModerations();
-        Long rejectedCount = bbsModerationLogRepository.countRejectedModerations();
-        result.put("totalModeration", totalModerations);
+        
+        result.put("totalModeration", postsWithFinalDecision); // 显示有审核结果的帖子数
         result.put("pendingCount", pendingPosts);
 
         double passRateValue = 0.0;
-        if (totalModerations > 0) {
-            passRateValue = (double) passedCount / totalModerations * 100;
-        }
         double rejectRateValue = 0.0;
-        if (totalModerations > 0) {
-            rejectRateValue = (double) rejectedCount / totalModerations * 100;
+        
+        if (postsWithFinalDecision != null && postsWithFinalDecision > 0) {
+            // 直接计算通过率和拒绝率
+            passRateValue = (double) postsFinallyPassed / postsWithFinalDecision * 100;
+            rejectRateValue = (double) postsFinallyRejected / postsWithFinalDecision * 100;
+            
+            // 先分别四舍五入
+            passRateValue = Math.round(passRateValue * 100.0) / 100.0;
+            rejectRateValue = Math.round(rejectRateValue * 100.0) / 100.0;
+            
+            // 检查总和，如果不是100%，微调一下（优先保证通过率准确）
+            double total = passRateValue + rejectRateValue;
+            if (total != 100.0) {
+                rejectRateValue = 100.0 - passRateValue;
+            }
         }
-        result.put("passRate", Math.round(passRateValue * 100.0) / 100.0);
-        result.put("rejectRate", Math.round(rejectRateValue * 100.0) / 100.0);
+        
+        result.put("passRate", passRateValue);
+        result.put("rejectRate", rejectRateValue);
         return result;
     }
 

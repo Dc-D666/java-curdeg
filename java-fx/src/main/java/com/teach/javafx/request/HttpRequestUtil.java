@@ -3492,6 +3492,142 @@ public static PageResult<Post> getMyFavorites(int page, int size) {
         return false;
     }
 
+    public static Map<String, Object> submitBanAppeal(String reason) {
+        Map<String, String> data = new java.util.HashMap<>();
+        data.put("reason", reason);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/appeal/submit"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(data)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("submitBanAppeal response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(response.body(), responseType);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getMyBanAppeals() {
+        String url = serverUrl + "/api/bbs/appeal/my-list?pageNum=1&pageSize=20";
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getMyBanAppeals response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(response.body(), responseType);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getAllBanAppeals(Integer status) {
+        String url = serverUrl + "/api/bbs/appeal/all-list?pageNum=1&pageSize=20";
+        if (status != null) {
+            url += "&status=" + status;
+        }
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getAllBanAppeals response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(response.body(), responseType);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> getBanAppealDetail(Long id) {
+        String url = serverUrl + "/api/bbs/appeal/" + id + "/detail";
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .GET()
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("getBanAppealDetail response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(response.body(), responseType);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static Map<String, Object> handleBanAppeal(Long id, Integer decision, String handleResult) {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("decision", decision);
+        data.put("handleResult", handleResult);
+        
+        HttpRequest.Builder builder = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/api/bbs/appeal/" + id + "/handle"))
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(data)))
+                .headers("Content-Type", "application/json");
+        
+        if (AppStore.getJwt() != null && AppStore.getJwt().getToken() != null) {
+            builder.headers("Authorization", "Bearer " + AppStore.getJwt().getToken());
+        }
+        
+        HttpRequest httpRequest = builder.build();
+        try {
+            HttpResponse<String> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            System.out.println("handleBanAppeal response: " + response.body());
+            if (response.statusCode() == 200) {
+                Type responseType = new TypeToken<Map<String, Object>>(){}.getType();
+                return gson.fromJson(response.body(), responseType);
+            }
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public static boolean setUser(Integer userId) {
         DataRequest dataRequest = new DataRequest();
         dataRequest.add("userId", userId);

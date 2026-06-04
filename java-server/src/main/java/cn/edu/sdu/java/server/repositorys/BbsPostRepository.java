@@ -173,6 +173,12 @@ public interface BbsPostRepository extends JpaRepository<BbsPost, Long> {
     @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'pass'", nativeQuery = true)
     Long countAIPassedPosts();
 
+    @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'manual'", nativeQuery = true)
+    Long countManualModerationPosts();
+
+    @Query(value = "SELECT COUNT(*) FROM bbs_post WHERE moderation_status = 'reject'", nativeQuery = true)
+    Long countRejectedPosts();
+
     @Query("SELECT p FROM BbsPost p WHERE " +
            "p.authorId = :authorId AND " +
            "((p.status = 1 AND (p.moderationStatus = 'pass' OR p.authorId = :currentUserId OR :isAdmin = true)) OR " +

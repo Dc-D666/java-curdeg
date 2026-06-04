@@ -34,7 +34,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
     Boolean existsByStudentId(String studentId);
 
-    @Query("SELECT u FROM User u WHERE (:keyword IS NULL OR :keyword = '' OR u.nickname LIKE %:keyword% OR u.userName LIKE %:keyword% OR u.studentId LIKE %:keyword%)")
+    @Query("SELECT u FROM User u WHERE (:keyword IS NULL OR :keyword = '' OR u.nickname LIKE CONCAT('%', :keyword, '%') OR u.userName LIKE CONCAT('%', :keyword, '%') OR u.studentId LIKE CONCAT('%', :keyword, '%'))")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE u.nickname LIKE CONCAT(:keyword, '%') ORDER BY u.nickname ASC")
@@ -83,9 +83,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     Long countTodayNewUsers();
 
     // 简化的活跃用户查询，避免复杂的LEFT JOIN
-    @Query(value = "SELECT COUNT(DISTINCT u.person_id) FROM sys_user u " +
-           "WHERE u.person_id IN (SELECT p.author_id FROM bbs_post p WHERE p.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
-           "OR u.person_id IN (SELECT c.author_id FROM bbs_comment c WHERE c.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
+    // 注意：bbs_post.author_id和bbs_comment.author_id是Long类型，需要CAST为SIGNED才能与user.person_id(Integer)匹配
+    @Query(value = "SELECT COUNT(DISTINCT u.person_id) FROM user u " +
+           "WHERE CAST(u.person_id AS SIGNED) IN (SELECT CAST(p.author_id AS SIGNED) FROM bbs_post p WHERE p.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
+           "OR CAST(u.person_id AS SIGNED) IN (SELECT CAST(c.author_id AS SIGNED) FROM bbs_comment c WHERE c.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
            "OR u.person_id IN (SELECT l.user_id FROM bbs_like l WHERE l.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) " +
            "OR u.person_id IN (SELECT f.user_id FROM bbs_favorite f WHERE f.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))", nativeQuery = true)
     Long countMonthlyActiveUsers();

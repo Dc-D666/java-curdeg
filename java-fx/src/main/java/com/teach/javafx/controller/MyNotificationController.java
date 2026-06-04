@@ -82,6 +82,7 @@ public class MyNotificationController extends ToolController {
     private static final int TYPE_POST_REVIEW = 7;
     private static final int TYPE_LIKE = 8;
     private static final int TYPE_COMMENT_LIKE = 9;
+    private static final int TYPE_APPEAL = 10;
 
     static class DateHeader {
         String dateLabel;
@@ -541,6 +542,8 @@ public class MyNotificationController extends ToolController {
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "赞"; break;
             case TYPE_COMMENT_LIKE:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "赞"; break;
+            case TYPE_APPEAL:
+                boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "申"; break;
             default:
                 boxStyle = "type-icon-box-system"; textStyle = "type-icon-text-system"; text = "?"; break;
         }
@@ -595,6 +598,7 @@ public class MyNotificationController extends ToolController {
             case TYPE_FOLLOW_POST: return "关注用户发帖通知";
             case TYPE_LIKE: return "收到帖子点赞通知";
             case TYPE_COMMENT_LIKE: return "收到评论点赞通知";
+            case TYPE_APPEAL: return "申诉通知";
             default: return "未知";
         }
     }

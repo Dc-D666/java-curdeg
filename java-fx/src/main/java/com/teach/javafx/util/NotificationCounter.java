@@ -96,7 +96,7 @@ public class NotificationCounter {
             }
         };
 
-        refreshService.setPeriod(Duration.seconds(30));
+        refreshService.setPeriod(Duration.seconds(10));
         refreshService.setDelay(Duration.seconds(2));
         refreshService.start();
     }

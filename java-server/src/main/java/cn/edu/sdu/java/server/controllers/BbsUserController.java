@@ -37,7 +37,13 @@ public class BbsUserController {
 
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SUPER')")
-    public DataResponse getUserList(@Valid DataRequest dataRequest) {
+    public DataResponse getUserList(@RequestParam(required = false) Integer pageNum,
+                                        @RequestParam(required = false) Integer pageSize,
+                                        @RequestParam(required = false) String keyword) {
+        DataRequest dataRequest = new DataRequest();
+        dataRequest.add("pageNum", pageNum);
+        dataRequest.add("pageSize", pageSize);
+        dataRequest.add("keyword", keyword);
         return bbsUserService.getUserList(dataRequest);
     }
 

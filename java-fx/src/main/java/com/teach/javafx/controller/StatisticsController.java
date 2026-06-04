@@ -819,7 +819,7 @@ public class StatisticsController extends ToolController {
         moderationGrid.getChildren().clear();
         
         String[][] cardConfigs = {
-            {"总审核数", "totalModeration", "#3498db"},
+            {"已审核帖子", "totalModeration", "#3498db"},
             {"待审核数", "pendingCount", "#f39c12"},
             {"审核通过率", "passRate", "#2ecc71"},
             {"审核拒绝率", "rejectRate", "#e74c3c"}

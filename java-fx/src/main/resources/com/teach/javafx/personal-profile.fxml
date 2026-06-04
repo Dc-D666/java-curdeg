@@ -84,7 +84,7 @@
                             </children>
                         </HBox>
                         <Label style="-fx-font-size: 13px; -fx-text-fill: #7f1d1d;" text="您的账号因违反社区规定已被管理员禁言。禁言期间，您将无法发帖、评论、点赞、收藏、关注或举报内容。" wrapText="true" />
-                        <Label style="-fx-font-size: 12px; -fx-text-fill: #991b1b;" text="如对禁言决定有疑问，请通过 &quot;帮助 → 反馈与建议&quot; 联系管理员。" wrapText="true" />
+                        <Label style="-fx-font-size: 12px; -fx-text-fill: #991b1b;" text="如对禁言决定有疑问，请通过 &quot;帮助 → 禁言申诉&quot; 联系管理员。" wrapText="true" />
                     </children>
                 </VBox>
 

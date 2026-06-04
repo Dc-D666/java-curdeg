@@ -40,4 +40,20 @@ public interface BbsModerationLogRepository extends JpaRepository<BbsModerationL
 
     @Query(value = "SELECT COUNT(*) FROM bbs_moderation_log WHERE new_status = 'reject'", nativeQuery = true)
     Long countRejectedModerations();
+    
+    // 统计帖子审核通过率相关方法
+    @Query(value = "SELECT COUNT(*) FROM (SELECT post_id FROM bbs_moderation_log " +
+           "WHERE id IN (SELECT MAX(id) FROM bbs_moderation_log GROUP BY post_id) " +
+           "AND new_status IN ('pass', 'reject')) AS final_posts", nativeQuery = true)
+    Long countPostsWithFinalDecision();
+    
+    @Query(value = "SELECT COUNT(*) FROM (SELECT post_id FROM bbs_moderation_log " +
+           "WHERE id IN (SELECT MAX(id) FROM bbs_moderation_log GROUP BY post_id) " +
+           "AND new_status = 'pass') AS passed_posts", nativeQuery = true)
+    Long countPostsFinallyPassed();
+    
+    @Query(value = "SELECT COUNT(*) FROM (SELECT post_id FROM bbs_moderation_log " +
+           "WHERE id IN (SELECT MAX(id) FROM bbs_moderation_log GROUP BY post_id) " +
+           "AND new_status = 'reject') AS rejected_posts", nativeQuery = true)
+    Long countPostsFinallyRejected();
 }

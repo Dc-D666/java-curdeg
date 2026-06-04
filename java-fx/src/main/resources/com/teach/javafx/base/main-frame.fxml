@@ -36,18 +36,19 @@
               </items>
             </Menu>
             <Menu fx:id="menuSettings" text="设置">
-              <items>
+            <items>
                 <MenuItem text="系统设置" onAction="#onSystemSettingsClick" />
                 <SeparatorMenuItem />
                 <MenuItem fx:id="menuLogout" text="退出登录" onAction="#onLogoutMenuClick" />
-              </items>
-            </Menu>
+            </items>
+        </Menu>
             <Menu fx:id="menuHelp" text="帮助">
-              <items>
-                <MenuItem text="关于" onAction="#onAboutClick" />
-                <MenuItem text="反馈与建议" onAction="#onFeedbackClick" />
-              </items>
-            </Menu>
+      <items>
+        <MenuItem text="关于" onAction="#onAboutClick" />
+        <MenuItem text="反馈与建议" onAction="#onFeedbackClick" />
+        <MenuItem text="禁言申诉" onAction="#onBanAppealClick" />
+      </items>
+    </Menu>
             <Menu fx:id="menuSwitchAccount" text="切换账号" />
           </menus>
         </MenuBar>

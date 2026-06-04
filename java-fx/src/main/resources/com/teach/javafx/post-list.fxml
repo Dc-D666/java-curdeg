@@ -75,6 +75,8 @@
                                         <Button fx:id="prevButton" mnemonicParsing="false" styleClass="pagination-button" text="上一页" />
                                         <Label fx:id="pageInfoLabel" styleClass="pagination-info" text="共 0 条，第 1 / 1 页" />
                                         <Button fx:id="nextButton" mnemonicParsing="false" styleClass="pagination-button" text="下一页" />
+                                        <TextField fx:id="jumpPageTextField" prefWidth="50.0" promptText="页码" />
+                                        <Button fx:id="jumpButton" mnemonicParsing="false" styleClass="pagination-button" text="跳转" onAction="#onJumpPageClick" />
                                     </children>
                                 </HBox>
                             </children>

@@ -212,7 +212,7 @@ public class MemberManagementController extends ToolController {
         loadUsers();
         
         searchButton.setOnAction(event -> searchUsers());
-        refreshButton.setOnAction(event -> loadUsers());
+        refreshButton.setOnAction(event -> refreshUsers());
         prevPageButton.setOnAction(event -> {
             if (currentPage > 1) {
                 currentPage--;
@@ -272,7 +272,15 @@ public class MemberManagementController extends ToolController {
     }
     
     private void searchUsers() {
-        currentKeyword = searchField.getText().trim();
+        String keyword = searchField.getText().trim();
+        currentKeyword = keyword.isEmpty() ? null : keyword;
+        currentPage = 1;
+        loadUsers();
+    }
+    
+    private void refreshUsers() {
+        searchField.setText("");
+        currentKeyword = null;
         currentPage = 1;
         loadUsers();
     }

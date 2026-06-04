@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.ButtonType?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+
+<VBox styleClass="app-shell" stylesheets="@css/personal-center.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.teach.javafx.controller.BanAppealController">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+    <children>
+        <Label style="-fx-font-size: 18px; -fx-font-weight: bold;" text="禁言申诉" />
+        <Label style="-fx-font-size: 13px; -fx-text-fill: #666; -fx-padding: 10 0 20 0;" text="如对禁言决定有疑问，请在此提交申诉。管理员将在收到申诉后尽快处理。" />
+        
+        <Label style="-fx-font-size: 13px; -fx-padding: 0 0 5 0;" text="申诉理由（最多 500 字符）：" />
+        <TextArea fx:id="reasonArea" prefHeight="120.0" prefWidth="600.0" wrapText="true" promptText="请详细说明您的申诉理由..." />
+        
+        <HBox spacing="10.0" style="-fx-padding: 20 0 0 0;">
+            <Button fx:id="submitButton" styleClass="primary-button" text="提交申诉" />
+            <Button fx:id="refreshButton" styleClass="primary-button" text="刷新" />
+        </HBox>
+        
+        <Label style="-fx-font-size: 14px; -fx-padding: 30 0 10 0; -fx-font-weight: bold;" text="我的申诉记录" />
+        <ScrollPane fx:id="appealListScrollPane" prefHeight="300.0" prefWidth="600.0" />
+    </children>
+</VBox>
