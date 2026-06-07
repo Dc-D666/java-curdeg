@@ -69,6 +69,13 @@ public class LoginController {
     protected void onLoginButtonClick() {
         String username = usernameField.getText();
         String password = passwordField.getText();
+        
+        // 测试功能：什么都不填，自动使用super账号登录
+        if((username == null || username.isEmpty()) && (password == null || password.isEmpty())) {
+            username = "super";
+            password = "123456";
+        }
+        
         if(username == null || username.isEmpty()) {
             MessageDialog.showDialog("请输入用户名");
             return;
